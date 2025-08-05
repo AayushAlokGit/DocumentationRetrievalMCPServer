@@ -1,0 +1,5 @@
+I want to create an app which will leverage an LLM to answer queries related to the work items I have worked upon. The knowledge base for this app will be derived from a local folder which contains markdown files with relevant information about the work items. This documentation will be used to train the LLM to answer questions about the work items.
+I want to use Azure OpenAI to build this app, and I will be using the Azure OpenAI API to interact with the LLM. The app will allow me to ask questions about my work items, and the LLM will provide answers based on the information contained in the markdown files.
+I want my work item document files to be stored in a vector database to enable efficient retrieval of relevant information.
+
+On second though instead create a mCP server which exposes tools which i can integrate into VSCOde agent mode and thus use this MCP server to answer questions about my work items. The mCP server will handle the interaction with the Azure OpenAI API and manage the vector database for efficient information retrieval.
