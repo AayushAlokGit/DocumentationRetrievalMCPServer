@@ -121,6 +121,16 @@ class ProcessingTracker:
         """Mark a file as processed."""
         mark_file_as_processed(file_path, self.processed_files)
     
+    def mark_unprocessed(self, file_path: Path):
+        """Mark a file as unprocessed by removing it from tracking."""
+        file_key = str(file_path)
+        if file_key in self.processed_files:
+            del self.processed_files[file_key]
+    
+    def reset(self):
+        """Reset all tracking data (clears all processed files)."""
+        self.processed_files.clear()
+    
     def save(self):
         """Save the current tracking state to file."""
         save_processed_files(self.tracking_file, self.processed_files)

@@ -18,22 +18,29 @@ def discover_markdown_files(work_items_path: str) -> List[Path]:
     Find all markdown files in the Work Items directory structure.
     
     Args:
-        work_items_path: Path to the Work Items directory
+        work_items_path: Path to the Work Items directory or a specific work item directory
         
     Returns:
         List[Path]: Sorted list of valid markdown file paths
         
     Raises:
-        FileNotFoundError: If the Work Items directory doesn't exist
+        FileNotFoundError: If the directory doesn't exist
     """
     work_items_dir = Path(work_items_path)
 
     if not work_items_dir.exists():
-        raise FileNotFoundError(f"Work Items directory does not exist: {work_items_path}")
+        raise FileNotFoundError(f"Directory does not exist: {work_items_path}")
 
     markdown_files = []
 
-    # Iterate through each work item subdirectory
+    # Check if this directory contains markdown files directly (specific work item case)
+    direct_md_files = list(work_items_dir.glob("*.md"))
+    if direct_md_files:
+        # This is a specific work item directory with markdown files
+        valid_files = [f for f in direct_md_files if f.is_file() and f.stat().st_size > 0]
+        markdown_files.extend(valid_files)
+    
+    # Also check subdirectories (base Work Items directory case)
     for work_item_dir in work_items_dir.iterdir():
         if work_item_dir.is_dir():
             # Find all .md files in this work item directory
@@ -106,7 +113,10 @@ def extract_metadata(content: str, file_path: Path) -> Dict:
 
         # File system metadata
         file_stat = file_path.stat()
-        metadata['last_modified'] = file_stat.st_mtime
+        # Convert Unix timestamp to ISO format for Azure Search
+        from datetime import datetime
+        last_modified_dt = datetime.fromtimestamp(file_stat.st_mtime)
+        metadata['last_modified'] = last_modified_dt.isoformat() + 'Z'
         metadata['work_item_directory'] = str(work_item_dir)
 
         return metadata
@@ -114,10 +124,13 @@ def extract_metadata(content: str, file_path: Path) -> Dict:
     except Exception as e:
         # Return minimal metadata on error, but always include work item ID
         work_item_id = file_path.parent.name
+        # Convert timestamp to ISO format even in error case
+        from datetime import datetime
+        last_modified_dt = datetime.fromtimestamp(file_path.stat().st_mtime)
         return {
             'title': file_path.stem.replace('_', ' ').replace('-', ' '),
             'work_item_id': work_item_id,
-            'last_modified': file_path.stat().st_mtime,
+            'last_modified': last_modified_dt.isoformat() + 'Z',
             'tags': [work_item_id],
             'work_item_directory': str(file_path.parent)
         }

@@ -1,8 +1,8 @@
-# Document Upload to Azure Cognitive Search
+# Document Upload to Azure Cognitive Search - Complete Implementation Guide
 
 ## Overview
 
-This guide provides practical implementation details for uploading work item documentation from a structured local directory to Azure Cognitive Search with vector embeddings.
+This guide covers uploading work item documentation to Azure Cognitive Search with vector embeddings.
 
 **Directory Structure Expected:**
 
@@ -11,13 +11,13 @@ This guide provides practical implementation details for uploading work item doc
 - Directory names serve as work item identifiers
 - Markdown files within each subdirectory contain the documentation
 
-The implementation focuses on the essential components needed for the WorkItemDocumentationRetriever project.
-
 ## Table of Contents
 
 1. [Index Schema Design](#index-schema-design)
 2. [Document Processing Pipeline](#document-processing-pipeline)
 3. [Upload Implementation](#upload-implementation)
+4. [Helper Modules](#helper-modules)
+5. [Troubleshooting Guide](#troubleshooting-guide)
 
 ---
 
@@ -97,7 +97,8 @@ The following schema is optimized for work item document search with vector capa
       "filterable": true, // Filter by specific tags
       "retrievable": true, // Show tags in results
       "sortable": false, // Tag arrays not sortable
-      "facetable": true // Facet navigation by tags
+      "facetable": true, // Facet navigation by tags
+      "analyzer": "standard.lucene" // Standard analyzer for tag text processing
     },
     {
       "name": "last_modified",
@@ -143,21 +144,30 @@ The following schema is optimized for work item document search with vector capa
 }
 ```
 
+### ⚠️ Critical Schema Requirements
+
+**IMPORTANT**: The `last_modified` field must be `Edm.DateTimeOffset` type. Convert timestamps to ISO format:
+
+```python
+from datetime import datetime
+last_modified_iso = datetime.fromtimestamp(timestamp).isoformat() + 'Z'
+```
+
+**Tags Field Considerations:**
+
+- Tags are automatically extracted from frontmatter, content hashtags, and work item IDs
+- Each document will always have at least the work item ID as a tag for filtering
+- Use lowercase tags for consistency (e.g., `["bug", "frontend", "wi-12345"]`)
+- Tags support full-text search and faceting for navigation
+- Maximum recommended tags per document: 20 (for performance)
+
 ### Schema Design Rationale
 
-#### Field Selection Strategy
-
-1. **Document Key (`id`)**: Unique identifier for deduplication and updates
-2. **Content Fields**: Separate storage for human-readable content and vector embeddings
-3. **Metadata Fields**: Structured information for filtering and faceting
-4. **Navigation Fields**: Support for organizing and browsing results
-
-#### Vector Configuration Explained
-
-- **Profile**: Named configuration that fields can reference
-- **Algorithm**: HNSW chosen for balanced performance and accuracy
-- **Cosine Similarity**: Optimal for normalized embeddings from Azure OpenAI
-- **Parameters**: Tuned for good performance with moderate resource usage
+- **Document Key (`id`)**: Unique identifier for deduplication and updates
+- **Content Fields**: Separate storage for human-readable content and vector embeddings
+- **Metadata Fields**: Structured information for filtering and faceting
+- **Tags Field**: Collection supports multiple sources (frontmatter, hashtags, work item IDs) with automatic extraction and normalization
+- **Vector Configuration**: HNSW algorithm with cosine similarity for Azure OpenAI embeddings
 
 ---
 
@@ -570,6 +580,12 @@ async def main():
     search_admin_key = os.getenv('AZURE_SEARCH_KEY')
     search_index_name = os.getenv('AZURE_SEARCH_INDEX', 'work-items-index')
 
+    # Initialize file tracker for idempotent processing
+    from src.file_tracker import ProcessingTracker
+    tracker = ProcessingTracker("processed_files.json")
+    
+    print(f"File Tracker Stats: {tracker.get_stats()}")
+
     # Initialize Azure OpenAI client
     openai_client = AzureOpenAI(
         azure_endpoint=azure_openai_endpoint,
@@ -586,6 +602,11 @@ async def main():
 
     for file_path in markdown_files:
         try:
+            # Check if file needs processing (idempotent processing)
+            if tracker.is_processed(file_path):
+                print(f"⏭️  Skipping unchanged file: {file_path.name}")
+                continue
+                
             # Read and parse file
             file_data = read_markdown_file(file_path)
             if not file_data:
@@ -612,14 +633,20 @@ async def main():
                 'embeddings': embeddings
             })
 
-            print(f"Processed: {file_data['metadata']['title']} (Work Item: {work_item_id})")
+            # Mark file as processed after successful processing
+            tracker.mark_processed(file_path)
+            print(f"✅ Processed: {file_data['metadata']['title']} (Work Item: {work_item_id})")
 
         except Exception as e:
-            print(f"Error processing {file_path}: {e}")
+            print(f"❌ Error processing {file_path}: {e}")
 
+    # Save tracking data after processing
+    tracker.save()
+    
     # Print summary
     print(f"\nProcessing Summary:")
     print(f"- Total files processed: {len(all_documents)}")
+    print(f"- Files skipped (unchanged): {len(markdown_files) - len(all_documents)}")
     print(f"- Unique work items: {len(work_items_summary)}")
     for work_item_id, file_count in work_items_summary.items():
         print(f"  - {work_item_id}: {file_count} files")
@@ -661,4 +688,486 @@ AZURE_SEARCH_INDEX=work-items-index
 - Update `WORK_ITEMS_PATH` to point to your actual "Work Items" folder on desktop
 - Each subdirectory in "Work Items" should be named with the work item identifier
 - Only `.md` files will be processed; other files in the directories will be ignored
+
+---
+
+# Helper Modules
+
+## src/file_tracker.py - Idempotent Processing
+
+**Purpose:** Ensures no file is processed more than once unless it has been modified, preventing unnecessary reprocessing and API costs.
+
+**How it works:**
+1. **File Signatures:** Creates unique fingerprints using file path, size, and modification timestamp
+2. **Persistent Tracking:** Stores processed file signatures in `processed_files.json`
+3. **Change Detection:** Compares current file signature with stored signature to detect changes
+4. **Skip Unchanged:** Only processes files that are new or have been modified since last run
+
+**Implementation:**
+- Uses MD5 hash of `"filepath:filesize:modification_time"` as signature
+- Automatically creates/updates tracking file on each run
+- Gracefully handles missing or corrupted tracking files
+- Provides statistics about processing state
+
+```python
+"""
+File Processing Tracker
+======================
+
+Handles idempotent file processing by tracking file signatures and processing state.
+Prevents reprocessing of unchanged files across multiple runs.
+"""
+
+import json
+import hashlib
+from pathlib import Path
+from typing import Set, Dict, Any
+
+def get_file_signature(file_path: Path) -> str:
+    """Generate a signature for a file based on path, size, and modification time"""
+    try:
+        stat = file_path.stat()
+        signature_data = f"{file_path}:{stat.st_size}:{stat.st_mtime}"
+        return hashlib.md5(signature_data.encode()).hexdigest()
+    except Exception:
+        # Fallback to just the path if we can't get file stats
+        return hashlib.md5(str(file_path).encode()).hexdigest()
+
+class ProcessingTracker:
+    """Track which files have been processed to avoid reprocessing"""
+
+    def __init__(self, tracking_file: str = "processed_files.json"):
+        self.tracking_file = Path(tracking_file)
+        self.processed_signatures: Set[str] = set()
+        self.file_mappings: Dict[str, str] = {}  # path -> signature
+        self._load()
+
+    def _load(self):
+        """Load processed file signatures from tracking file"""
+        if self.tracking_file.exists():
+            try:
+                with open(self.tracking_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    self.processed_signatures = set(data.get('signatures', []))
+                    self.file_mappings = data.get('file_mappings', {})
+            except Exception as e:
+                print(f"Warning: Could not load tracking file: {e}")
+
+    def save(self):
+        """Save processed file signatures to tracking file"""
+        try:
+            data = {
+                'signatures': list(self.processed_signatures),
+                'file_mappings': self.file_mappings
+            }
+            with open(self.tracking_file, 'w', encoding='utf-8') as f:
+                json.dump(data, f, indent=2)
+        except Exception as e:
+            print(f"Warning: Could not save tracking file: {e}")
+
+    def is_processed(self, file_path: Path) -> bool:
+        """Check if a file has been processed (unchanged since last processing)"""
+        current_signature = get_file_signature(file_path)
+        return current_signature in self.processed_signatures
+
+    def mark_processed(self, file_path: Path):
+        """Mark a file as processed"""
+        signature = get_file_signature(file_path)
+        self.processed_signatures.add(signature)
+        self.file_mappings[str(file_path)] = signature
+
+    def get_stats(self) -> Dict[str, Any]:
+        """Get statistics about processed files"""
+        return {
+            'total_processed': len(self.processed_signatures),
+            'tracking_file_exists': self.tracking_file.exists(),
+            'tracking_file_path': str(self.tracking_file.absolute())
+        }
+
+    def clear(self):
+        """Clear all tracking data"""
+        self.processed_signatures.clear()
+        self.file_mappings.clear()
+        if self.tracking_file.exists():
+            self.tracking_file.unlink()
+```
+
+## src/document_utils.py - Document Processing Utilities
+
+```python
+"""
+Document Processing Utilities
+============================
+
+Utility functions for processing markdown documents including file discovery,
+metadata extraction, and text chunking.
+"""
+
+import re
+import frontmatter
+from pathlib import Path
+from typing import List, Dict, Optional
+
+def discover_markdown_files(work_items_path: str) -> List[Path]:
+    """
+    Find all markdown files in the Work Items directory structure.
+
+    Args:
+        work_items_path: Path to the Work Items directory
+
+    Returns:
+        List[Path]: Sorted list of valid markdown file paths
+
+    Raises:
+        FileNotFoundError: If the Work Items directory doesn't exist
+    """
+    work_items_dir = Path(work_items_path)
+
+    if not work_items_dir.exists():
+        raise FileNotFoundError(f"Work Items directory does not exist: {work_items_path}")
+
+    markdown_files = []
+
+    # Iterate through each work item subdirectory
+    for work_item_dir in work_items_dir.iterdir():
+        if work_item_dir.is_dir():
+            # Find all .md files in this work item directory
+            work_item_md_files = list(work_item_dir.rglob("*.md"))
+
+            # Filter out empty files and add to main list
+            valid_files = [f for f in work_item_md_files if f.is_file() and f.stat().st_size > 0]
+            markdown_files.extend(valid_files)
+
+    return sorted(markdown_files)
+
+def extract_metadata(content: str, file_path: Path) -> Dict:
+    """
+    Extract metadata from file content and directory structure.
+
+    Extracts information from:
+    - YAML frontmatter (title, tags, etc.)
+    - First heading in content
+    - Directory structure (work item ID)
+    - File system metadata
+
+    Args:
+        content: Raw file content
+        file_path: Path to the file
+
+    Returns:
+        Dict: Extracted metadata including title, work_item_id, tags, last_modified
+    """
+    try:
+        # Parse frontmatter if present
+        post = frontmatter.loads(content)
+        metadata = dict(post.metadata) if post.metadata else {}
+
+        # Extract work item ID from directory name
+        work_item_dir = file_path.parent
+        work_item_id = work_item_dir.name  # Directory name is the work item ID
+        metadata['work_item_id'] = work_item_id
+
+        # Extract title (priority: frontmatter > first heading > filename)
+        if 'title' not in metadata:
+            title_match = re.search(r'^#\s+(.+)$', content, re.MULTILINE)
+            metadata['title'] = (
+                title_match.group(1).strip() if title_match
+                else file_path.stem.replace('_', ' ').replace('-', ' ')
+            )
+
+        # Extract tags from frontmatter or content
+        if 'tags' not in metadata:
+            tags = set()
+
+            # From frontmatter
+            if 'tags' in post.metadata:
+                fm_tags = post.metadata['tags']
+                if isinstance(fm_tags, list):
+                    tags.update(str(tag).strip() for tag in fm_tags)
+                elif isinstance(fm_tags, str):
+                    tags.update(tag.strip() for tag in fm_tags.split(','))
+
+            # From hashtags in content
+            hashtags = re.findall(r'#(\w+)', content)
+            tags.update(hashtags)
+
+            # Add work item ID as a tag for easier searching
+            tags.add(work_item_id)
+
+            metadata['tags'] = sorted(list(tags)) if tags else [work_item_id]
+
+        # File system metadata
+        file_stat = file_path.stat()
+        metadata['last_modified'] = file_stat.st_mtime
+        metadata['work_item_directory'] = str(work_item_dir)
+
+        return metadata
+
+    except Exception as e:
+        # Return minimal metadata on error, but always include work item ID
+        work_item_id = file_path.parent.name
+        return {
+            'title': file_path.stem.replace('_', ' ').replace('-', ' '),
+            'work_item_id': work_item_id,
+            'last_modified': file_path.stat().st_mtime,
+            'tags': [work_item_id],
+            'work_item_directory': str(file_path.parent)
+        }
+
+def read_markdown_file(file_path: Path) -> Optional[Dict]:
+    """
+    Read and parse a markdown file.
+
+    Args:
+        file_path: Path to the markdown file
+
+    Returns:
+        Dict with 'content', 'file_path', 'metadata' keys, or None if failed
+    """
+    try:
+        # Read file content
+        content = file_path.read_text(encoding='utf-8')
+
+        if not content.strip():
+            return None  # Skip empty files
+
+        # Extract metadata
+        metadata = extract_metadata(content, file_path)
+
+        # Remove frontmatter from content
+        post = frontmatter.loads(content)
+        clean_content = post.content if post.metadata else content
+
+        return {
+            'content': clean_content.strip(),
+            'file_path': str(file_path),
+            'metadata': metadata
+        }
+
+    except Exception as e:
+        print(f"Error reading {file_path}: {e}")
+        return None
+
+def simple_chunk_text(content: str, max_chunk_size: int = 4000, overlap: int = 200) -> List[str]:
+    """
+    Split text into chunks with simple sentence-based splitting.
+
+    Args:
+        content: Text content to chunk
+        max_chunk_size: Maximum characters per chunk
+        overlap: Characters to overlap between chunks
+
+    Returns:
+        List[str]: Text chunks
+    """
+    # Split by paragraphs first
+    paragraphs = [p.strip() for p in content.split('\n\n') if p.strip()]
+
+    chunks = []
+    current_chunk = ""
+
+    for paragraph in paragraphs:
+        # If paragraph is too long, split by sentences
+        if len(paragraph) > max_chunk_size:
+            sentences = re.split(r'(?<=[.!?])\s+', paragraph)
+
+            for sentence in sentences:
+                if len(current_chunk) + len(sentence) > max_chunk_size:
+                    if current_chunk:
+                        chunks.append(current_chunk.strip())
+                        # Create overlap with last few words
+                        overlap_text = ' '.join(current_chunk.split()[-20:]) if current_chunk else ""
+                        current_chunk = overlap_text + " " + sentence if overlap_text else sentence
+                    else:
+                        current_chunk = sentence
+                else:
+                    current_chunk = current_chunk + " " + sentence if current_chunk else sentence
+        else:
+            # Check if adding this paragraph exceeds limit
+            if len(current_chunk) + len(paragraph) > max_chunk_size:
+                if current_chunk:
+                    chunks.append(current_chunk.strip())
+                    # Create overlap
+                    overlap_text = ' '.join(current_chunk.split()[-20:]) if current_chunk else ""
+                    current_chunk = overlap_text + "\n\n" + paragraph if overlap_text else paragraph
+                else:
+                    current_chunk = paragraph
+            else:
+                current_chunk = current_chunk + "\n\n" + paragraph if current_chunk else paragraph
+
+    # Add final chunk
+    if current_chunk.strip():
+        chunks.append(current_chunk.strip())
+
+    # Return all chunks without filtering by length
+    return chunks
+
+def process_document_chunks(file_data: Dict) -> List[str]:
+    """
+    Process a document and return text chunks.
+
+    Args:
+        file_data: Dictionary with 'content' key
+
+    Returns:
+        List[str]: Text chunks ready for embedding generation
+    """
+    content = file_data['content']
+    return simple_chunk_text(content)
+```
+
+---
+
+# Troubleshooting Guide
+
+## Common Issues and Solutions
+
+### 1. Timestamp Format Error
+
+**Error:**
+```
+Cannot convert the literal '1754470054.545506' to the expected type 'Edm.DateTimeOffset'
+```
+
+**Solution:** Always convert timestamps to ISO format:
+```python
+from datetime import datetime
+
+last_modified_timestamp = document['metadata'].get('last_modified')
+if last_modified_timestamp:
+    last_modified_iso = datetime.fromtimestamp(last_modified_timestamp).isoformat() + 'Z'
+```
+
+### 2. Embedding Dimension Mismatch
+
+**Error:** Vector field expects 1536 dimensions but received different size.
+
+**Solution:** Validate embeddings before upload:
+```python
+if embedding and isinstance(embedding, list) and len(embedding) == 1536:
+    clean_embedding = [float(x) if x is not None else 0.0 for x in embedding]
+    search_doc['content_vector'] = clean_embedding
+```
+
+### 3. Rate Limiting Issues
+
+**Error:** Too many requests to OpenAI service.
+
+**Solution:** Implement proper rate limiting:
+```python
+# Add delays between batches
+if i > 0:
+    await asyncio.sleep(1)  # 1 second between batches
+
+# Use smaller batch sizes
+batch_size = 16  # Reduce if still hitting limits
+```
+
+### 4. Index Schema Mismatch
+
+**Error:** Field not found or wrong type.
+
+**Solution:** Run schema validation test:
+```bash
+# Check Azure Search service health in Azure Portal
+# Verify index schema matches expected fields
+```
+
+### 5. Connection Issues
+
+**Symptoms:** Timeouts, authentication errors.
+
+**Diagnostic steps:**
+1. Check environment variables in `.env` file
+2. Verify service endpoints and keys
+3. Check network connectivity to Azure services
+
+### 6. File Processing Issues
+
+**Common causes:**
+- Empty or corrupted files
+- Encoding issues (non-UTF-8)
+- Missing frontmatter
+- Invalid YAML in frontmatter
+
+**Solution:** The helpers include robust error handling and fallback mechanisms.
+
+### 7. Document Upload Failures
+
+**Diagnostic commands:**
+```bash
+# Check Azure Search service health in Azure Portal
+# Upload a single test file to isolate issues
+# Review error logs and service status
+```
+
+## Validation Checklist
+
+Before running full document upload:
+
+- [ ] `.env` file configured with all required values
+- [ ] Azure Search index created with correct schema
+- [ ] Azure OpenAI service accessible and configured
+- [ ] Network connectivity to Azure services verified
+
+## Performance Optimization
+
+### For Large Document Sets
+
+1. **Use idempotent processing with FileTracker:**
+   ```python
+   tracker = ProcessingTracker("processed_files.json")
+   # Only processes changed files, saving time and API costs
+   # Automatically skips files that haven't been modified
+   # Tracks processing state across multiple runs
+   ```
+   
+   **Benefits:**
+   - **Cost Savings:** Avoids regenerating embeddings for unchanged files
+   - **Time Efficiency:** Skips processing for unmodified documents
+   - **Reliability:** Resumes from where it left off if interrupted
+   - **Automatic Detection:** Uses file modification time and size for change detection
+
+2. **Implement batch processing:**
+   ```python
+   batch_size = 16  # Adjust based on rate limits
+   await asyncio.sleep(1)  # Between batches
+   ```
+
+3. **Monitor rate limits:**
+   - Azure OpenAI: Check quota and TPM limits
+   - Azure Search: Monitor request units
+   - Implement exponential backoff for retries
+
+4. **Use parallel processing carefully:**
+   ```python
+   # Process files individually to avoid overwhelming services
+   for file_path in files_to_process:
+       # Process one at a time with delays
+       await asyncio.sleep(2)
+   ```
+
+---
+
+## Project Structure
+
+```
+WorkItemDocumentationRetriever/
+├── src/
+│   ├── document_upload.py       # Main orchestration module
+│   ├── document_utils.py        # Document processing utilities
+│   ├── file_tracker.py          # Idempotent processing tracker
+│   └── openai_service.py        # OpenAI service wrapper
+├── scripts/
+│   ├── upload_single_file.py     # Simple single file upload
+│   └── create_sample_file.py     # Create test files
+├── docs/
+│   └── 03-DocumentUpload.md      # This document
+└── .env                          # Environment configuration
+```
+
+**Configuration Notes:**
+- Update `WORK_ITEMS_PATH` to point to your actual "Work Items" folder
+- Each subdirectory should be named with the work item identifier
+- Only `.md` files will be processed
 ````

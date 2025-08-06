@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "work-items-documentation": {
+      "command": "python",
+      "args": [
+        "C:\\Users\\aayushalok\\OneDrive - Microsoft\\Desktop\\Personal Projects\\WorkItemDocumentationRetriever\\mcp_server.py"
+      ],
+      "cwd": "C:\\Users\\aayushalok\\OneDrive - Microsoft\\Desktop\\Personal Projects\\WorkItemDocumentationRetriever",
+      "env": {
+        "PYTHONPATH": "C:\\Users\\aayushalok\\OneDrive - Microsoft\\Desktop\\Personal Projects\\WorkItemDocumentationRetriever"
+      }
+    }
+  }
+}

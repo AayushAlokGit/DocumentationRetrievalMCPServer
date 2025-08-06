@@ -1,0 +1,19 @@
+{
+  "mcp.servers": {
+    "work-items-documentation": {
+      "command": "python",
+      "args": [
+        "C:\\Users\\aayushalok\\OneDrive - Microsoft\\Desktop\\Personal Projects\\WorkItemDocumentationRetriever\\mcp_server.py"
+      ],
+      "cwd": "C:\\Users\\aayushalok\\OneDrive - Microsoft\\Desktop\\Personal Projects\\WorkItemDocumentationRetriever",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}"
+      }
+    }
+  },
+  "github.copilot.chat.codeGeneration.instructions": [
+    {
+      "text": "You have access to work item documentation through MCP tools. Use the available tools to search and retrieve information about work items."
+    }
+  ]
+}

@@ -1,266 +1,214 @@
 """
 Search and Query Azure Cognitive Search
 Test search functionality and query documents
+
+This module now uses the centralized AzureCognitiveSearch class for all operations.
 """
 
 import os
 import asyncio
 from dotenv import load_dotenv
-from azure.search.documents import SearchClient
-from azure.core.credentials import AzureKeyCredential
-from src.openai_service import get_openai_service
+from azure_cognitive_search import get_azure_search_service
 
 # Load environment variables
 load_dotenv()
 
 
 class DocumentSearcher:
+    """
+    Wrapper class for document search operations
+    Uses the centralized AzureCognitiveSearch class for all operations
+    """
+    
     def __init__(self):
-        # Configuration from environment
-        self.service_name = os.getenv('AZURE_SEARCH_SERVICE')
-        self.admin_key = os.getenv('AZURE_SEARCH_KEY')
-        self.index_name = os.getenv('AZURE_SEARCH_INDEX', 'work-items-index')
-        self.azure_openai_endpoint = os.getenv('AZURE_OPENAI_ENDPOINT')
-        self.azure_openai_key = os.getenv('AZURE_OPENAI_KEY')
-        self.embedding_deployment = os.getenv('EMBEDDING_DEPLOYMENT', 'text-embedding-ada-002')
+        """Initialize the searcher with Azure Cognitive Search service"""
+        self.search_service = get_azure_search_service()
         
-        # Initialize clients
-        self.search_client = SearchClient(
-            endpoint=f"https://{self.service_name}.search.windows.net",
-            index_name=self.index_name,
-            credential=AzureKeyCredential(self.admin_key)
-        )
-        
-        self.openai_service = get_openai_service()
+        # Keep these properties for backward compatibility
+        self.service_name = self.search_service.service_name
+        self.admin_key = self.search_service.admin_key
+        self.index_name = self.search_service.index_name
     
-    async def get_query_embedding(self, query: str):
-        """Generate embedding for search query"""
-        try:
-            return await self.openai_service.generate_embedding(query)
-        except Exception as e:
-            print(f"Error generating query embedding: {e}")
-            return None
-    
-    async def vector_search(self, query: str, work_item_id: str = None, top_k: int = 5):
-        """Perform vector search"""
-        query_embedding = await self.get_query_embedding(query)
-        
-        if not query_embedding:
-            return None
-        
-        # Build search parameters
-        search_params = {
-            "search_text": None,  # Pure vector search
-            "vector_queries": [{
-                "vector": query_embedding,
-                "k_nearest_neighbors": top_k,
-                "fields": "content_vector"
-            }],
-            "select": ["id", "content", "title", "work_item_id", "file_path", "tags", "chunk_index"],
-            "top": top_k
-        }
-        
-        # Add work item filter if specified
-        if work_item_id:
-            search_params["filter"] = f"work_item_id eq '{work_item_id}'"
-        
-        try:
-            results = self.search_client.search(**search_params)
-            return list(results)
-        except Exception as e:
-            print(f"Error performing vector search: {e}")
-            return None
-    
-    async def hybrid_search(self, query: str, work_item_id: str = None, top_k: int = 5):
-        """Perform hybrid search (text + vector)"""
-        query_embedding = await self.get_query_embedding(query)
-        
-        if not query_embedding:
-            return None
-        
-        # Build search parameters
-        search_params = {
-            "search_text": query,
-            "vector_queries": [{
-                "vector": query_embedding,
-                "k_nearest_neighbors": top_k,
-                "fields": "content_vector"
-            }],
-            "select": ["id", "content", "title", "work_item_id", "file_path", "tags", "chunk_index"],
-            "top": top_k
-        }
-        
-        # Add work item filter if specified
-        if work_item_id:
-            search_params["filter"] = f"work_item_id eq '{work_item_id}'"
-        
-        try:
-            results = self.search_client.search(**search_params)
-            return list(results)
-        except Exception as e:
-            print(f"Error performing hybrid search: {e}")
-            return None
+    # ===== SEARCH METHODS =====
     
     def text_search(self, query: str, work_item_id: str = None, top_k: int = 5):
-        """Perform traditional text search"""
-        search_params = {
-            "search_text": query,
-            "select": ["id", "content", "title", "work_item_id", "file_path", "tags", "chunk_index"],
-            "top": top_k,
-            "highlight_fields": "content"
-        }
-        
-        # Add work item filter if specified
-        if work_item_id:
-            search_params["filter"] = f"work_item_id eq '{work_item_id}'"
-        
-        try:
-            results = self.search_client.search(**search_params)
-            return list(results)
-        except Exception as e:
-            print(f"Error performing text search: {e}")
-            return None
+        """Perform text search using Azure Cognitive Search"""
+        return self.search_service.text_search(query, work_item_id, top_k)
+    
+    async def vector_search(self, query: str, work_item_id: str = None, top_k: int = 5):
+        """Perform vector search using Azure Cognitive Search"""
+        return await self.search_service.vector_search(query, work_item_id, top_k)
+    
+    async def hybrid_search(self, query: str, work_item_id: str = None, top_k: int = 5):
+        """Perform hybrid search using Azure Cognitive Search"""
+        return await self.search_service.hybrid_search(query, work_item_id, top_k)
+    
+    def semantic_search(self, query: str, work_item_id: str = None, top_k: int = 5):
+        """Perform semantic search using Azure Cognitive Search"""
+        return self.search_service.semantic_search(query, work_item_id, top_k)
+    
+    # ===== UTILITY METHODS =====
     
     def get_work_items(self):
-        """Get list of all work item IDs"""
-        try:
-            results = self.search_client.search(
-                search_text="*",
-                facets=["work_item_id"],
-                top=1
-            )
-            
-            # Extract work items from facets
-            facets = results.get_facets()
-            if "work_item_id" in facets:
-                work_items = [facet["value"] for facet in facets["work_item_id"]]
-                return work_items
-            return []
-        except Exception as e:
-            print(f"Error getting work items: {e}")
-            return []
+        """Get list of all work item IDs in the index"""
+        return self.search_service.get_work_items()
     
     def get_document_count(self):
         """Get total number of documents in the index"""
-        try:
-            results = self.search_client.search(
-                search_text="*",
-                include_total_count=True,
-                top=0
-            )
-            return results.get_count()
-        except Exception as e:
-            print(f"Error getting document count: {e}")
-            return 0
-
-
-def print_search_results(results, title="Search Results"):
-    """Pretty print search results"""
-    if not results:
-        print("No results found.")
-        return
+        return self.search_service.get_document_count()
     
-    print(f"\n{title}")
-    print("=" * 50)
-    
-    for i, result in enumerate(results, 1):
-        print(f"\n{i}. {result.get('title', 'Untitled')}")
-        print(f"   Work Item: {result.get('work_item_id', 'N/A')}")
-        print(f"   File: {result.get('file_path', 'N/A')}")
-        print(f"   Chunk: {result.get('chunk_index', 'N/A')}")
-        print(f"   Score: {result.get('@search.score', 'N/A')}")
-        
-        # Show content preview
-        content = result.get('content', '')
-        content_preview = content[:200] + "..." if len(content) > 200 else content
-        print(f"   Content: {content_preview}")
-        
-        # Show tags
-        tags = result.get('tags', [])
-        if tags:
-            print(f"   Tags: {', '.join(tags)}")
+    def print_search_results(self, results, title="Search Results"):
+        """Print search results in a formatted way"""
+        self.search_service.print_search_results(results, title)
 
+
+# ===== INTERACTIVE SEARCH FUNCTIONALITY =====
 
 async def interactive_search():
-    """Interactive search interface"""
-    searcher = DocumentSearcher()
+    """Interactive search mode for testing different search types"""
     
-    print("Document Search Interface")
+    print("🔍 Interactive Work Item Search")
     print("=" * 40)
+    print("Available commands:")
+    print("  text <query>          - Text search")
+    print("  vector <query>        - Vector search")  
+    print("  hybrid <query>        - Hybrid search")
+    print("  semantic <query>      - Semantic search")
+    print("  work-items            - List all work items")
+    print("  stats                 - Show index statistics")
+    print("  quit                  - Exit")
+    print()
     
-    # Show index statistics
-    doc_count = searcher.get_document_count()
-    work_items = searcher.get_work_items()
-    
-    print(f"Index: {searcher.index_name}")
-    print(f"Documents: {doc_count}")
-    print(f"Work Items: {len(work_items)}")
-    
-    if work_items:
-        print(f"Available Work Items: {', '.join(work_items)}")
-    
-    print("\nCommands:")
-    print("- search <query>                  : Text search")
-    print("- vector <query>                  : Vector search")
-    print("- hybrid <query>                  : Hybrid search")
-    print("- filter <work_item_id> <query>   : Search within work item")
-    print("- stats                           : Show index statistics")
-    print("- quit                            : Exit")
+    # Initialize searcher
+    try:
+        searcher = DocumentSearcher()
+        print(f"✅ Connected to search index: {searcher.index_name}")
+        print(f"📊 Total documents: {searcher.get_document_count()}")
+        print()
+    except Exception as e:
+        print(f"❌ Failed to connect to search service: {e}")
+        return
     
     while True:
         try:
-            user_input = input("\n> ").strip()
+            user_input = input("\n🔍 Enter command: ").strip()
             
-            if not user_input or user_input.lower() in ['quit', 'exit', 'q']:
+            if not user_input:
+                continue
+                
+            if user_input.lower() == 'quit':
+                print("👋 Goodbye!")
                 break
             
-            parts = user_input.split(' ', 2)
+            parts = user_input.split(' ', 1)
             command = parts[0].lower()
+            query = parts[1] if len(parts) > 1 else ""
             
-            if command == 'stats':
+            if command == 'work-items':
+                work_items = searcher.get_work_items()
+                print(f"\n📂 Available Work Items ({len(work_items)}):")
+                for wi in work_items:
+                    print(f"  • {wi}")
+            
+            elif command == 'stats':
                 doc_count = searcher.get_document_count()
                 work_items = searcher.get_work_items()
-                print(f"\nIndex Statistics:")
-                print(f"- Documents: {doc_count}")
-                print(f"- Work Items: {len(work_items)}")
-                if work_items:
-                    print(f"- Available: {', '.join(work_items)}")
+                print(f"\n📊 Index Statistics:")
+                print(f"  📄 Total Documents: {doc_count}")
+                print(f"  📂 Work Items: {len(work_items)}")
+                print(f"  🔍 Index Name: {searcher.index_name}")
+                print(f"  🌐 Service: {searcher.service_name}")
             
-            elif command == 'search' and len(parts) > 1:
-                query = ' '.join(parts[1:])
-                results = searcher.text_search(query)
-                print_search_results(results, "Text Search Results")
-            
-            elif command == 'vector' and len(parts) > 1:
-                query = ' '.join(parts[1:])
-                results = await searcher.vector_search(query)
-                print_search_results(results, "Vector Search Results")
-            
-            elif command == 'hybrid' and len(parts) > 1:
-                query = ' '.join(parts[1:])
-                results = await searcher.hybrid_search(query)
-                print_search_results(results, "Hybrid Search Results")
-            
-            elif command == 'filter' and len(parts) > 2:
-                work_item_id = parts[1]
-                query = ' '.join(parts[2:])
-                results = await searcher.hybrid_search(query, work_item_id)
-                print_search_results(results, f"Search Results for Work Item: {work_item_id}")
+            elif command in ['text', 'vector', 'hybrid', 'semantic']:
+                if not query:
+                    print("❌ Please provide a search query")
+                    continue
+                
+                print(f"\n🔍 Performing {command} search for: '{query}'")
+                
+                # Ask for work item filter
+                work_item_filter = input("🎯 Filter by work item (press Enter for all): ").strip()
+                work_item_filter = work_item_filter if work_item_filter else None
+                
+                # Perform the search
+                if command == 'text':
+                    results = searcher.text_search(query, work_item_filter)
+                elif command == 'vector':
+                    results = await searcher.vector_search(query, work_item_filter)
+                elif command == 'hybrid':
+                    results = await searcher.hybrid_search(query, work_item_filter)
+                elif command == 'semantic':
+                    results = searcher.semantic_search(query, work_item_filter)
+                
+                # Display results
+                if results:
+                    searcher.print_search_results(results, f"{command.title()} Search Results")
+                else:
+                    print(f"❌ No results found for '{query}'")
             
             else:
-                print("Invalid command. Type 'quit' to exit.")
-        
+                print("❌ Unknown command. Use: text, vector, hybrid, semantic, work-items, stats, or quit")
+                
         except KeyboardInterrupt:
+            print("\n👋 Goodbye!")
             break
         except Exception as e:
-            print(f"Error: {e}")
-    
-    print("\nGoodbye!")
+            print(f"❌ Error: {e}")
 
 
 async def main():
-    """Main function"""
-    await interactive_search()
+    """Main function for testing search functionality"""
+    
+    print("🚀 Work Item Search Test")
+    print("=" * 30)
+    
+    try:
+        # Initialize searcher
+        searcher = DocumentSearcher()
+        
+        # Test connection and get basic stats
+        doc_count = searcher.get_document_count()
+        work_items = searcher.get_work_items()
+        
+        print(f"✅ Connected to search service")
+        print(f"📋 Index: {searcher.index_name}")
+        print(f"📄 Documents: {doc_count}")
+        print(f"📂 Work Items: {len(work_items)}")
+        
+        if work_items:
+            print(f"🎯 Available Work Items: {', '.join(work_items[:5])}")
+            if len(work_items) > 5:
+                print(f"   ... and {len(work_items) - 5} more")
+        
+        # Run sample searches if there are documents
+        if doc_count > 0:
+            print(f"\n🔍 Running sample searches...")
+            
+            # Text search
+            print(f"\n1️⃣ Text Search:")
+            results = searcher.text_search("error", top_k=3)
+            searcher.print_search_results(results, "Text Search - 'error'")
+            
+            # Vector search
+            print(f"\n2️⃣ Vector Search:")
+            results = await searcher.vector_search("authentication problem", top_k=3)
+            searcher.print_search_results(results, "Vector Search - 'authentication problem'")
+            
+            # Hybrid search
+            print(f"\n3️⃣ Hybrid Search:")
+            results = await searcher.hybrid_search("database connection", top_k=3)
+            searcher.print_search_results(results, "Hybrid Search - 'database connection'")
+        
+        else:
+            print(f"\n💡 No documents found. Upload some documents first using:")
+            print(f"   python scripts/upload_work_items.py")
+        
+        # Start interactive mode
+        print(f"\n🎮 Starting interactive search mode...")
+        await interactive_search()
+        
+    except Exception as e:
+        print(f"❌ Search test failed: {e}")
 
 
 if __name__ == "__main__":

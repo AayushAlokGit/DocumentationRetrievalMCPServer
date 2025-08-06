@@ -32,27 +32,12 @@ class OpenAIService:
         """Get or create OpenAI client with error handling"""
         if self._client is None:
             try:
-                # Try different import approaches for better compatibility
-                try:
-                    from openai import AzureOpenAI
-                    self._client = AzureOpenAI(
-                        azure_endpoint=self.azure_openai_endpoint,
-                        api_key=self.azure_openai_key,
-                        api_version=self.api_version
-                    )
-                except Exception as e:
-                    print(f"Failed to create AzureOpenAI client: {e}")
-                    # Fallback: try with different parameters
-                    try:
-                        from openai import AzureOpenAI
-                        self._client = AzureOpenAI(
-                            azure_endpoint=self.azure_openai_endpoint,
-                            api_key=self.azure_openai_key,
-                            api_version="2023-05-15"  # More stable version
-                        )
-                    except Exception as e2:
-                        print(f"Fallback client creation also failed: {e2}")
-                        raise e2
+                from openai import AzureOpenAI
+                self._client = AzureOpenAI(
+                    azure_endpoint=self.azure_openai_endpoint,
+                    api_key=self.azure_openai_key,
+                    api_version=self.api_version
+                )
                         
             except ImportError as e:
                 print(f"Failed to import OpenAI library: {e}")
