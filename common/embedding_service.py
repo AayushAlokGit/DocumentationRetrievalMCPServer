@@ -10,7 +10,7 @@ import os
 import asyncio
 from typing import List, Optional
 from dotenv import load_dotenv
-from .openai_service import get_openai_service
+from openai_service import get_openai_service
 
 # Load environment variables
 load_dotenv()

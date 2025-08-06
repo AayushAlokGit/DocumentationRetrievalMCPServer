@@ -17,7 +17,7 @@ sys.path.insert(0, str(project_root / "upload"))
 def main():
     """Main entry point for document upload operations"""
     import argparse
-    from document_upload import DocumentUploader
+    from upload.document_upload import DocumentUploader
     
     parser = argparse.ArgumentParser(description="Upload work item documentation to Azure Cognitive Search")
     parser.add_argument("path", help="Path to work items directory")
