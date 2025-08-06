@@ -6,7 +6,7 @@
       "args": ["run_mcp_server.py"],
       "cwd": "${workspaceFolder}",
       "env": {
-        "PYTHONPATH": "${workspaceFolder};${workspaceFolder}\\common;${workspaceFolder}\\mcp"
+        "PYTHONPATH": "${workspaceFolder}\\src"
       }
     }
   }
