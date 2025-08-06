@@ -10,13 +10,12 @@ for Work Item documentation stored in Azure Cognitive Search.
 import sys
 from pathlib import Path
 
-# Add module paths
+# ONE simple line to fix all imports - find project root and add src
 project_root = Path(__file__).parent
-sys.path.insert(0, str(project_root / "common"))
-sys.path.insert(0, str(project_root / "mcp"))
+sys.path.insert(0, str(project_root / 'src'))
 
-# Import and run the MCP server
-from mcp.server import main
+# Import and run our MCP server (renamed to avoid conflicts)
+from workitem_mcp.server import main
 
 if __name__ == "__main__":
     import asyncio

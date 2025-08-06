@@ -10,9 +10,12 @@ import asyncio
 from dotenv import load_dotenv
 import sys
 from pathlib import Path
-sys.path.append(str(Path(__file__).parent.parent / "common"))
 
-from azure_cognitive_search import get_azure_search_service
+# ONE simple line to fix all imports - find project root and add src
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root / 'src'))
+
+from common.azure_cognitive_search import get_azure_search_service
 
 # Load environment variables
 load_dotenv()
