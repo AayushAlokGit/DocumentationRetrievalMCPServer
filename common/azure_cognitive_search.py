@@ -42,7 +42,7 @@ from azure.core.credentials import AzureKeyCredential
 from azure.core.exceptions import ResourceNotFoundError
 
 # Import embedding service
-from embedding_service import get_embedding_generator
+from .embedding_service import get_embedding_generator
 
 # Load environment variables
 load_dotenv()

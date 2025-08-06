@@ -8,6 +8,10 @@ This module now uses the centralized AzureCognitiveSearch class for all operatio
 import os
 import asyncio
 from dotenv import load_dotenv
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent / "common"))
+
 from azure_cognitive_search import get_azure_search_service
 
 # Load environment variables

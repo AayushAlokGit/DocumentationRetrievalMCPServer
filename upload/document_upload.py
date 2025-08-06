@@ -18,11 +18,15 @@ from azure.search.documents import SearchClient
 from azure.core.credentials import AzureKeyCredential
 
 # Import our helper modules
-from openai_service import get_openai_service
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent / "common"))
+
+from common.openai_service import get_openai_service
 from file_tracker import ProcessingTracker
 from document_utils import discover_markdown_files, read_markdown_file, process_document_chunks
-from embedding_service import get_embedding_generator
-from azure_cognitive_search import get_azure_search_service
+from common.embedding_service import get_embedding_generator
+from common.azure_cognitive_search import get_azure_search_service
 
 # Load environment variables
 load_dotenv()

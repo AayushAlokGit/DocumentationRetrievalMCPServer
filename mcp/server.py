@@ -15,8 +15,9 @@ import sys
 import os
 from pathlib import Path
 
-# Add src directory to path for imports
-sys.path.append(str(Path(__file__).parent / "src"))
+# Add common directory to path for imports
+sys.path.append(str(Path(__file__).parent.parent / "common"))
+sys.path.append(str(Path(__file__).parent))
 
 from mcp.server import NotificationOptions, Server
 from mcp.server.models import InitializationOptions
@@ -25,8 +26,8 @@ import mcp.types as types
 
 # Import our search functionality
 from search_documents import DocumentSearcher
-from azure_cognitive_search import get_azure_search_service
-from embedding_service import get_embedding_generator
+from common.azure_cognitive_search import get_azure_search_service
+from common.embedding_service import get_embedding_generator
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
