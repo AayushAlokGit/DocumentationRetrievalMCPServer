@@ -1,7 +1,11 @@
 # Environment Variables and Configuration
 .env
 *.env
-!config/.env.example
+!.env.example
+
+# Project-specific files
+processed_files.json
+*.log
 
 # Virtual Environment
 venv/
