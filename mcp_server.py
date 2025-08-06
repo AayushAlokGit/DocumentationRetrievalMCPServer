@@ -154,6 +154,45 @@ async def handle_list_tools() -> list[types.Tool]:
                 "required": ["concept"]
             }
         )
+        # Commenting out deletion tools for now
+        # types.Tool(
+        #     name="delete_documents_by_work_item",
+        #     description="Delete all documents for a specific work item ID from the search index",
+        #     inputSchema={
+        #         "type": "object",
+        #         "properties": {
+        #             "work_item_id": {
+        #                 "type": "string",
+        #                 "description": "Work item ID to delete all documents for"
+        #             },
+        #             "confirm_deletion": {
+        #                 "type": "boolean",
+        #                 "description": "Confirmation flag - must be true to proceed with deletion",
+        #                 "default": False
+        #             }
+        #         },
+        #         "required": ["work_item_id", "confirm_deletion"]
+        #     }
+        # ),
+        # types.Tool(
+        #     name="delete_documents_by_filename",
+        #     description="Delete all documents matching a specific filename or file path from the search index",
+        #     inputSchema={
+        #         "type": "object",
+        #         "properties": {
+        #             "filename": {
+        #                 "type": "string",
+        #                 "description": "Filename or file path to search for and delete (supports partial matches)"
+        #             },
+        #             "confirm_deletion": {
+        #                 "type": "boolean",
+        #                 "description": "Confirmation flag - must be true to proceed with deletion",
+        #                 "default": False
+        #             }
+        #         },
+        #         "required": ["filename", "confirm_deletion"]
+        #     }
+        # )
     ]
 
 
@@ -178,8 +217,13 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
             return await _handle_search_by_work_item(arguments)
         elif name == "semantic_search":
             return await _handle_semantic_search(arguments)
+        # Commented out deletion handlers for now
+        # elif name == "delete_documents_by_work_item":
+        #     return await _handle_delete_documents_by_work_item(arguments)
+        # elif name == "delete_documents_by_filename":
+        #     return await _handle_delete_documents_by_filename(arguments)
         else:
-            return [types.TextContent(type="text", text="[ERROR] Unknown tool: {name}")]
+            return [types.TextContent(type="text", text=f"[ERROR] Unknown tool: {name}")]
     
     except Exception as e:
         logger.error(f"Error handling tool call {name}: {e}")
@@ -331,6 +375,79 @@ async def _handle_semantic_search(arguments: dict) -> list[types.TextContent]:
     
     except Exception as e:
         return [types.TextContent(type="text", text=f"[ERROR] Semantic search failed: {str(e)}")]
+
+
+# Commented out deletion handlers for now
+# async def _handle_delete_documents_by_work_item(arguments: dict) -> list[types.TextContent]:
+#     """Handle deletion of documents by work item ID"""
+#     work_item_id = arguments.get("work_item_id", "")
+#     confirm_deletion = arguments.get("confirm_deletion", False)
+#     
+#     if not work_item_id:
+#         return [types.TextContent(type="text", text="[ERROR] work_item_id parameter is required")]
+#     
+#     if not confirm_deletion:
+#         return [types.TextContent(
+#             type="text", 
+#             text=f"[CONFIRMATION REQUIRED] To delete all documents for work item '{work_item_id}', you must set confirm_deletion=true. This action cannot be undone."
+#         )]
+#     
+#     try:
+#         # Get Azure search service instance
+#         azure_search = get_azure_search_service()
+#         
+#         # Perform the deletion
+#         deleted_count = azure_search.delete_documents_by_work_item(work_item_id)
+#         
+#         if deleted_count == 0:
+#             return [types.TextContent(
+#                 type="text",
+#                 text=f"[DELETE] No documents found for work item: {work_item_id}"
+#             )]
+#         
+#         return [types.TextContent(
+#             type="text",
+#             text=f"[DELETE] Successfully deleted {deleted_count} document(s) for work item: {work_item_id}"
+#         )]
+#     
+#     except Exception as e:
+#         return [types.TextContent(type="text", text=f"[ERROR] Deletion failed: {str(e)}")]
+# 
+# 
+# async def _handle_delete_documents_by_filename(arguments: dict) -> list[types.TextContent]:
+#     """Handle deletion of documents by filename"""
+#     filename = arguments.get("filename", "")
+#     confirm_deletion = arguments.get("confirm_deletion", False)
+#     
+#     if not filename:
+#         return [types.TextContent(type="text", text="[ERROR] filename parameter is required")]
+#     
+#     if not confirm_deletion:
+#         return [types.TextContent(
+#             type="text", 
+#             text=f"[CONFIRMATION REQUIRED] To delete all documents matching filename '{filename}', you must set confirm_deletion=true. This action cannot be undone."
+#         )]
+#     
+#     try:
+#         # Get Azure search service instance
+#         azure_search = get_azure_search_service()
+#         
+#         # Perform the deletion
+#         deleted_count = azure_search.delete_documents_by_filename(filename)
+#         
+#         if deleted_count == 0:
+#             return [types.TextContent(
+#                 type="text",
+#                 text=f"[DELETE] No documents found matching filename: {filename}"
+#             )]
+#         
+#         return [types.TextContent(
+#             type="text",
+#             text=f"[DELETE] Successfully deleted {deleted_count} document(s) matching filename: {filename}"
+#         )]
+#     
+#     except Exception as e:
+#         return [types.TextContent(type="text", text=f"[ERROR] Deletion failed: {str(e)}")]
 
 
 def _format_search_results(results: List[Dict], title: str, query: str) -> str:

@@ -444,6 +444,71 @@ class AzureCognitiveSearch:
             print(f"[ERROR] Bulk delete failed for work item {work_item_id}: {e}")
             return 0
     
+    def delete_documents_by_filename(self, filename: str) -> int:
+        """
+        Delete all documents that match a specific filename
+        
+        Args:
+            filename: The filename to search for (can be partial or full path)
+            
+        Returns:
+            int: Number of documents deleted
+        """
+        try:
+            from pathlib import Path
+            
+            # Get all documents to search through them
+            results = self.search_client.search(
+                search_text="*",
+                select="id,file_path,work_item_id"
+            )
+            
+            documents_to_delete = []
+            matched_files = []
+            
+            filename_lower = filename.lower()
+            
+            for result in results:
+                file_path = result.get("file_path", "")
+                file_basename = Path(file_path).name.lower()
+                file_path_lower = file_path.lower()
+                
+                # Check various matching conditions:
+                # 1. Exact filename match
+                # 2. Filename contained in the basename
+                # 3. Filename contained in the full path
+                if (file_basename == filename_lower or 
+                    filename_lower in file_basename or
+                    filename_lower in file_path_lower):
+                    
+                    documents_to_delete.append({"id": result["id"]})
+                    matched_files.append({
+                        "id": result["id"],
+                        "file_path": file_path,
+                        "work_item_id": result.get("work_item_id", "")
+                    })
+            
+            if not documents_to_delete:
+                print(f"No documents found matching filename: {filename}")
+                return 0
+            
+            # Show what will be deleted
+            print(f"[INFO] Found {len(documents_to_delete)} documents matching '{filename}':")
+            for file_info in matched_files:
+                print(f"   - {file_info['file_path']} (Work Item: {file_info['work_item_id']})")
+            
+            # Delete the documents
+            delete_results = self.search_client.delete_documents(documents=documents_to_delete)
+            
+            successful_deletes = sum(1 for result in delete_results if result.succeeded)
+            print(f"[SUCCESS] Deleted {successful_deletes}/{len(documents_to_delete)} documents matching filename '{filename}'")
+            
+            return successful_deletes
+            
+        except Exception as e:
+            print(f"[ERROR] Delete by filename failed for '{filename}': {e}")
+            return 0
+    
     def delete_all_documents(self) -> int:
         """
         Delete all documents from the index (use with caution!)
