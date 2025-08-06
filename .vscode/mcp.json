@@ -1,0 +1,13 @@
+{
+  "servers": {
+    "work-items-documentation": {
+      "type": "stdio",
+      "command": "${workspaceFolder}\\venv\\Scripts\\python.exe",
+      "args": ["mcp_server.py"],
+      "cwd": "${workspaceFolder}",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder};${workspaceFolder}\\src"
+      }
+    }
+  }
+}
