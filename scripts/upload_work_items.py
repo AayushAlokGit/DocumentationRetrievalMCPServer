@@ -69,20 +69,20 @@ def show_upload_preview(work_items_path: str, work_item_id: Optional[str] = None
     
     print("� Upload Preview (Dry Run)")
     print("=" * 40)
-    print(f"📁 Work Items Path: {work_items_path}")
-    print(f"🔍 Search Service: {os.getenv('AZURE_SEARCH_SERVICE')}")
-    print(f"📋 Search Index: {os.getenv('AZURE_SEARCH_INDEX', 'work-items-index')}")
+    print(f"[FOLDER] Work Items Path: {work_items_path}")
+    print(f"[SEARCH] Search Service: {os.getenv('AZURE_SEARCH_SERVICE')}")
+    print(f"[LIST] Search Index: {os.getenv('AZURE_SEARCH_INDEX', 'work-items-index')}")
     
     if work_item_id:
-        print(f"🎯 Target Work Item: {work_item_id}")
+        print(f"[TARGET] Target Work Item: {work_item_id}")
         files = get_files_for_work_item(work_items_path, work_item_id)
-        print(f"📄 Files to process: {len(files)}")
+        print(f"[DOCUMENT] Files to process: {len(files)}")
         
         for file in files:
             relative_path = file.relative_to(work_items_dir)
             print(f"   • {relative_path}")
     else:
-        print(f"🎯 Target: All Work Items")
+        print(f"[TARGET] Target: All Work Items")
         work_items = get_work_items_from_path(work_items_path)
         total_files = 0
         
@@ -92,10 +92,10 @@ def show_upload_preview(work_items_path: str, work_item_id: Optional[str] = None
             total_files += len(files)
             print(f"   • {wi}: {len(files)} files")
         
-        print(f"📄 Total Files: {total_files}")
+        print(f"[DOCUMENT] Total Files: {total_files}")
     
-    print(f"\n💡 This is a dry run - no files will be uploaded")
-    print(f"💡 Remove --dry-run flag to perform actual upload")
+    print(f"\nTips: This is a dry run - no files will be uploaded")
+    print(f"Tips: Remove --dry-run flag to perform actual upload")
 
 
 async def upload_work_items(work_item_id: Optional[str] = None, 
@@ -104,23 +104,23 @@ async def upload_work_items(work_item_id: Optional[str] = None,
                           force: bool = False):
     """Upload work item documents to Azure Search"""
     
-    print("🚀 Work Item Documentation Upload")
+    print("[START] Work Item Documentation Upload")
     print("=" * 50)
     
     # Get configuration
     work_items_path = os.getenv('WORK_ITEMS_PATH')
     if not work_items_path:
-        print("❌ WORK_ITEMS_PATH environment variable not set")
+        print("[ERROR] WORK_ITEMS_PATH environment variable not set")
         return
     
     work_items_dir = Path(work_items_path)
     if not work_items_dir.exists():
-        print(f"❌ Work items directory not found: {work_items_path}")
+        print(f"[ERROR] Work items directory not found: {work_items_path}")
         return
     
     # Show available work items
     work_items = get_work_items_from_path(work_items_path)
-    print(f"📂 Available Work Items ({len(work_items)}):")
+    print(f"File: Available Work Items ({len(work_items)}):")
     for wi in work_items[:10]:  # Show first 10
         print(f"   • {wi}")
     if len(work_items) > 10:
@@ -128,7 +128,7 @@ async def upload_work_items(work_item_id: Optional[str] = None,
     
     # Validate specific work item if provided
     if work_item_id and work_item_id not in work_items:
-        print(f"❌ Work item '{work_item_id}' not found")
+        print(f"[ERROR] Work item '{work_item_id}' not found")
         print(f"Available work items: {', '.join(work_items)}")
         return
     
@@ -140,23 +140,23 @@ async def upload_work_items(work_item_id: Optional[str] = None,
     # Handle reset tracker
     if reset_tracker:
         tracker = ProcessingTracker("processed_files.json")
-        print(f"🔄 Resetting processing tracker...")
+        print(f"[REFRESH] Resetting processing tracker...")
         tracker.reset()
         tracker.save()
-        print(f"   ✅ All files will be reprocessed")
+        print(f"   [SUCCESS] All files will be reprocessed")
     
     # Handle force reprocessing for specific work item
     if force and work_item_id:
         tracker = ProcessingTracker("processed_files.json")
         files_to_force = get_files_for_work_item(work_items_path, work_item_id)
-        print(f"⚡ Force mode: Marking {len(files_to_force)} files for reprocessing...")
+        print(f"[FAST] Force mode: Marking {len(files_to_force)} files for reprocessing...")
         
         for file in files_to_force:
             if tracker.is_processed(file):
                 tracker.mark_unprocessed(file)
         
         tracker.save()
-        print(f"   ✅ Files marked for reprocessing")
+        print(f"   [SUCCESS] Files marked for reprocessing")
     
     # Set up environment for specific work item upload
     original_path = None
@@ -164,16 +164,16 @@ async def upload_work_items(work_item_id: Optional[str] = None,
         original_path = os.environ.get('WORK_ITEMS_PATH')
         work_item_dir = work_items_dir / work_item_id
         os.environ['WORK_ITEMS_PATH'] = str(work_item_dir)
-        print(f"🎯 Uploading specific work item: {work_item_id}")
-        print(f"📁 Target directory: {work_item_dir}")
+        print(f"[TARGET] Uploading specific work item: {work_item_id}")
+        print(f"[FOLDER] Target directory: {work_item_dir}")
     
     try:
         # Use the existing main upload function from document_upload.py
-        print(f"🚀 Starting upload using document_upload.main()...")
+        print(f"[START] Starting upload using document_upload.main()...")
         await upload_main()
         
         print(f"\n🎉 Upload completed successfully!")
-        print(f"💡 Documents are now searchable via:")
+        print(f"Tips: Documents are now searchable via:")
         print(f"   • VS Code MCP server integration")
         print(f"   • search_documents.py script")
         print(f"   • Azure Cognitive Search REST API")
@@ -237,7 +237,7 @@ Examples:
     
     # Validate arguments
     if args.force and not args.work_item:
-        print("❌ --force option requires --work-item to be specified")
+        print("[ERROR] --force option requires --work-item to be specified")
         sys.exit(1)
     
     # Run the upload
@@ -249,9 +249,9 @@ Examples:
             force=args.force
         ))
     except KeyboardInterrupt:
-        print(f"\n⚠️  Upload cancelled by user")
+        print(f"\n[WARNING]  Upload cancelled by user")
     except Exception as e:
-        print(f"❌ Upload failed: {e}")
+        print(f"[ERROR] Upload failed: {e}")
         sys.exit(1)
 
 

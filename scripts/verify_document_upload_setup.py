@@ -26,12 +26,12 @@ sys.path.append(str(Path(__file__).parent / "src"))
 def print_header(title: str):
     """Print a formatted header"""
     print(f"\n{'='*60}")
-    print(f"📄 {title}")
+    print(f"[DOCUMENT] {title}")
     print(f"{'='*60}")
 
 def print_result(test_name: str, success: bool, message: str = ""):
     """Print test result"""
-    status = "✅ PASS" if success else "❌ FAIL"
+    status = "[SUCCESS] PASS" if success else "[ERROR] FAIL"
     print(f"{status} {test_name}")
     if message:
         print(f"    {message}")
@@ -120,7 +120,7 @@ async def verify_work_items_directory() -> Dict[str, Any]:
                 f"Found {len(md_files)} markdown files ready for processing")
     
     if work_item_dirs:
-        print("\n📋 Work Item Directories discovered:")
+        print("\n[LIST] Work Item Directories discovered:")
         for name, md_count in sorted(work_item_dirs)[:10]:
             print(f"    • {name}: {md_count} markdown files")
         if len(work_item_dirs) > 10:
@@ -147,7 +147,7 @@ async def verify_azure_openai_for_embeddings() -> bool:
         if connection_ok:
             # Test embedding generation (critical for document upload)
             try:
-                print("🔄 Testing embedding generation for document upload...")
+                print("[REFRESH] Testing embedding generation for document upload...")
                 embedding = await embedding_generator.generate_embedding("test document content for upload")
                 embedding_ok = embedding is not None and len(embedding) > 0
                 
@@ -207,7 +207,7 @@ async def verify_azure_search_for_upload() -> bool:
                     print_result("Index Work Items", True, f"{len(work_items)} work items currently indexed")
                     
                     if work_items:
-                        print("\n📋 Currently Indexed Work Items:")
+                        print("\n[LIST] Currently Indexed Work Items:")
                         for item in sorted(work_items)[:10]:
                             print(f"    • {item}")
                         if len(work_items) > 10:
@@ -219,7 +219,7 @@ async def verify_azure_search_for_upload() -> bool:
             else:
                 print_result("Search Index Exists", False, 
                             f"Index '{index_name}' not found - run create index script first")
-                print("💡 Next step: python scripts/create_azure_cognitive_search_index.py")
+                print("Tips: Next step: python scripts/create_azure_cognitive_search_index.py")
             
             return True  # Connection works even if index doesn't exist yet
             
@@ -297,8 +297,8 @@ def print_document_upload_summary(results: Dict[str, bool]):
     
     if all_passed:
         print("🎉 Document Upload System verification PASSED!")
-        print("\n✅ Your system is ready for document upload and indexing.")
-        print("\n📋 Next steps:")
+        print("\n[SUCCESS] Your system is ready for document upload and indexing.")
+        print("\n[LIST] Next steps:")
         print("   1. Create search index: python scripts/create_azure_cognitive_search_index.py")
         print("   2. Upload documents: python scripts/upload_work_items.py") 
         print("   3. Verify upload: Check document count and test search")
@@ -306,9 +306,9 @@ def print_document_upload_summary(results: Dict[str, bool]):
         print("   📖 See MCP_SERVER_SETUP.md")
     else:
         failed_components = [k for k, v in results.items() if not v]
-        print("⚠️  Document Upload System verification FAILED!")
-        print(f"\n❌ Failed components: {', '.join(failed_components)}")
-        print("\n🔧 Common solutions:")
+        print("[WARNING]  Document Upload System verification FAILED!")
+        print(f"\n[ERROR] Failed components: {', '.join(failed_components)}")
+        print("\n[INFO] Common solutions:")
         print("   • Missing .env file: Copy .env.example to .env and configure")
         print("   • Azure credentials: Check Azure OpenAI and Cognitive Search credentials")
         print("   • Dependencies: Run 'pip install -r requirements.txt'")
@@ -317,7 +317,7 @@ def print_document_upload_summary(results: Dict[str, bool]):
 
 async def main():
     """Run document upload system verification"""
-    print("📄 Work Item Documentation - Document Upload System Verification")
+    print("[DOCUMENT] Work Item Documentation - Document Upload System Verification")
     print("=" * 80)
     print("This script verifies the Document Upload System setup is ready for:")
     print("• Processing work item markdown files")

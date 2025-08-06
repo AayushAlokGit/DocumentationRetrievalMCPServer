@@ -28,15 +28,15 @@ async def upload_single_file(file_path: str):
     file_path = Path(file_path).resolve()
     
     if not file_path.exists():
-        print(f"❌ File not found: {file_path}")
+        print(f"[ERROR] File not found: {file_path}")
         return False
     
     if not file_path.suffix.lower() == '.md':
-        print(f"❌ File must be a markdown file (.md): {file_path}")
+        print(f"[ERROR] File must be a markdown file (.md): {file_path}")
         return False
     
-    print(f"📄 Uploading file: {file_path.name}")
-    print(f"📁 Full path: {file_path}")
+    print(f"[DOCUMENT] Uploading file: {file_path.name}")
+    print(f"[FOLDER] Full path: {file_path}")
     print("-" * 50)
     
     try:
@@ -56,7 +56,7 @@ async def upload_single_file(file_path: str):
         openai_service = get_openai_service()
         
         if not openai_service.test_connection():
-            print("❌ Failed to connect to Azure OpenAI. Please check your credentials.")
+            print("[ERROR] Failed to connect to Azure OpenAI. Please check your credentials.")
             return False
         
         # Generate embeddings
@@ -66,7 +66,7 @@ async def upload_single_file(file_path: str):
             embedding = await openai_service.get_embedding_async(chunk)
             embeddings.append(embedding)
         
-        print(f"✅ Generated {len(embeddings)} embeddings")
+        print(f"[SUCCESS] Generated {len(embeddings)} embeddings")
         
         # Create document structure
         document = {
@@ -89,11 +89,11 @@ async def upload_single_file(file_path: str):
             print(f"   Work Item ID: {metadata.get('work_item_id', 'Unknown')}")
             return True
         else:
-            print("❌ Upload failed")
+            print("[ERROR] Upload failed")
             return False
             
     except Exception as e:
-        print(f"❌ Error processing file: {e}")
+        print(f"[ERROR] Error processing file: {e}")
         import traceback
         traceback.print_exc()
         return False
@@ -116,10 +116,10 @@ def main():
     success = asyncio.run(upload_single_file(file_path))
     
     if success:
-        print("✅ Upload completed successfully!")
+        print("[SUCCESS] Upload completed successfully!")
         sys.exit(0)
     else:
-        print("❌ Upload failed!")
+        print("[ERROR] Upload failed!")
         sys.exit(1)
 
 

@@ -45,11 +45,11 @@ async def initialize_services():
     global searcher, embedding_generator
     
     if searcher is None:
-        logger.info("🔧 Initializing search services...")
+        logger.info("[INFO] Initializing search services...")
         searcher = DocumentSearcher()
         
     if embedding_generator is None:
-        logger.info("🔧 Initializing embedding services...")
+        logger.info("[INFO] Initializing embedding services...")
         embedding_generator = get_embedding_generator()
         
     return searcher, embedding_generator
@@ -166,7 +166,7 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
         # Initialize searcher if not already done
         if searcher is None:
             searcher = DocumentSearcher()
-            logger.info("✅ DocumentSearcher initialized")
+            logger.info("[SUCCESS] DocumentSearcher initialized")
         
         if name == "search_work_items":
             return await _handle_search_work_items(arguments)
@@ -179,11 +179,11 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
         elif name == "semantic_search":
             return await _handle_semantic_search(arguments)
         else:
-            return [types.TextContent(type="text", text=f"❌ Unknown tool: {name}")]
+            return [types.TextContent(type="text", text="[ERROR] Unknown tool: {name}")]
     
     except Exception as e:
         logger.error(f"Error handling tool call {name}: {e}")
-        return [types.TextContent(type="text", text=f"❌ Error executing {name}: {str(e)}")]
+        return [types.TextContent(type="text", text=f"[ERROR] Error executing {name}: {str(e)}")]
 
 
 async def _handle_search_work_items(arguments: dict) -> list[types.TextContent]:
@@ -194,7 +194,7 @@ async def _handle_search_work_items(arguments: dict) -> list[types.TextContent]:
     max_results = arguments.get("max_results", 5)
     
     if not query:
-        return [types.TextContent(type="text", text="❌ Query parameter is required")]
+        return [types.TextContent(type="text", text="[ERROR] Query parameter is required")]
     
     try:
         # Perform the appropriate search
@@ -207,14 +207,14 @@ async def _handle_search_work_items(arguments: dict) -> list[types.TextContent]:
         else:
             return [types.TextContent(
                 type="text",
-                text=f"❌ Invalid search type: {search_type}. Must be 'text', 'vector', or 'hybrid'"
+                text=f"[ERROR] Invalid search type: {search_type}. Must be 'text', 'vector', or 'hybrid'"
             )]
         
         if not results:
             filter_text = f" (filtered to work item: {work_item_id})" if work_item_id else ""
             return [types.TextContent(
                 type="text",
-                text=f"🔍 No results found for '{query}' using {search_type} search{filter_text}"
+                text=f"[SEARCH] No results found for '{query}' using {search_type} search{filter_text}"
             )]
         
         # Format results for LLM consumption
@@ -222,7 +222,7 @@ async def _handle_search_work_items(arguments: dict) -> list[types.TextContent]:
         return [types.TextContent(type="text", text=formatted_results)]
     
     except Exception as e:
-        return [types.TextContent(type="text", text=f"❌ Search failed: {str(e)}")]
+        return [types.TextContent(type="text", text=f"[ERROR] Search failed: {str(e)}")]
 
 
 async def _handle_get_work_item_list(arguments: dict) -> list[types.TextContent]:
@@ -231,16 +231,16 @@ async def _handle_get_work_item_list(arguments: dict) -> list[types.TextContent]
         work_items = searcher.get_work_items()
         
         if not work_items:
-            return [types.TextContent(type="text", text="📋 No work items found in the index")]
+            return [types.TextContent(type="text", text="[LIST] No work items found in the index")]
         
         work_items_list = "\n".join([f"• {item}" for item in sorted(work_items)])
         return [types.TextContent(
             type="text",
-            text=f"📋 Available Work Items ({len(work_items)} total):\n\n{work_items_list}"
+            text=f"[LIST] Available Work Items ({len(work_items)} total):\n\n{work_items_list}"
         )]
     
     except Exception as e:
-        return [types.TextContent(type="text", text=f"❌ Failed to retrieve work items: {str(e)}")]
+        return [types.TextContent(type="text", text=f"[ERROR] Failed to retrieve work items: {str(e)}")]
 
 
 async def _handle_get_work_item_summary(arguments: dict) -> list[types.TextContent]:
@@ -249,24 +249,24 @@ async def _handle_get_work_item_summary(arguments: dict) -> list[types.TextConte
         work_items = searcher.get_work_items()
         total_docs = searcher.get_document_count()
         
-        summary = f"📊 Work Item Documentation Summary\n"
+        summary = f"[SUMMARY] Work Item Documentation Summary\n"
         summary += f"{'='*50}\n\n"
-        summary += f"📁 Total Work Items: {len(work_items)}\n"
-        summary += f"📄 Total Documents: {total_docs}\n"
-        summary += f"🔍 Search Index: {searcher.index_name}\n\n"
+        summary += f"[FOLDER] Total Work Items: {len(work_items)}\n"
+        summary += f"[DOCUMENT] Total Documents: {total_docs}\n"
+        summary += f"[SEARCH] Search Index: {searcher.index_name}\n\n"
         
         if work_items:
-            summary += f"📋 Available Work Items:\n"
+            summary += f"[LIST] Available Work Items:\n"
             for item in sorted(work_items):
                 summary += f"   • {item}\n"
         
-        summary += f"\n💡 Use the search_work_items tool to find specific information"
-        summary += f"\n💡 Use search_by_work_item to search within a specific work item"
+        summary += f"\nTips: Use the search_work_items tool to find specific information"
+        summary += f"\nTips: Use search_by_work_item to search within a specific work item"
         
         return [types.TextContent(type="text", text=summary)]
     
     except Exception as e:
-        return [types.TextContent(type="text", text=f"❌ Failed to generate summary: {str(e)}")]
+        return [types.TextContent(type="text", text=f"[ERROR] Failed to generate summary: {str(e)}")]
 
 
 async def _handle_search_by_work_item(arguments: dict) -> list[types.TextContent]:
@@ -278,7 +278,7 @@ async def _handle_search_by_work_item(arguments: dict) -> list[types.TextContent
     if not work_item_id or not query:
         return [types.TextContent(
             type="text",
-            text="❌ Both work_item_id and query parameters are required"
+            text="[ERROR] Both work_item_id and query parameters are required"
         )]
     
     try:
@@ -288,7 +288,7 @@ async def _handle_search_by_work_item(arguments: dict) -> list[types.TextContent
         if not results:
             return [types.TextContent(
                 type="text",
-                text=f"🔍 No results found for '{query}' in work item '{work_item_id}'"
+                text=f"[SEARCH] No results found for '{query}' in work item '{work_item_id}'"
             )]
         
         formatted_results = _format_search_results(
@@ -300,7 +300,7 @@ async def _handle_search_by_work_item(arguments: dict) -> list[types.TextContent
         return [types.TextContent(type="text", text=formatted_results)]
     
     except Exception as e:
-        return [types.TextContent(type="text", text=f"❌ Work item search failed: {str(e)}")]
+        return [types.TextContent(type="text", text=f"[ERROR] Work item search failed: {str(e)}")]
 
 
 async def _handle_semantic_search(arguments: dict) -> list[types.TextContent]:
@@ -309,7 +309,7 @@ async def _handle_semantic_search(arguments: dict) -> list[types.TextContent]:
     max_results = arguments.get("max_results", 5)
     
     if not concept:
-        return [types.TextContent(type="text", text="❌ concept parameter is required")]
+        return [types.TextContent(type="text", text="[ERROR] concept parameter is required")]
     
     try:
         # Perform vector search for semantic similarity
@@ -318,7 +318,7 @@ async def _handle_semantic_search(arguments: dict) -> list[types.TextContent]:
         if not results:
             return [types.TextContent(
                 type="text",
-                text=f"🔍 No semantically similar content found for concept: '{concept}'"
+                text=f"[SEARCH] No semantically similar content found for concept: '{concept}'"
             )]
         
         formatted_results = _format_search_results(
@@ -330,49 +330,49 @@ async def _handle_semantic_search(arguments: dict) -> list[types.TextContent]:
         return [types.TextContent(type="text", text=formatted_results)]
     
     except Exception as e:
-        return [types.TextContent(type="text", text=f"❌ Semantic search failed: {str(e)}")]
+        return [types.TextContent(type="text", text=f"[ERROR] Semantic search failed: {str(e)}")]
 
 
 def _format_search_results(results: List[Dict], title: str, query: str) -> str:
     """Format search results for LLM consumption with rich context."""
     if not results:
-        return f"🔍 No results found for '{query}'"
+        return f"[SEARCH] No results found for '{query}'"
     
-    formatted = f"🔍 {title}\n"
+    formatted = f"[SEARCH] {title}\n"
     formatted += f"{'='*60}\n"
     formatted += f"Query: '{query}' | Results: {len(results)}\n\n"
     
     for i, result in enumerate(results, 1):
-        formatted += f"📄 Result {i}\n"
+        formatted += f"[DOCUMENT] Result {i}\n"
         formatted += f"{'-'*30}\n"
         
         # Basic metadata
-        formatted += f"🆔 ID: {result.get('id', 'N/A')}\n"
-        formatted += f"📝 Title: {result.get('title', 'Untitled')}\n"
-        formatted += f"🔧 Work Item: {result.get('work_item_id', 'N/A')}\n"
-        formatted += f"📂 File: {result.get('file_path', 'N/A')}\n"
+        formatted += f"ID: ID: {result.get('id', 'N/A')}\n"
+        formatted += f"Title: Title: {result.get('title', 'Untitled')}\n"
+        formatted += f"[INFO] Work Item: {result.get('work_item_id', 'N/A')}\n"
+        formatted += f"File: File: {result.get('file_path', 'N/A')}\n"
         
         # Search score if available
         if '@search.score' in result:
             score = result['@search.score']
-            formatted += f"⭐ Relevance Score: {score:.2f}\n"
+            formatted += f"Score: Relevance Score: {score:.2f}\n"
         
         # Tags if available
         tags = result.get('tags', [])
         if tags:
-            formatted += f"🏷️  Tags: {', '.join(tags)}\n"
+            formatted += f"Tags:  Tags: {', '.join(tags)}\n"
         
         # Content preview
         content = result.get('content', '')
         if content:
             # Limit content preview for readability
             content_preview = content[:500] + "..." if len(content) > 500 else content
-            formatted += f"\n📄 Content:\n{content_preview}\n"
+            formatted += f"\n[DOCUMENT] Content:\n{content_preview}\n"
         
         formatted += f"\n"
     
     # Add usage suggestions
-    formatted += f"💡 Tips:\n"
+    formatted += f"Tips: Tips:\n"
     formatted += f"   • Use search_by_work_item to search within specific work items\n"
     formatted += f"   • Try different search types: text, vector, or hybrid\n"
     formatted += f"   • Use semantic_search for concept-based searches\n"
@@ -382,11 +382,11 @@ def _format_search_results(results: List[Dict], title: str, query: str) -> str:
 
 async def main():
     """Main entry point for the MCP server"""
-    logger.info("🚀 Starting Work Item Documentation MCP Server")
+    logger.info("[START] Starting Work Item Documentation MCP Server")
     
     try:
         # Test connections on startup
-        logger.info("🔌 Testing connections...")
+        logger.info("[CONNECT] Testing connections...")
         
         # Initialize and test search functionality
         global searcher, embedding_generator
@@ -395,19 +395,19 @@ async def main():
         
         # Test embedding service
         if embedding_generator.test_connection():
-            logger.info("✅ Embedding service connection successful")
+            logger.info("[SUCCESS] Embedding service connection successful")
         else:
-            logger.warning("⚠️  Embedding service connection failed")
+            logger.warning("[WARNING]  Embedding service connection failed")
         
         # Test search service
         try:
             doc_count = searcher.get_document_count()
             work_items = searcher.get_work_items()
-            logger.info(f"✅ Connected to search index: {doc_count} documents, {len(work_items)} work items")
+            logger.info(f"[SUCCESS] Connected to search index: {doc_count} documents, {len(work_items)} work items")
         except Exception as e:
-            logger.error(f"❌ Search service connection failed: {e}")
+            logger.error(f"[ERROR] Search service connection failed: {e}")
         
-        logger.info("🎯 MCP Server ready for connections")
+        logger.info("[TARGET] MCP Server ready for connections")
         
         # Run the server
         async with mcp.server.stdio.stdio_server() as (read_stream, write_stream):
@@ -425,7 +425,7 @@ async def main():
             )
     
     except Exception as e:
-        logger.error(f"❌ MCP Server failed to start: {e}")
+        logger.error(f"[ERROR] MCP Server failed to start: {e}")
         raise
 
 

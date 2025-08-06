@@ -158,7 +158,7 @@ def create_search_index():
     try:
         # Create or update the index
         result = index_client.create_or_update_index(index)
-        print(f"✅ Index '{index_name}' created successfully!")
+        print(f"[SUCCESS] Index '{index_name}' created successfully!")
         print(f"   Service: {service_name}")
         print(f"   Endpoint: https://{service_name}.search.windows.net")
         print(f"   Fields: {len(fields)}")
@@ -169,7 +169,7 @@ def create_search_index():
         return True
         
     except Exception as e:
-        print(f"❌ Error creating index: {e}")
+        print(f"[ERROR] Error creating index: {e}")
         return False
 
 
@@ -187,11 +187,11 @@ def check_index_exists():
     
     try:
         index = index_client.get_index(index_name)
-        print(f"✅ Index '{index_name}' already exists")
+        print(f"[SUCCESS] Index '{index_name}' already exists")
         print(f"   Fields: {len(index.fields)}")
         return True
     except Exception:
-        print(f"❌ Index '{index_name}' does not exist")
+        print(f"[ERROR] Index '{index_name}' does not exist")
         return False
 
 
@@ -212,7 +212,7 @@ def delete_index():
         print(f"🗑️  Index '{index_name}' deleted successfully")
         return True
     except Exception as e:
-        print(f"❌ Error deleting index: {e}")
+        print(f"[ERROR] Error deleting index: {e}")
         return False
 
 
@@ -239,7 +239,7 @@ def main():
     if success:
         print("\n🎉 Setup complete! You can now upload documents.")
     else:
-        print("\n❌ Setup failed. Check your credentials and try again.")
+        print("\n[ERROR] Setup failed. Check your credentials and try again.")
 
 
 if __name__ == "__main__":

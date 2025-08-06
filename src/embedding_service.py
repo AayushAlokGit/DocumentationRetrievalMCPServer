@@ -36,7 +36,7 @@ class EmbeddingGenerator:
         # Initialize OpenAI service
         self.openai_service = get_openai_service()
         
-        print(f"🔧 EmbeddingGenerator initialized:")
+        print(f"[INFO] EmbeddingGenerator initialized:")
         print(f"   - Endpoint: {self.azure_openai_endpoint}")
         print(f"   - Deployment: {self.embedding_deployment}")
         print(f"   - Dimension: {self.embedding_dimension}")
@@ -51,7 +51,7 @@ class EmbeddingGenerator:
         try:
             return self.openai_service.test_connection()
         except Exception as e:
-            print(f"❌ EmbeddingGenerator connection test failed: {e}")
+            print(f"[ERROR] EmbeddingGenerator connection test failed: {e}")
             return False
     
     async def generate_embedding(self, text: str) -> Optional[List[float]]:

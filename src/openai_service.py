@@ -125,28 +125,28 @@ async def main():
         # Test connection
         print("Testing connection...")
         if service.test_connection():
-            print("✅ Connection successful")
+            print("[SUCCESS] Connection successful")
         else:
-            print("❌ Connection failed")
+            print("[ERROR] Connection failed")
             return
         
         # Test single embedding
         print("Testing single embedding...")
         embedding = await service.generate_embedding("Hello world")
         if embedding:
-            print(f"✅ Single embedding generated (length: {len(embedding)})")
+            print(f"[SUCCESS] Single embedding generated (length: {len(embedding)})")
         else:
-            print("❌ Single embedding failed")
+            print("[ERROR] Single embedding failed")
         
         # Test batch embeddings
         print("Testing batch embeddings...")
         texts = ["Hello", "World", "Test"]
         embeddings = await service.generate_embeddings_batch(texts)
         successful_embeddings = [e for e in embeddings if e is not None]
-        print(f"✅ Batch embeddings: {len(successful_embeddings)}/{len(texts)} successful")
+        print(f"[SUCCESS] Batch embeddings: {len(successful_embeddings)}/{len(texts)} successful")
         
     except Exception as e:
-        print(f"❌ Service test failed: {e}")
+        print(f"[ERROR] Service test failed: {e}")
 
 
 if __name__ == "__main__":

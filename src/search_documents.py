@@ -67,7 +67,7 @@ class DocumentSearcher:
 async def interactive_search():
     """Interactive search mode for testing different search types"""
     
-    print("🔍 Interactive Work Item Search")
+    print("[SEARCH] Interactive Work Item Search")
     print("=" * 40)
     print("Available commands:")
     print("  text <query>          - Text search")
@@ -82,16 +82,16 @@ async def interactive_search():
     # Initialize searcher
     try:
         searcher = DocumentSearcher()
-        print(f"✅ Connected to search index: {searcher.index_name}")
-        print(f"📊 Total documents: {searcher.get_document_count()}")
+        print(f"[SUCCESS] Connected to search index: {searcher.index_name}")
+        print(f"[SUMMARY] Total documents: {searcher.get_document_count()}")
         print()
     except Exception as e:
-        print(f"❌ Failed to connect to search service: {e}")
+        print(f"[ERROR] Failed to connect to search service: {e}")
         return
     
     while True:
         try:
-            user_input = input("\n🔍 Enter command: ").strip()
+            user_input = input("\n[SEARCH] Enter command: ").strip()
             
             if not user_input:
                 continue
@@ -106,28 +106,28 @@ async def interactive_search():
             
             if command == 'work-items':
                 work_items = searcher.get_work_items()
-                print(f"\n📂 Available Work Items ({len(work_items)}):")
+                print(f"\nFile: Available Work Items ({len(work_items)}):")
                 for wi in work_items:
                     print(f"  • {wi}")
             
             elif command == 'stats':
                 doc_count = searcher.get_document_count()
                 work_items = searcher.get_work_items()
-                print(f"\n📊 Index Statistics:")
-                print(f"  📄 Total Documents: {doc_count}")
-                print(f"  📂 Work Items: {len(work_items)}")
-                print(f"  🔍 Index Name: {searcher.index_name}")
+                print(f"\n[SUMMARY] Index Statistics:")
+                print(f"  [DOCUMENT] Total Documents: {doc_count}")
+                print(f"  File: Work Items: {len(work_items)}")
+                print(f"  [SEARCH] Index Name: {searcher.index_name}")
                 print(f"  🌐 Service: {searcher.service_name}")
             
             elif command in ['text', 'vector', 'hybrid', 'semantic']:
                 if not query:
-                    print("❌ Please provide a search query")
+                    print("[ERROR] Please provide a search query")
                     continue
                 
-                print(f"\n🔍 Performing {command} search for: '{query}'")
+                print(f"\n[SEARCH] Performing {command} search for: '{query}'")
                 
                 # Ask for work item filter
-                work_item_filter = input("🎯 Filter by work item (press Enter for all): ").strip()
+                work_item_filter = input("[TARGET] Filter by work item (press Enter for all): ").strip()
                 work_item_filter = work_item_filter if work_item_filter else None
                 
                 # Perform the search
@@ -144,22 +144,22 @@ async def interactive_search():
                 if results:
                     searcher.print_search_results(results, f"{command.title()} Search Results")
                 else:
-                    print(f"❌ No results found for '{query}'")
+                    print(f"[ERROR] No results found for '{query}'")
             
             else:
-                print("❌ Unknown command. Use: text, vector, hybrid, semantic, work-items, stats, or quit")
+                print("[ERROR] Unknown command. Use: text, vector, hybrid, semantic, work-items, stats, or quit")
                 
         except KeyboardInterrupt:
             print("\n👋 Goodbye!")
             break
         except Exception as e:
-            print(f"❌ Error: {e}")
+            print(f"[ERROR] Error: {e}")
 
 
 async def main():
     """Main function for testing search functionality"""
     
-    print("🚀 Work Item Search Test")
+    print("[START] Work Item Search Test")
     print("=" * 30)
     
     try:
@@ -170,19 +170,19 @@ async def main():
         doc_count = searcher.get_document_count()
         work_items = searcher.get_work_items()
         
-        print(f"✅ Connected to search service")
-        print(f"📋 Index: {searcher.index_name}")
-        print(f"📄 Documents: {doc_count}")
-        print(f"📂 Work Items: {len(work_items)}")
+        print(f"[SUCCESS] Connected to search service")
+        print(f"[LIST] Index: {searcher.index_name}")
+        print(f"[DOCUMENT] Documents: {doc_count}")
+        print(f"File: Work Items: {len(work_items)}")
         
         if work_items:
-            print(f"🎯 Available Work Items: {', '.join(work_items[:5])}")
+            print(f"[TARGET] Available Work Items: {', '.join(work_items[:5])}")
             if len(work_items) > 5:
                 print(f"   ... and {len(work_items) - 5} more")
         
         # Run sample searches if there are documents
         if doc_count > 0:
-            print(f"\n🔍 Running sample searches...")
+            print(f"\n[SEARCH] Running sample searches...")
             
             # Text search
             print(f"\n1️⃣ Text Search:")
@@ -200,7 +200,7 @@ async def main():
             searcher.print_search_results(results, "Hybrid Search - 'database connection'")
         
         else:
-            print(f"\n💡 No documents found. Upload some documents first using:")
+            print(f"\nTips: No documents found. Upload some documents first using:")
             print(f"   python scripts/upload_work_items.py")
         
         # Start interactive mode
@@ -208,7 +208,7 @@ async def main():
         await interactive_search()
         
     except Exception as e:
-        print(f"❌ Search test failed: {e}")
+        print(f"[ERROR] Search test failed: {e}")
 
 
 if __name__ == "__main__":

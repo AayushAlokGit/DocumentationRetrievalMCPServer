@@ -225,7 +225,7 @@ class AzureCognitiveSearch:
             
             # Create or update the index
             result = self.index_client.create_or_update_index(index)
-            print(f"✅ Index '{self.index_name}' created successfully!")
+            print(f"[SUCCESS] Index '{self.index_name}' created successfully!")
             print(f"   Service: {self.service_name}")
             print(f"   Endpoint: {self.endpoint}")
             print(f"   Fields: {len(fields)}")
@@ -236,7 +236,7 @@ class AzureCognitiveSearch:
             return True
             
         except Exception as e:
-            print(f"❌ Error creating index: {e}")
+            print(f"[ERROR] Error creating index: {e}")
             return False
     
     def index_exists(self) -> bool:
@@ -252,7 +252,7 @@ class AzureCognitiveSearch:
         except ResourceNotFoundError:
             return False
         except Exception as e:
-            print(f"❌ Error checking index existence: {e}")
+            print(f"[ERROR] Error checking index existence: {e}")
             return False
     
     def delete_index(self) -> bool:
@@ -267,7 +267,7 @@ class AzureCognitiveSearch:
             print(f"🗑️  Index '{self.index_name}' deleted successfully")
             return True
         except Exception as e:
-            print(f"❌ Error deleting index: {e}")
+            print(f"[ERROR] Error deleting index: {e}")
             return False
     
     def get_index_stats(self) -> Dict[str, Any]:
@@ -294,7 +294,7 @@ class AzureCognitiveSearch:
                 'endpoint': self.endpoint
             }
         except Exception as e:
-            print(f"❌ Error getting index stats: {e}")
+            print(f"[ERROR] Error getting index stats: {e}")
             return {}
     
     # ===== DOCUMENT OPERATIONS =====
@@ -321,7 +321,7 @@ class AzureCognitiveSearch:
                 
                 # Validate embedding
                 if not self.embedding_generator.validate_embedding(embedding):
-                    print(f"❌ Invalid embedding for chunk {i}, skipping...")
+                    print(f"[ERROR] Invalid embedding for chunk {i}, skipping...")
                     continue
                 
                 # Create search document
@@ -343,7 +343,7 @@ class AzureCognitiveSearch:
                 search_documents.append(search_doc)
             
             if not search_documents:
-                print("❌ No valid documents to upload")
+                print("[ERROR] No valid documents to upload")
                 return False
             
             # Upload to search index
@@ -355,13 +355,13 @@ class AzureCognitiveSearch:
                 if result.succeeded:
                     success_count += 1
                 else:
-                    print(f"❌ Failed to upload chunk {result.key}: {result.error_message}")
+                    print(f"[ERROR] Failed to upload chunk {result.key}: {result.error_message}")
             
-            print(f"✅ Uploaded {success_count}/{len(search_documents)} chunks successfully")
+            print(f"[SUCCESS] Uploaded {success_count}/{len(search_documents)} chunks successfully")
             return success_count > 0
             
         except Exception as e:
-            print(f"❌ Upload failed: {e}")
+            print(f"[ERROR] Upload failed: {e}")
             return False
     
     def upload_documents_batch(self, documents: List[Dict[str, Any]]) -> Tuple[int, int]:
@@ -398,14 +398,14 @@ class AzureCognitiveSearch:
             result = self.search_client.delete_documents(documents=[{"id": document_id}])
             
             if result[0].succeeded:
-                print(f"✅ Document {document_id} deleted successfully")
+                print(f"[SUCCESS] Document {document_id} deleted successfully")
                 return True
             else:
-                print(f"❌ Failed to delete document: {result[0].error_message}")
+                print(f"[ERROR] Failed to delete document: {result[0].error_message}")
                 return False
                 
         except Exception as e:
-            print(f"❌ Delete failed for {document_id}: {e}")
+            print(f"[ERROR] Delete failed for {document_id}: {e}")
             return False
     
     def delete_documents_by_work_item(self, work_item_id: str) -> int:
@@ -436,12 +436,12 @@ class AzureCognitiveSearch:
             delete_results = self.search_client.delete_documents(documents=documents_to_delete)
             
             successful_deletes = sum(1 for result in delete_results if result.succeeded)
-            print(f"✅ Deleted {successful_deletes}/{len(documents_to_delete)} documents for work item {work_item_id}")
+            print(f"[SUCCESS] Deleted {successful_deletes}/{len(documents_to_delete)} documents for work item {work_item_id}")
             
             return successful_deletes
             
         except Exception as e:
-            print(f"❌ Bulk delete failed for work item {work_item_id}: {e}")
+            print(f"[ERROR] Bulk delete failed for work item {work_item_id}: {e}")
             return 0
     
     def delete_all_documents(self) -> int:
@@ -471,11 +471,11 @@ class AzureCognitiveSearch:
                 total_deleted += successful_deletes
                 print(f"Deleted batch {i//batch_size + 1}: {successful_deletes}/{len(batch)} documents")
             
-            print(f"✅ Total documents deleted: {total_deleted}")
+            print(f"[SUCCESS] Total documents deleted: {total_deleted}")
             return total_deleted
             
         except Exception as e:
-            print(f"❌ Delete all failed: {e}")
+            print(f"[ERROR] Delete all failed: {e}")
             return 0
     
     # ===== SEARCH OPERATIONS =====
@@ -507,7 +507,7 @@ class AzureCognitiveSearch:
             return [dict(result) for result in results]
             
         except Exception as e:
-            print(f"❌ Text search failed: {e}")
+            print(f"[ERROR] Text search failed: {e}")
             return []
     
     async def vector_search(self, query: str, work_item_id: Optional[str] = None, top: int = 5) -> List[Dict]:
@@ -526,7 +526,7 @@ class AzureCognitiveSearch:
             # Generate embedding for query
             query_embedding = await self.embedding_generator.generate_embedding(query)
             if not query_embedding:
-                print("❌ Failed to generate query embedding")
+                print("[ERROR] Failed to generate query embedding")
                 return []
             
             # Build filter if work item specified
@@ -546,7 +546,7 @@ class AzureCognitiveSearch:
             return [dict(result) for result in results]
             
         except Exception as e:
-            print(f"❌ Vector search failed: {e}")
+            print(f"[ERROR] Vector search failed: {e}")
             return []
     
     async def hybrid_search(self, query: str, work_item_id: Optional[str] = None, top: int = 5) -> List[Dict]:
@@ -565,7 +565,7 @@ class AzureCognitiveSearch:
             # Generate embedding for query
             query_embedding = await self.embedding_generator.generate_embedding(query)
             if not query_embedding:
-                print("❌ Failed to generate query embedding, falling back to text search")
+                print("[ERROR] Failed to generate query embedding, falling back to text search")
                 return self.text_search(query, work_item_id, top)
             
             # Build filter if work item specified
@@ -585,7 +585,7 @@ class AzureCognitiveSearch:
             return [dict(result) for result in results]
             
         except Exception as e:
-            print(f"❌ Hybrid search failed: {e}")
+            print(f"[ERROR] Hybrid search failed: {e}")
             return []
     
     def semantic_search(self, query: str, work_item_id: Optional[str] = None, top: int = 5) -> List[Dict]:
@@ -616,7 +616,7 @@ class AzureCognitiveSearch:
             return [dict(result) for result in results]
             
         except Exception as e:
-            print(f"❌ Semantic search failed: {e}")
+            print(f"[ERROR] Semantic search failed: {e}")
             return []
     
     # ===== UTILITY METHODS =====
@@ -644,7 +644,7 @@ class AzureCognitiveSearch:
             return sorted(work_items)
             
         except Exception as e:
-            print(f"❌ Error getting work items: {e}")
+            print(f"[ERROR] Error getting work items: {e}")
             return []
     
     def get_document_count(self) -> int:
@@ -658,7 +658,7 @@ class AzureCognitiveSearch:
             results = self.search_client.search("*", top=0, include_total_count=True)
             return results.get_count() or 0
         except Exception as e:
-            print(f"❌ Error getting document count: {e}")
+            print(f"[ERROR] Error getting document count: {e}")
             return 0
     
     def search_by_file_path(self, file_path: str) -> List[Dict]:
@@ -681,7 +681,7 @@ class AzureCognitiveSearch:
             return [dict(result) for result in results]
             
         except Exception as e:
-            print(f"❌ Error searching by file path: {e}")
+            print(f"[ERROR] Error searching by file path: {e}")
             return []
     
     def test_connection(self) -> bool:
@@ -696,7 +696,7 @@ class AzureCognitiveSearch:
             stats = self.get_index_stats()
             return bool(stats)
         except Exception as e:
-            print(f"❌ Connection test failed: {e}")
+            print(f"[ERROR] Connection test failed: {e}")
             return False
     
     def print_search_results(self, results: List[Dict], title: str = "Search Results"):
@@ -708,14 +708,14 @@ class AzureCognitiveSearch:
             title: Title for the results display
         """
         if not results:
-            print(f"🔍 {title}: No results found")
+            print(f"[SEARCH] {title}: No results found")
             return
         
-        print(f"\n🔍 {title} ({len(results)} results)")
+        print(f"\n[SEARCH] {title} ({len(results)} results)")
         print("=" * 60)
         
         for i, result in enumerate(results, 1):
-            print(f"\n📄 Result {i}:")
+            print(f"\n[DOCUMENT] Result {i}:")
             print(f"   ID: {result.get('id', 'N/A')}")
             print(f"   Title: {result.get('title', 'Untitled')}")
             print(f"   Work Item: {result.get('work_item_id', 'N/A')}")
@@ -758,16 +758,16 @@ if __name__ == "__main__":
         
         # Test connection
         if search_service.test_connection():
-            print("✅ Connection successful")
+            print("[SUCCESS] Connection successful")
             
             # Get stats
             stats = search_service.get_index_stats()
-            print(f"📊 Index Stats:")
+            print(f"[SUMMARY] Index Stats:")
             print(f"   Documents: {stats.get('document_count', 0)}")
             print(f"   Work Items: {stats.get('work_item_count', 0)}")
             
         else:
-            print("❌ Connection failed")
+            print("[ERROR] Connection failed")
             
     except Exception as e:
-        print(f"❌ Test failed: {e}")
+        print(f"[ERROR] Test failed: {e}")

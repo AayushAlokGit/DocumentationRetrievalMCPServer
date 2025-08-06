@@ -44,16 +44,16 @@ def upload_document_to_search(document, service_name, admin_key, index_name):
             successful_uploads = [r for r in result if r.succeeded]
             
             if failed_uploads:
-                print(f"⚠️  Partial upload - {len(successful_uploads)} succeeded, {len(failed_uploads)} failed")
+                print(f"[WARNING]  Partial upload - {len(successful_uploads)} succeeded, {len(failed_uploads)} failed")
                 for failed in failed_uploads[:3]:  # Show first 3 failures
                     print(f"   Failed: {failed.key} - {failed.error_message}")
                 return len(successful_uploads) > 0  # Return True if at least some succeeded
             else:
-                print(f"✅ Uploaded {len(search_documents)} chunks for: {document['metadata'].get('title', 'Unknown')}")
+                print(f"[SUCCESS] Uploaded {len(search_documents)} chunks for: {document['metadata'].get('title', 'Unknown')}")
                 return True
                 
     except Exception as e:
-        print(f"❌ Upload failed for {document['file_path']}: {e}")
+        print(f"[ERROR] Upload failed for {document['file_path']}: {e}")
         print(f"   First document structure: {search_documents[0] if search_documents else 'No documents'}")
         return False
 
@@ -92,16 +92,16 @@ async def main():
     
     # Test the connection
     if not openai_service.test_connection():
-        print("❌ Failed to connect to Azure OpenAI. Please check your credentials.")
+        print("[ERROR] Failed to connect to Azure OpenAI. Please check your credentials.")
         return
 
     # Get tracker stats
     stats = tracker.get_stats()
-    print(f"📋 Found {stats['total_processed']} previously processed files in tracking")
+    print(f"[LIST] Found {stats['total_processed']} previously processed files in tracking")
 
     # Discover all markdown files
     markdown_files = discover_markdown_files(work_items_path)
-    print(f"🔍 Found {len(markdown_files)} total markdown files across work item directories")
+    print(f"[SEARCH] Found {len(markdown_files)} total markdown files across work item directories")
 
     # Filter out already processed files
     files_to_process = []
@@ -114,13 +114,13 @@ async def main():
         else:
             files_to_process.append(file_path)
     
-    print(f"📊 Processing Summary:")
+    print(f"[SUMMARY] Processing Summary:")
     print(f"   - Total files found: {len(markdown_files)}")
     print(f"   - Already processed: {skipped_count}")
     print(f"   - To process: {len(files_to_process)}")
     
     if not files_to_process:
-        print("✅ All files are already processed!")
+        print("[SUCCESS] All files are already processed!")
         return
 
     # Process files individually
@@ -135,7 +135,7 @@ async def main():
             # Read and parse file
             file_data = read_markdown_file(file_path)
             if not file_data:
-                print(f"⚠️  Skipping empty file: {file_path.name}")
+                print(f"[WARNING]  Skipping empty file: {file_path.name}")
                 continue
 
             work_item_id = file_data['metadata']['work_item_id']
@@ -147,7 +147,7 @@ async def main():
 
             # Create chunks
             chunks = process_document_chunks(file_data)
-            print(f"   📝 Created {len(chunks)} chunks")
+            print(f"   Title: Created {len(chunks)} chunks")
 
             # Generate embeddings
             embedding_generator = get_embedding_generator()
@@ -159,7 +159,7 @@ async def main():
                 if embedding_generator.validate_embedding(emb):
                     valid_embeddings.append(emb)
                 else:
-                    print(f"   ⚠️  Invalid embedding for chunk {j}, using zero vector")
+                    print(f"   [WARNING]  Invalid embedding for chunk {j}, using zero vector")
                     valid_embeddings.append(embedding_generator.get_empty_embedding())
             
             print(f"   🧠 Generated {len(valid_embeddings)} embeddings ({len([e for e in embeddings if embedding_generator.validate_embedding(e)])} valid)")
@@ -182,10 +182,10 @@ async def main():
                 tracker.mark_processed(file_path)
                 tracker.save()
                 processed_count += 1
-                print(f"   ✅ Successfully processed: {file_data['metadata']['title']}")
+                print(f"   [SUCCESS] Successfully processed: {file_data['metadata']['title']}")
             else:
                 failed_count += 1
-                print(f"   ❌ Failed to upload: {file_path.name}")
+                print(f"   [ERROR] Failed to upload: {file_path.name}")
 
             # Add a small delay to respect rate limits
             if i < len(files_to_process):  # Don't delay after the last file
@@ -193,7 +193,7 @@ async def main():
 
         except Exception as e:
             failed_count += 1
-            print(f"   ❌ Error processing {file_path.name}: {e}")
+            print(f"   [ERROR] Error processing {file_path.name}: {e}")
 
     # Final summary
     final_stats = tracker.get_stats()
