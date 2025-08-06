@@ -6,9 +6,29 @@ This document provides the implementation details for the MCP (Model Context Pro
 
 ## MCP Tools Definition
 
-### Core Tools
+# Simplified MCP Server Implementation
 
-#### Tools Schema Definitions
+## Overview
+
+This document provides a simplified MCP (Model Context Protocol) server implementation that focuses on a single, powerful question-answering tool for VS Code agent integration.
+
+**Work Items Directory Structure:**
+
+- Root directory: `"Work Items"` folder on desktop
+- Each subdirectory name serves as the work item identifier
+- Markdown files within each subdirectory contain documentation
+- The MCP server automatically extracts work item IDs from directory structure
+
+**Key Features:**
+
+- **Smart Work Item Recognition**: Automatically identifies work item IDs from directory names
+- **Enhanced Context**: Search results include work item information for better answers
+- **Flexible Searching**: Can search across all work items or filter by specific work item ID
+- **Source Attribution**: Answers include references to specific work items and files
+
+## Core Tool: ask_question
+
+### Tool Schema Definition
 
 ```python
 from mcp.server.models import Tool
@@ -17,65 +37,24 @@ from mcp.types import TextContent
 from pydantic import BaseModel
 from typing import List, Optional
 
-class SearchWorkItemsArgs(BaseModel):
-    query: str
-    limit: Optional[int] = 5
-    work_item_id: Optional[str] = None
-    tags: Optional[List[str]] = None
-
 class AskQuestionArgs(BaseModel):
     question: str
     context_limit: Optional[int] = 3
 
-class GetWorkItemDetailsArgs(BaseModel):
-    work_item_id: str
-
-class ListWorkItemsArgs(BaseModel):
-    limit: Optional[int] = 10
-    tags: Optional[List[str]] = None
-
-# Global variable will be defined in main.py
+# Global server instance
 app = None  # This will be initialized in main.py
 ```
 
-#### Unified Tool Handlers
+### Unified Tool Handler
 
 ```python
 @app.list_tools()
 async def handle_list_tools() -> List[Tool]:
-    """List all available MCP tools"""
+    """List the single available MCP tool"""
     return [
         Tool(
-            name="search_work_items",
-            description="Search for relevant work items using natural language query",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "Natural language search query"
-                    },
-                    "limit": {
-                        "type": "integer",
-                        "description": "Maximum number of results to return",
-                        "default": 5
-                    },
-                    "work_item_id": {
-                        "type": "string",
-                        "description": "Filter by specific work item ID"
-                    },
-                    "tags": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "Filter by tags"
-                    }
-                },
-                "required": ["query"]
-            }
-        ),
-        Tool(
             name="ask_question",
-            description="Ask a question about work items and get an AI-generated answer",
+            description="Ask a question about work items and get an AI-generated answer with sources",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -91,39 +70,6 @@ async def handle_list_tools() -> List[Tool]:
                 },
                 "required": ["question"]
             }
-        ),
-        Tool(
-            name="get_work_item_details",
-            description="Get detailed information about a specific work item",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "work_item_id": {
-                        "type": "string",
-                        "description": "The work item ID to retrieve details for"
-                    }
-                },
-                "required": ["work_item_id"]
-            }
-        ),
-        Tool(
-            name="list_work_items",
-            description="List available work items with metadata",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "limit": {
-                        "type": "integer",
-                        "description": "Maximum number of work items to return",
-                        "default": 10
-                    },
-                    "tags": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "description": "Filter by tags"
-                    }
-                }
-            }
         )
     ]
 
@@ -131,14 +77,8 @@ async def handle_list_tools() -> List[Tool]:
 async def handle_call_tool(name: str, arguments: dict) -> List[TextContent]:
     """Handle tool calls"""
     try:
-        if name == "search_work_items":
-            return await search_work_items_tool(SearchWorkItemsArgs(**arguments))
-        elif name == "ask_question":
+        if name == "ask_question":
             return await ask_question_tool(AskQuestionArgs(**arguments))
-        elif name == "get_work_item_details":
-            return await get_work_item_details_tool(GetWorkItemDetailsArgs(**arguments))
-        elif name == "list_work_items":
-            return await list_work_items_tool(ListWorkItemsArgs(**arguments))
         else:
             raise ValueError(f"Unknown tool: {name}")
     except Exception as e:
@@ -146,51 +86,7 @@ async def handle_call_tool(name: str, arguments: dict) -> List[TextContent]:
         return [TextContent(type="text", text=f"Error executing {name}: {str(e)}")]
 ```
 
-#### Tool Implementation Functions
-
-#### 1. search_work_items
-
-```python
-async def search_work_items_tool(args: SearchWorkItemsArgs) -> List[TextContent]:
-    """Search for work items using vector similarity"""
-    try:
-        # Generate embedding for query
-        embedding = await generate_query_embedding(args.query)
-
-        # Search Azure Cognitive Search
-        results = await vector_search(
-            embedding=embedding,
-            limit=args.limit,
-            work_item_id=args.work_item_id,
-            tags=args.tags
-        )
-
-        if not results:
-            return [TextContent(type="text", text="No relevant work items found for your query.")]
-
-        # Format results
-        formatted_results = []
-        for result in results:
-            formatted_results.append(
-                TextContent(
-                    type="text",
-                    text=f"**{result['title']}** (Score: {result['@search.score']:.2f})\n"
-                         f"File: {result['file_path']}\n"
-                         f"Content: {result['content'][:200]}...\n"
-                         f"Work Item ID: {result.get('work_item_id', 'N/A')}\n"
-                         f"Tags: {', '.join(result.get('tags', []))}\n\n"
-                )
-            )
-
-        return formatted_results
-
-    except Exception as e:
-        return [TextContent(type="text", text=f"Error searching work items: {str(e)}")]
-```
-
-#### 2. ask_question
-
-Answer questions about work items using RAG pattern.
+### Tool Implementation
 
 ```python
 async def ask_question_tool(args: AskQuestionArgs) -> List[TextContent]:
@@ -205,9 +101,15 @@ async def ask_question_tool(args: AskQuestionArgs) -> List[TextContent]:
             limit=args.context_limit
         )
 
-        # 3. Build context string
+        if not context_results:
+            return [TextContent(
+                type="text",
+                text="I couldn't find any relevant information in the work items to answer your question. Please try rephrasing your question or check if the relevant documentation has been uploaded."
+            )]
+
+        # 3. Build context string with work item information
         context = "\n\n".join([
-            f"From {result['title']} ({result['file_path']}):\n{result['content']}"
+            f"**Work Item {result['work_item_id']}** - {result['title']} ({result['file_path']}):\n{result['content']}"
             for result in context_results
         ])
 
@@ -217,9 +119,9 @@ async def ask_question_tool(args: AskQuestionArgs) -> List[TextContent]:
             context=context
         )
 
-        # 5. Include sources
-        sources = "\n\nSources:\n" + "\n".join([
-            f"- {result['title']} ({result['file_path']})"
+        # 5. Include sources with work item IDs
+        sources = "\n\n**Sources:**\n" + "\n".join([
+            f"- **Work Item {result['work_item_id']}**: {result['title']} ({result['file_path']})"
             for result in context_results
         ])
 
@@ -229,104 +131,11 @@ async def ask_question_tool(args: AskQuestionArgs) -> List[TextContent]:
         )]
 
     except Exception as e:
+        logger.error(f"Error in ask_question_tool: {e}")
         return [TextContent(type="text", text=f"Error answering question: {str(e)}")]
 ```
 
-#### 3. get_work_item_details
-
-Get detailed information about a specific work item.
-
-```python
-class GetWorkItemDetailsArgs(BaseModel):
-    work_item_id: str
-
-async def get_work_item_details_tool(args: GetWorkItemDetailsArgs) -> List[TextContent]:
-    """Get detailed information about a specific work item"""
-    try:
-        # Search for all chunks related to this work item
-        results = await search_by_work_item_id(args.work_item_id)
-
-        if not results:
-            return [TextContent(
-                type="text",
-                text=f"No information found for work item ID: {args.work_item_id}"
-            )]
-
-        # Group by file path and combine chunks
-        files = {}
-        for result in results:
-            file_path = result['file_path']
-            if file_path not in files:
-                files[file_path] = {
-                    'title': result['title'],
-                    'chunks': [],
-                    'tags': result.get('tags', []),
-                    'last_modified': result.get('last_modified')
-                }
-            files[file_path]['chunks'].append({
-                'content': result['content'],
-                'chunk_index': result['chunk_index']
-            })
-
-        # Format response
-        response_parts = []
-        for file_path, file_data in files.items():
-            # Sort chunks by index
-            sorted_chunks = sorted(file_data['chunks'], key=lambda x: x['chunk_index'])
-            combined_content = "\n\n".join([chunk['content'] for chunk in sorted_chunks])
-
-            response_parts.append(
-                f"**{file_data['title']}**\n"
-                f"File: {file_path}\n"
-                f"Tags: {', '.join(file_data['tags'])}\n"
-                f"Last Modified: {file_data['last_modified']}\n\n"
-                f"{combined_content}\n\n---\n"
-            )
-
-        return [TextContent(type="text", text="\n".join(response_parts))]
-
-    except Exception as e:
-        return [TextContent(type="text", text=f"Error getting work item details: {str(e)}")]
-```
-
-#### 4. list_work_items
-
-List available work items with metadata.
-
-```python
-class ListWorkItemsArgs(BaseModel):
-    limit: Optional[int] = 10
-    tags: Optional[List[str]] = None
-
-async def list_work_items_tool(args: ListWorkItemsArgs) -> List[TextContent]:
-    """List available work items"""
-    try:
-        # Get unique work items
-        results = await get_unique_work_items(
-            limit=args.limit,
-            tags=args.tags
-        )
-
-        if not results:
-            return [TextContent(type="text", text="No work items found")]
-
-        # Format as table
-        table_rows = ["| Title | Work Item ID | Tags | File Path |"]
-        table_rows.append("|-------|--------------|------|-----------|")
-
-        for result in results:
-            tags_str = ", ".join(result.get('tags', []))
-            table_rows.append(
-                f"| {result['title']} | {result.get('work_item_id', 'N/A')} | {tags_str} | {result['file_path']} |"
-            )
-
-        return [TextContent(type="text", text="\n".join(table_rows))]
-
-    except Exception as e:
-        return [TextContent(type="text", text=f"Error listing work items: {str(e)}")]
-```
-
-## Server Implementation
+## Simplified Server Implementation
 
 ```python
 # src/server/main.py
@@ -392,15 +201,22 @@ async def vector_search(embedding, limit=5, work_item_id=None, tags=None):
         tags=tags
     )
 
+async def get_work_items_summary():
+    """Get summary of available work items from Azure Search"""
+    return await search_service.get_work_items_summary()
+
 async def generate_chat_completion(question: str, context: str):
     """Generate answer using chat completion"""
     system_prompt = """You are a helpful assistant that answers questions about work items based on provided documentation.
+
+The work items are organized with unique identifiers (like WI-12345, BUG-67890, FEATURE-11111, etc.) and each has associated documentation files.
 
 Context: {context}
 
 Guidelines:
 - Answer based only on the provided context
 - If information is not available, say so clearly
+- Always reference specific work item IDs when available in your answer
 - Provide specific references to work items when possible
 - Be concise but comprehensive
 - Use a professional, helpful tone"""
@@ -512,18 +328,18 @@ class AzureSearchService:
         work_item_id: Optional[str] = None,
         tags: Optional[List[str]] = None
     ):
-        """Perform vector search"""
+        """Perform vector search with enhanced work item filtering"""
         search_params = {
             "vectors": [{
                 "value": embedding,
                 "k_nearest_neighbors": limit,
                 "fields": "content_vector"
             }],
-            "select": "id,content,title,file_path,work_item_id,tags,last_modified",
+            "select": "id,content,title,file_path,work_item_id,tags,last_modified,chunk_index",
             "top": limit
         }
 
-        # Add filters
+        # Add filters for work item structure
         filters = []
         if work_item_id:
             filters.append(f"work_item_id eq '{work_item_id}'")
@@ -534,129 +350,67 @@ class AzureSearchService:
         if filters:
             search_params["filter"] = " and ".join(filters)
 
-        results = self.search_client.search(**search_params)
-        return [dict(result) for result in results]
-
-    async def search_by_work_item_id(self, work_item_id: str):
-        """Search for all documents with a specific work item ID"""
-        search_params = {
-            "search_text": "*",
-            "filter": f"work_item_id eq '{work_item_id}'",
-            "select": "id,content,title,file_path,work_item_id,tags,last_modified,chunk_index",
-            "top": 50,  # Get all chunks for the work item
-            "order_by": "chunk_index asc"
-        }
-
-        results = self.search_client.search(**search_params)
-        return [dict(result) for result in results]
-
-    async def get_unique_work_items(self, limit: int = 10, tags: List[str] = None):
-        """Get unique work items with their metadata"""
-        # Use faceted search to get unique work items
-        search_params = {
-            "search_text": "*",
-            "facets": ["work_item_id", "title", "tags"],
-            "select": "title,file_path,work_item_id,tags",
-            "top": 0  # We only want facets, not results
-        }
-
-        if tags:
-            tag_filters = " or ".join([f"tags/any(t: t eq '{tag}')" for tag in tags])
-            search_params["filter"] = f"({tag_filters})"
-
+        # Execute search
         results = self.search_client.search(**search_params)
 
-        # Process facets to get unique work items
-        unique_items = []
-        if hasattr(results, 'get_facets'):
-            facets = results.get_facets()
-            # Implementation depends on facet structure
-            # This is a simplified version
-            pass
-
-        # Alternative approach: use group by or distinct query
-        search_params = {
-            "search_text": "*",
-            "select": "title,file_path,work_item_id,tags",
-            "top": limit * 3  # Get more results to filter duplicates
-        }
-
-        if tags:
-            tag_filters = " or ".join([f"tags/any(t: t eq '{tag}')" for tag in tags])
-            search_params["filter"] = f"({tag_filters})"
-
-        results = self.search_client.search(**search_params)
-
-        # Deduplicate by work_item_id
-        seen_items = set()
-        unique_items = []
-
+        # Process results to include work item context
+        processed_results = []
         for result in results:
-            item_id = result.get('work_item_id', result.get('title', ''))
-            if item_id and item_id not in seen_items:
-                seen_items.add(item_id)
-                unique_items.append(dict(result))
-                if len(unique_items) >= limit:
-                    break
+            result_dict = dict(result)
+            # Ensure work_item_id is available for context
+            if 'work_item_id' not in result_dict or not result_dict['work_item_id']:
+                # Extract from file path as fallback
+                file_path = result_dict.get('file_path', '')
+                if 'Work Items' in file_path:
+                    parts = file_path.split('\\')
+                    work_items_idx = parts.index('Work Items') if 'Work Items' in parts else -1
+                    if work_items_idx >= 0 and work_items_idx + 1 < len(parts):
+                        result_dict['work_item_id'] = parts[work_items_idx + 1]
 
-        return unique_items
+            processed_results.append(result_dict)
+
+        return processed_results
+
+    async def get_work_items_summary(self):
+        """Get summary of available work items"""
+        try:
+            # Get unique work items with count
+            search_params = {
+                "search": "*",
+                "facets": ["work_item_id"],
+                "top": 0  # We only want facets
+            }
+
+            results = self.search_client.search(**search_params)
+            facets = results.get_facets()
+
+            if 'work_item_id' in facets:
+                work_items = facets['work_item_id']
+                summary_lines = [f"Available Work Items ({len(work_items)} total):"]
+                for item in work_items:
+                    summary_lines.append(f"- {item['value']}: {item['count']} documents")
+                return "\n".join(summary_lines)
+            else:
+                return "No work items found in the index."
+
+        except Exception as e:
+            return f"Error getting work items summary: {str(e)}"
 ```
 
-## Helper Functions
+## Configuration```python
 
-```python
-# Additional helper functions used by the MCP server
-
-async def get_work_items_summary():
-    """Generate a summary of available work items"""
-    try:
-        # Get basic statistics about work items
-        search_results = await search_service.get_unique_work_items(limit=100)
-
-        total_items = len(search_results)
-
-        # Collect tags
-        all_tags = set()
-        for item in search_results:
-            if item.get('tags'):
-                all_tags.update(item['tags'])
-
-        summary = f"""Work Items Documentation Summary
-
-Total Work Items: {total_items}
-Available Tags: {', '.join(sorted(all_tags)) if all_tags else 'None'}
-
-Recent Work Items:
-"""
-
-        # Add recent items (first 5)
-        for item in search_results[:5]:
-            title = item.get('title', 'Untitled')
-            work_item_id = item.get('work_item_id', 'N/A')
-            tags = ', '.join(item.get('tags', []))
-            summary += f"- {title} (ID: {work_item_id}) [Tags: {tags}]\n"
-
-        return summary
-
-    except Exception as e:
-        return f"Error generating summary: {str(e)}"
-```
-
-## Configuration
-
-```python
 # src/utils/config.py
+
 import os
 from dataclasses import dataclass
 from dotenv import load_dotenv
 
 @dataclass
-class Config:
-    # Azure OpenAI
-    azure_openai_endpoint: str
-    azure_openai_key: str
-    chat_deployment_name: str
-    embedding_deployment_name: str
+class Config: # Azure OpenAI
+azure_openai_endpoint: str
+azure_openai_key: str
+chat_deployment_name: str
+embedding_deployment_name: str
 
     # Azure Search
     search_service_name: str
@@ -668,8 +422,8 @@ class Config:
     log_level: str
 
 def load_config() -> Config:
-    """Load configuration from environment variables"""
-    load_dotenv()
+"""Load configuration from environment variables"""
+load_dotenv()
 
     return Config(
         azure_openai_endpoint=os.getenv('AZURE_OPENAI_ENDPOINT'),
@@ -679,14 +433,17 @@ def load_config() -> Config:
         search_service_name=os.getenv('AZURE_SEARCH_SERVICE_NAME'),
         search_admin_key=os.getenv('AZURE_SEARCH_ADMIN_KEY'),
         search_index_name=os.getenv('AZURE_SEARCH_INDEX_NAME', 'work-items-index'),
-        work_items_path=os.getenv('WORK_ITEMS_PATH', './data/work-items'),
+        work_items_path=os.getenv('WORK_ITEMS_PATH', r'C:\Users\YourUsername\Desktop\Work Items'),
         log_level=os.getenv('LOG_LEVEL', 'INFO')
     )
-```
+
+````
 
 ## VS Code Integration
 
-### MCP Server Configuration
+### MCP Server Configuration for VS Code
+
+Add this to your VS Code settings or MCP configuration:
 
 ```json
 {
@@ -696,14 +453,64 @@ def load_config() -> Config:
       "args": ["src/server/main.py"],
       "cwd": "/path/to/WorkItemDocumentationRetriever",
       "env": {
-        "WORK_ITEMS_PATH": "./data/work-items"
+        "WORK_ITEMS_PATH": "C:\\Users\\YourUsername\\Desktop\\Work Items"
       }
     }
   }
 }
 ```
 
-## Testing
+**Important**: Update the `WORK_ITEMS_PATH` to point to your actual "Work Items" directory on desktop.`
+
+## Usage Examples
+
+### Example 1: General Question
+**VS Code Prompt**: "What authentication issues have been documented?"
+
+**MCP Tool Call**:
+```json
+{
+  "tool": "ask_question",
+  "arguments": {
+    "question": "What authentication issues have been documented?",
+    "context_limit": 3
+  }
+}
+```
+
+**Expected Response**:
+```
+Based on the work item documentation, here are the authentication issues found:
+
+**Work Item WI-12345** had OAuth token expiration problems where users were getting 401 errors after 1 hour. The solution involved implementing automatic token refresh...
+
+**Work Item BUG-67890** documented LDAP integration failures where users couldn't authenticate against Active Directory...
+
+**Sources:**
+- **Work Item WI-12345**: OAuth Implementation Guide (C:\Users\...\Desktop\Work Items\WI-12345\auth-issues.md)
+- **Work Item BUG-67890**: LDAP Troubleshooting (C:\Users\...\Desktop\Work Items\BUG-67890\ldap-fix.md)
+```
+
+### Example 2: Work Item Specific Question
+**VS Code Prompt**: "Tell me about the implementation details for work item FEATURE-11111"
+
+**MCP Tool Call**:
+```json
+{
+  "tool": "ask_question",
+  "arguments": {
+    "question": "Tell me about the implementation details for work item FEATURE-11111",
+    "context_limit": 5
+  }
+}
+```
+
+### Example 3: Technical Deep Dive
+**VS Code Prompt**: "How do I configure the new search feature?"
+
+The MCP server will automatically find relevant documentation across all work items and provide comprehensive answers with proper work item attribution.
+
+## Simplified Testing
 
 ```python
 # tests/test_mcp_server.py
@@ -714,34 +521,57 @@ from mcp.client import ClientSession
 from mcp.client.stdio import stdio_client
 
 @pytest.mark.asyncio
-async def test_search_work_items():
-    """Test the search_work_items tool"""
-    async with stdio_client() as (read, write):
-        async with ClientSession(read, write) as session:
-            await session.initialize()
-
-            # Test search
-            result = await session.call_tool(
-                "search_work_items",
-                {"query": "authentication issues"}
-            )
-
-            assert result is not None
-            assert len(result) > 0
-
-@pytest.mark.asyncio
 async def test_ask_question():
     """Test the ask_question tool"""
     async with stdio_client() as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
 
-            # Test question
+            # Test basic question
             result = await session.call_tool(
                 "ask_question",
                 {"question": "How do I fix authentication problems?"}
             )
 
             assert result is not None
-            assert "authentication" in result[0].text.lower()
+            assert len(result) > 0
+            assert isinstance(result[0].text, str)
+            # Should contain either answer or "couldn't find" message
+            assert len(result[0].text) > 0
+
+@pytest.mark.asyncio
+async def test_ask_question_with_context_limit():
+    """Test the ask_question tool with custom context limit"""
+    async with stdio_client() as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+
+            # Test with custom context limit
+            result = await session.call_tool(
+                "ask_question",
+                {
+                    "question": "What are the common issues?",
+                    "context_limit": 5
+                }
+            )
+
+            assert result is not None
+            assert len(result) > 0
+
+@pytest.mark.asyncio
+async def test_ask_question_no_results():
+    """Test asking question that should return no results"""
+    async with stdio_client() as (read, write):
+        async with ClientSession(read, write) as session:
+            await session.initialize()
+
+            # Test with question unlikely to have results
+            result = await session.call_tool(
+                "ask_question",
+                {"question": "xyzabc123 nonexistent topic"}
+            )
+
+            assert result is not None
+            assert "couldn't find" in result[0].text.lower() or "no" in result[0].text.lower()
 ```
+````

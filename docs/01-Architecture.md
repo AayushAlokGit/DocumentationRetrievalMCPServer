@@ -80,50 +80,50 @@ Guidelines:
 - **Structured Responses**: Can format responses for VS Code display
 - **Multi-turn Support**: Handles complex, multi-part queries
 
-## File Structure
+## Simplified MCP Server Focus
+
+For the initial implementation, we'll focus on a single, powerful tool:
+
+### Core Tool: `ask_question`
+
+- **Purpose**: Answer questions about work items using RAG pattern
+- **Input**: Natural language questions
+- **Output**: AI-generated answers with source references
+- **Features**: Context retrieval, source attribution, professional responses
+
+### Future Tools (Optional Extensions)
+
+- `search_work_items` - Direct search functionality
+- `get_work_item_details` - Specific work item retrieval
+- `list_work_items` - Browse available items
+
+## Simplified File Structure
 
 ```
 WorkItemDocumentationRetriever/
 ├── src/
 │   ├── server/
 │   │   ├── __init__.py
-│   │   ├── main.py                  # MCP server entry point
-│   │   ├── tools/                   # MCP tool implementations
-│   │   │   ├── __init__.py
-│   │   │   ├── search.py
-│   │   │   ├── details.py
-│   │   │   ├── question.py
-│   │   │   └── list.py
-│   │   └── handlers/                # Request handlers
-│   │       └── __init__.py
+│   │   └── main.py                  # MCP server entry point
 │   ├── services/
 │   │   ├── __init__.py
 │   │   ├── azure_openai.py          # Azure OpenAI integration
-│   │   ├── azure_search.py          # Azure Cognitive Search operations
-│   │   ├── document_processor.py    # Document processing
-│   │   └── file_watcher.py          # File system monitoring
-│   ├── types/
-│   │   ├── __init__.py
-│   │   ├── work_item.py             # Type definitions
-│   │   └── mcp_types.py
+│   │   └── azure_search.py          # Azure Cognitive Search operations
 │   └── utils/
 │       ├── __init__.py
 │       ├── config.py                # Configuration management
-│       ├── logger.py                # Logging utilities
-│       └── helpers.py
+│       └── logger.py                # Logging utilities
 ├── data/
 │   └── work-items/                  # Local markdown files
-├── config/
-│   ├── .env.example                 # Environment variables template
-│   └── mcp-config.json              # MCP server configuration
+├── scripts/
+│   ├── setup.py                     # Project setup
+│   ├── upload_documents.py          # Document upload
+│   └── validate_config.py           # Configuration validation
 ├── tests/
 │   ├── __init__.py
-│   ├── test_server.py
-│   ├── test_tools.py
-│   └── test_services.py
-├── docs/
+│   └── test_server.py
+├── .env.example                     # Environment variables template
 ├── requirements.txt                 # Python dependencies
-├── pyproject.toml                   # Poetry configuration (optional)
 ├── .gitignore
 └── README.md
 ```

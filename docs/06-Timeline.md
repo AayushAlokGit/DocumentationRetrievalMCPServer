@@ -89,52 +89,41 @@
 
 ---
 
-### Phase 3: MCP Tools Implementation (Week 3)
+### Phase 3: Simplified MCP Tool Implementation (Week 3)
 
-#### Day 15-16: Core Search Tools
+#### Day 15-18: Core Question-Answering Tool
 
-- [ ] **search_work_items Tool**
-
-  - Implement vector similarity search
-  - Add metadata filtering (tags, work item IDs)
-  - Format search results appropriately
-  - Add relevance scoring
-
-- [ ] **list_work_items Tool**
-  - Implement work item enumeration
-  - Create metadata aggregation
-  - Format as readable table/list
-  - Add filtering capabilities
-
-#### Day 17-18: Question Answering
-
-- [ ] **ask_question Tool**
+- [ ] **ask_question Tool (Primary Focus)**
   - Implement RAG (Retrieval-Augmented Generation) pattern
   - Create context retrieval from search results
   - Implement chat completion with context
   - Add source attribution
+  - Format responses for VS Code display
+  - Handle edge cases (no results, errors)
 
-#### Day 19-21: Advanced Tools
+#### Day 19-21: Tool Integration and Polish
 
-- [ ] **get_work_item_details Tool**
-
-  - Implement specific work item retrieval
-  - Combine multiple chunks intelligently
-  - Format detailed responses
-  - Handle missing work items gracefully
-
-- [ ] **Tool Integration and Testing**
-  - Integrate all tools with MCP server
+- [ ] **MCP Server Integration**
+  - Integrate ask_question tool with MCP server
   - Add comprehensive input validation
   - Implement proper error handling
   - Add logging and monitoring
+  - Test VS Code integration
+  - Polish user experience
 
 **Deliverables:**
 
-- All core MCP tools implemented and working
+- Single, powerful question-answering MCP tool
 - Proper error handling and validation
-- Tools integrated with MCP server
+- Tool integrated with MCP server
 - Basic testing coverage
+- Ready for VS Code agent integration
+
+**Simplified Focus:**
+
+- **One tool only**: `ask_question` - answers questions about work items using AI
+- **Future extensions**: Additional tools can be added later (search, details, list)
+- **Core functionality**: RAG pattern with context retrieval and source attribution
 
 ---
 

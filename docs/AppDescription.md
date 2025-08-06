@@ -1,5 +1,50 @@
-I want to create an app which will leverage an LLM to answer queries related to the work items I have worked upon. The knowledge base for this app will be derived from a local folder which contains markdown files with relevant information about the work items. This documentation will be used to train the LLM to answer questions about the work items.
-I want to use Azure OpenAI to build this app, and I will be using the Azure OpenAI API to interact with the LLM. The app will allow me to ask questions about my work items, and the LLM will provide answers based on the information contained in the markdown files.
-I want my work item document files to be stored in a vector database to enable efficient retrieval of relevant information.
+# Work Item Documentation Retriever
 
-On second though instead create a mCP server which exposes tools which i can integrate into VSCOde agent mode and thus use this MCP server to answer questions about my work items. The mCP server will handle the interaction with the Azure OpenAI API and manage the vector database for efficient information retrieval.
+## Project Overview
+
+I want to create a Model Context Protocol (MCP) server that leverages an LLM to answer queries related to work items I have worked upon. This MCP server will be integrated into VS Code agent mode to provide intelligent assistance for work item documentation queries.
+
+## Data Structure
+
+The knowledge base will be derived from a local folder structure containing work item documentation:
+
+- **Root Directory**: `"Work Items"` folder on local desktop
+- **Organization**: Each work item has its own subdirectory
+- **Directory Names**: The subdirectory name serves as the **work item identifier**
+- **Contents**: Each subdirectory contains:
+  - Documentation markdown files (primary content)
+  - Other files (will be ignored for now)
+
+**Example Structure:**
+```
+Work Items/
+├── WI-12345/
+│   ├── requirements.md
+│   ├── implementation-notes.md
+│   └── other-files.txt (ignored)
+├── BUG-67890/
+│   ├── analysis.md
+│   ├── fix-documentation.md
+│   └── screenshots/ (ignored)
+└── FEATURE-11111/
+    ├── design.md
+    ├── implementation.md
+    └── testing.md
+```
+
+## Technical Architecture
+
+The solution uses:
+- **Azure OpenAI** for LLM capabilities and text embeddings
+- **Azure Cognitive Search** as the vector database for efficient information retrieval
+- **Model Context Protocol (MCP)** server architecture for VS Code integration
+- **Python** implementation for processing and indexing
+
+## Key Features
+
+1. **Automatic Discovery**: Recursively scan the "Work Items" directory structure
+2. **Work Item Identification**: Extract work item IDs from directory names
+3. **Document Processing**: Parse markdown files and extract metadata
+4. **Vector Indexing**: Generate embeddings and store in Azure Cognitive Search
+5. **Intelligent Querying**: Provide context-aware answers about work items through VS Code
+6. **Incremental Updates**: Support for updating documentation as work items evolve
