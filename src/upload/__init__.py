@@ -7,12 +7,12 @@ Includes document processing, file tracking, and upload utilities.
 """
 
 from .document_utils import discover_markdown_files, read_markdown_file, process_document_chunks, extract_metadata
-from .file_tracker import ProcessingTracker
+from .file_tracker import DocumentProcessingTracker
 
 __all__ = [
     'discover_markdown_files',
     'read_markdown_file', 
     'process_document_chunks',
     'extract_metadata',
-    'ProcessingTracker'
+    'DocumentProcessingTracker'
 ]

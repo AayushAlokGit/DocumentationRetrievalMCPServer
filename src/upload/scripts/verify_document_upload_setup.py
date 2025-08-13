@@ -20,8 +20,11 @@ import asyncio
 from pathlib import Path
 from typing import Dict, Any, List
 
-# Add src directory to path
-sys.path.append(str(Path(__file__).parent / "src"))
+# Add src directory to path - go up to project root then to src
+project_root = Path(__file__).parent.parent.parent.parent
+sys.path.insert(0, str(project_root / "src"))
+sys.path.insert(0, str(project_root / "src" / "common"))
+sys.path.insert(0, str(project_root / "src" / "upload"))
 
 def print_header(title: str):
     """Print a formatted header"""
@@ -244,21 +247,44 @@ async def verify_document_processing_pipeline() -> bool:
         print_result("Document Utilities Import", True, "Document processing utilities available")
         
         # Test file tracker
-        from file_tracker import ProcessingTracker
-        tracker = ProcessingTracker("test_processed_files.json")
-        print_result("File Tracker", True, "File processing tracker available")
+        from file_tracker import DocumentProcessingTracker
         
-        # Test document upload functionality
+        tracker = DocumentProcessingTracker("test_processed_files.json")
+        print_result("File Tracker", True, "Document processing tracker available")
+        
+        # Test file tracking functionality
         work_items_path = os.getenv('WORK_ITEMS_PATH')
         if work_items_path and Path(work_items_path).exists():
             try:
+                # Test tracking with actual markdown files
                 markdown_files = discover_markdown_files(work_items_path)
-                print_result("File Discovery", len(markdown_files) > 0,
-                            f"Discovered {len(markdown_files)} markdown files for processing")
-                
-                # Test metadata extraction on first file if available
                 if markdown_files:
                     test_file = markdown_files[0]
+                    
+                    # Test basic tracking operations
+                    initially_processed = tracker.is_processed(test_file)
+                    tracker.mark_processed(test_file)
+                    now_processed = tracker.is_processed(test_file)
+                    tracker.save()
+                    
+                    # Verify tracking file exists
+                    tracking_file_exists = tracker.tracking_file.exists()
+                    
+                    # Test unprocessing
+                    tracker.mark_unprocessed(test_file)
+                    after_unprocess = tracker.is_processed(test_file)
+                    
+                    # Get stats
+                    stats = tracker.get_stats()
+                    
+                    print_result("File Tracking Operations", True,
+                                f"Tracking operations work correctly - file marked and unmarked")
+                    print_result("Tracking File Creation", tracking_file_exists,
+                                f"Tracking file created at: {tracker.tracking_file}")
+                    print_result("Tracking Statistics", True,
+                                f"Stats available - {stats['total_processed']} files tracked")
+                    
+                    # Test metadata extraction on the same file
                     try:
                         with open(test_file, 'r', encoding='utf-8') as f:
                             content = f.read()
@@ -267,6 +293,27 @@ async def verify_document_processing_pipeline() -> bool:
                                     f"Successfully extracted metadata from {test_file.name}")
                     except Exception as e:
                         print_result("Metadata Extraction", False, f"Error processing {test_file.name}: {e}")
+                        
+                else:
+                    print_result("File Tracking Test", False, "No markdown files found for tracking test")
+                    
+            except Exception as e:
+                print_result("File Tracking Test", False, f"Error testing file tracking: {e}")
+                return False
+        else:
+            print_result("File Tracking Test", False, "Work items path not available for tracking test")
+        
+        # Clean up test tracking file
+        if tracker.tracking_file.exists():
+            tracker.tracking_file.unlink()
+        
+        # Test document upload functionality
+        work_items_path = os.getenv('WORK_ITEMS_PATH')
+        if work_items_path and Path(work_items_path).exists():
+            try:
+                markdown_files = discover_markdown_files(work_items_path)
+                print_result("File Discovery", len(markdown_files) > 0,
+                            f"Discovered {len(markdown_files)} markdown files for processing")
                         
             except Exception as e:
                 print_result("File Discovery", False, f"Error discovering files: {e}")

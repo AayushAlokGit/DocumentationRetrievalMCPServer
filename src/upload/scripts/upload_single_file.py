@@ -15,11 +15,14 @@ import asyncio
 from pathlib import Path
 
 # Add src to path for imports
-sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+project_root = Path(__file__).parent.parent.parent.parent
+sys.path.insert(0, str(project_root / "src"))
+sys.path.insert(0, str(project_root / "src" / "common"))
+sys.path.insert(0, str(project_root / "src" / "upload"))
 
 from document_upload import upload_document_to_search
 from document_utils import read_markdown_file, extract_metadata, simple_chunk_text
-from openai_service import get_openai_service
+from embedding_service import get_embedding_generator
 
 
 async def upload_single_file(file_path: str):
@@ -52,10 +55,10 @@ async def upload_single_file(file_path: str):
         print(f"   Content length: {len(content)} characters")
         print(f"   Chunks created: {len(chunks)}")
         
-        # Initialize OpenAI service  
-        openai_service = get_openai_service()
+        # Initialize embedding service  
+        embedding_service = get_embedding_generator()
         
-        if not openai_service.test_connection():
+        if not embedding_service.test_connection():
             print("[ERROR] Failed to connect to Azure OpenAI. Please check your credentials.")
             return False
         
@@ -63,7 +66,7 @@ async def upload_single_file(file_path: str):
         print("🧠 Generating embeddings...")
         embeddings = []
         for chunk in chunks:
-            embedding = await openai_service.get_embedding_async(chunk)
+            embedding = await embedding_service.generate_embedding(chunk)
             embeddings.append(embedding)
         
         print(f"[SUCCESS] Generated {len(embeddings)} embeddings")

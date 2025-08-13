@@ -27,12 +27,15 @@ from pathlib import Path
 from typing import List, Optional
 
 # Add src directory to path for imports
-sys.path.append(str(Path(__file__).parent.parent / "src"))
+project_root = Path(__file__).parent.parent.parent.parent
+sys.path.insert(0, str(project_root / "src"))
+sys.path.insert(0, str(project_root / "src" / "common"))
+sys.path.insert(0, str(project_root / "src" / "upload"))
 
 from dotenv import load_dotenv
 from document_upload import main as upload_main
 from document_utils import discover_markdown_files
-from file_tracker import ProcessingTracker
+from file_tracker import DocumentProcessingTracker
 
 # Load environment variables
 load_dotenv()
@@ -139,7 +142,7 @@ async def upload_work_items(work_item_id: Optional[str] = None,
     
     # Handle reset tracker
     if reset_tracker:
-        tracker = ProcessingTracker("processed_files.json")
+        tracker = DocumentProcessingTracker("processed_files.json")
         print(f"[REFRESH] Resetting processing tracker...")
         tracker.reset()
         tracker.save()
@@ -147,7 +150,7 @@ async def upload_work_items(work_item_id: Optional[str] = None,
     
     # Handle force reprocessing for specific work item
     if force and work_item_id:
-        tracker = ProcessingTracker("processed_files.json")
+        tracker = DocumentProcessingTracker("processed_files.json")
         files_to_force = get_files_for_work_item(work_items_path, work_item_id)
         print(f"[FAST] Force mode: Marking {len(files_to_force)} files for reprocessing...")
         

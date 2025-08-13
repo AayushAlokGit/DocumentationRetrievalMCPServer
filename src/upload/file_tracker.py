@@ -7,29 +7,33 @@ This ensures that unchanged files are not reprocessed, improving efficiency.
 """
 
 import json
-import hashlib
+import os
 from pathlib import Path
 from typing import Dict
 
 
-def get_file_signature(file_path: Path) -> str:
+def get_file_signature(file_path: Path) -> Dict[str, any]:
     """
     Generate a unique signature for a file based on path, size, and modification time.
     
     This signature is used to detect if a file has changed since last processing.
+    Returns the values directly for better visibility instead of a hash.
     
     Args:
         file_path: Path to the file
         
     Returns:
-        str: MD5 hash of the file's signature data
+        Dict[str, any]: Dictionary containing path, size, and modification time
     """
     stat = file_path.stat()
-    signature_data = f"{file_path}:{stat.st_size}:{stat.st_mtime}"
-    return hashlib.md5(signature_data.encode()).hexdigest()
+    return {
+        "path": str(file_path),
+        "size": stat.st_size,
+        "mtime": stat.st_mtime
+    }
 
 
-def load_processed_files(tracking_file: Path) -> Dict[str, str]:
+def load_processed_files(tracking_file: Path) -> Dict[str, Dict[str, any]]:
     """
     Load the processed files tracking data from JSON file.
     
@@ -37,7 +41,7 @@ def load_processed_files(tracking_file: Path) -> Dict[str, str]:
         tracking_file: Path to the tracking JSON file
         
     Returns:
-        Dict[str, str]: Mapping of file paths to their signatures
+        Dict[str, Dict[str, any]]: Mapping of file paths to their signature data
     """
     if tracking_file.exists():
         try:
@@ -48,20 +52,20 @@ def load_processed_files(tracking_file: Path) -> Dict[str, str]:
     return {}
 
 
-def save_processed_files(tracking_file: Path, processed_files: Dict[str, str]):
+def save_processed_files(tracking_file: Path, processed_files: Dict[str, Dict[str, any]]):
     """
     Save the processed files tracking data to JSON file.
     
     Args:
         tracking_file: Path to the tracking JSON file
-        processed_files: Dictionary mapping file paths to signatures
+        processed_files: Dictionary mapping file paths to signature data
     """
     tracking_file.parent.mkdir(parents=True, exist_ok=True)
     with open(tracking_file, 'w', encoding='utf-8') as f:
         json.dump(processed_files, f, indent=2)
 
 
-def is_file_already_processed(file_path: Path, processed_files: Dict[str, str]) -> bool:
+def is_file_already_processed(file_path: Path, processed_files: Dict[str, Dict[str, any]]) -> bool:
     """
     Check if a file has already been processed based on its signature.
     
@@ -75,43 +79,91 @@ def is_file_already_processed(file_path: Path, processed_files: Dict[str, str]) 
     file_key = str(file_path)
     current_signature = get_file_signature(file_path)
     
-    # If file is in tracking and signature matches, it's already processed
-    return file_key in processed_files and processed_files[file_key] == current_signature
+    # If file is in tracking, compare all signature components
+    if file_key in processed_files:
+        stored_signature = processed_files[file_key]
+        return (
+            stored_signature.get("size") == current_signature["size"] and
+            stored_signature.get("mtime") == current_signature["mtime"] and
+            stored_signature.get("path") == current_signature["path"]
+        )
+    
+    return False
 
 
-def mark_file_as_processed(file_path: Path, processed_files: Dict[str, str]):
+def mark_file_as_processed(file_path: Path, processed_files: Dict[str, Dict[str, any]]):
     """
-    Mark a file as processed by storing its signature.
+    Mark a file as processed by storing its signature data.
     
     Args:
         file_path: Path to the file that was processed
-        processed_files: Dictionary to update with the file signature
+        processed_files: Dictionary to update with the file signature data
     """
     file_key = str(file_path)
     processed_files[file_key] = get_file_signature(file_path)
 
 
-class ProcessingTracker:
+class DocumentProcessingTracker:
     """
-    Convenient class-based interface for file processing tracking.
+    Document processing tracker that manages file tracking for document upload pipeline.
+    
+    This tracker automatically initializes its tracking source from environment configuration
+    and provides idempotent file processing capabilities. The tracker ensures that unchanged
+    files are not reprocessed, improving efficiency.
     
     Example usage:
-        tracker = ProcessingTracker("processed_files.json")
+        tracker = DocumentProcessingTracker("processed_files.json")
         if not tracker.is_processed(file_path):
             # Process the file...
             tracker.mark_processed(file_path)
             tracker.save()
     """
     
-    def __init__(self, tracking_file_path: str):
+    def __init__(self, tracking_file_name: str = "processed_files.json"):
         """
-        Initialize the processing tracker.
+        Initialize the document processing tracker.
+        
+        The tracker automatically determines its tracking source from the environment:
+        - Primary: Uses WORK_ITEMS_PATH environment variable
+        - Fallback: Uses current working directory
         
         Args:
-            tracking_file_path: Path to the JSON tracking file
+            tracking_file_name: Name of the JSON tracking file (default: "processed_files.json")
         """
-        self.tracking_file = Path(tracking_file_path)
+        self.tracking_file_name = tracking_file_name
+        self._initialize_tracking_source()
         self.processed_files = load_processed_files(self.tracking_file)
+    
+    def _initialize_tracking_source(self):
+        """
+        Initialize the tracking source based on environment configuration.
+        
+        This method provides future extensibility for different tracking sources
+        while currently using the WORK_ITEMS_PATH environment variable.
+        """
+        # Primary tracking source: WORK_ITEMS_PATH environment variable
+        work_items_path = os.getenv('WORK_ITEMS_PATH')
+        
+        if not work_items_path:
+            raise EnvironmentError("WORK_ITEMS_PATH environment variable is required but not set")
+        
+        work_items_dir = Path(work_items_path)
+        if not work_items_dir.exists():
+            raise FileNotFoundError(f"WORK_ITEMS_PATH directory not found: {work_items_path}")
+        
+        # Use work items directory as tracking source
+        self.tracking_source = work_items_dir
+        self.tracking_file = self.tracking_source / self.tracking_file_name
+        print(f"[TRACKER] Initialized with work items tracking source: {self.tracking_file}")
+    
+    def get_tracking_source(self) -> Path:
+        """
+        Get the current tracking source directory.
+        
+        Returns:
+            Path: The directory where tracking files are stored
+        """
+        return self.tracking_source
     
     def is_processed(self, file_path: Path) -> bool:
         """Check if a file is already processed."""
