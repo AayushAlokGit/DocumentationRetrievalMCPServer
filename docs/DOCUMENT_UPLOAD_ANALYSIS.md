@@ -389,6 +389,7 @@ def get_file_signature(file_path: Path) -> Dict[str, any]:
 - **Initialization**: Automatic from `WORK_ITEMS_PATH` environment variable
 - **Purpose**: Skip unchanged files, reprocess modified files
 - **Reset Option**: Force reprocessing with `--reset` flag
+- **Enhanced Reset**: Deletes all documents from Azure Search index and clears tracker
 - **Signature Storage**: Direct values (path, size, mtime) instead of hash for better debugging
 - **Benefits**:
   - Co-located with work items for easy management
@@ -396,6 +397,21 @@ def get_file_signature(file_path: Path) -> Dict[str, any]:
   - Clear association with specific work items directory
   - Enhanced visibility with direct signature values
   - Environment-based automatic initialization
+  - Clean slate reset capability for complete reprocessing
+
+### Reset Process Details
+
+When using the `--reset` flag, the system performs:
+
+1. **Search Index Cleanup**: Deletes all documents from Azure Cognitive Search index
+2. **Tracker Reset**: Clears the DocumentProcessingTracker (processed_files.json)
+3. **Complete Refresh**: Ensures all files will be reprocessed on next upload
+
+This provides a clean slate for scenarios like:
+- Schema changes requiring reindexing
+- Major content updates across all files
+- Troubleshooting processing issues
+- Development and testing workflows
 
 ---
 
@@ -451,7 +467,7 @@ python src/upload/scripts/upload_work_items.py --work-item WI-12345
 # Dry run preview
 python src/upload/scripts/upload_work_items.py --dry-run
 
-# Force reprocess all
+# Force reprocess all (deletes search documents and clears tracker)
 python src/upload/scripts/upload_work_items.py --reset
 ```
 

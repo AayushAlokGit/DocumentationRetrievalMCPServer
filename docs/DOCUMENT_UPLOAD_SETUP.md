@@ -238,7 +238,7 @@ python src/upload/scripts/upload_work_items.py --work-item WI-12345
 # Preview what will be uploaded (dry run)
 python src/upload/scripts/upload_work_items.py --dry-run
 
-# Force reprocessing of all files (clears DocumentProcessingTracker)
+# Force reprocessing of all files (clears DocumentProcessingTracker and deletes all search documents)
 python src/upload/scripts/upload_work_items.py --reset
 
 # Upload single file

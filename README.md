@@ -155,6 +155,7 @@ This project has **two separate setup processes** for each component:
 - `python src/upload/scripts/upload_work_items.py` - Process and index all Work Items documents
 - `python src/upload/scripts/upload_work_items.py --work-item WI-123` - Upload specific work item
 - `python src/upload/scripts/upload_work_items.py --dry-run` - Preview what will be uploaded
+- `python src/upload/scripts/upload_work_items.py --reset` - Delete all search documents and reset tracker for complete reprocessing
 
 #### MCP Server Commands (🔌)
 

@@ -13,7 +13,7 @@ Usage:
     python scripts/upload_work_items.py [--reset] [--work-item WI-123] [--dry-run]
 
 Options:
-    --reset         Reset the processing tracker (reprocess all files)
+    --reset         Reset the processing tracker and delete all documents from search index
     --work-item     Upload only specific work item (e.g., WI-123)
     --dry-run       Show what would be uploaded without actually uploading
     --force         Force reprocessing of already processed files
@@ -36,6 +36,7 @@ from dotenv import load_dotenv
 from document_upload import main as upload_main
 from document_utils import discover_markdown_files
 from file_tracker import DocumentProcessingTracker
+from common.azure_cognitive_search import get_azure_search_service
 
 # Load environment variables
 load_dotenv()
@@ -144,9 +145,24 @@ async def upload_work_items(work_item_id: Optional[str] = None,
     if reset_tracker:
         tracker = DocumentProcessingTracker("processed_files.json")
         print(f"[REFRESH] Resetting processing tracker...")
+        
+        # Delete all documents from Azure Cognitive Search index
+        print(f"[SEARCH] Deleting all documents from Azure Cognitive Search index...")
+        try:
+            search_service = get_azure_search_service()
+            deleted_count = search_service.delete_all_documents()
+            print(f"   [SUCCESS] Deleted {deleted_count} documents from search index")
+        except Exception as e:
+            print(f"   [ERROR] Failed to delete documents from search index: {e}")
+            print(f"   [WARNING] Continuing with file tracker reset only...")
+        
+        # Clear the tracker after deletion
         tracker.reset()
         tracker.save()
-        print(f"   [SUCCESS] All files will be reprocessed")
+        
+        print(f"[RESULTS] Reset processing completed:")
+        print(f"   • Processing tracker cleared: ✅")
+        print(f"   [SUCCESS] All files will be reprocessed on next upload")
     
     # Handle force reprocessing for specific work item
     if force and work_item_id:
@@ -204,7 +220,7 @@ Examples:
     # Show what would be uploaded without uploading
     python scripts/upload_work_items.py --dry-run
     
-    # Reset and reprocess all files
+    # Reset and reprocess all files (also deletes all documents from search index)
     python scripts/upload_work_items.py --reset
     
     # Force reprocess specific work item
@@ -221,7 +237,7 @@ Examples:
     parser.add_argument(
         '--reset', 
         action='store_true',
-        help='Reset processing tracker and reprocess all files'
+        help='Reset processing tracker and delete all documents from search index'
     )
     
     parser.add_argument(
