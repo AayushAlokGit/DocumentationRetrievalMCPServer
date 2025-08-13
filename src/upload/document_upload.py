@@ -134,7 +134,7 @@ async def main(specific_work_item_dir: str = None):
     for file_path in markdown_files:
         if tracker.is_processed(file_path):
             skipped_count += 1
-            print(f"⏭️  Skipping (already processed): {file_path.name}")
+            print(f"⏭️  Skipping (already processed): {file_path}")
         else:
             files_to_process.append(file_path)
     
