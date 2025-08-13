@@ -109,7 +109,7 @@ class AzureCognitiveSearch:
             bool: True if successful, False otherwise
         """
         try:
-            # Define the fields for the index
+            # Define the fields for the index - matching create_index.py schema
             fields = [
                 SimpleField(
                     name="id",
@@ -132,6 +132,7 @@ class AzureCognitiveSearch:
                     vector_search_dimensions=vector_dimensions,
                     vector_search_profile_name="vector-profile"
                 ),
+                # Core file information
                 SimpleField(
                     name="file_path",
                     type=SearchFieldDataType.String,
@@ -140,26 +141,60 @@ class AzureCognitiveSearch:
                     facetable=True
                 ),
                 SearchableField(
+                    name="file_name",
+                    type=SearchFieldDataType.String,
+                    searchable=True,
+                    filterable=True,
+                    retrievable=True,
+                    facetable=True
+                ),
+                SimpleField(
+                    name="file_type",
+                    type=SearchFieldDataType.String,
+                    filterable=True,
+                    retrievable=True,
+                    facetable=True
+                ),
+                # Document metadata
+                SearchableField(
                     name="title",
                     type=SearchFieldDataType.String,
                     searchable=True,
                     retrievable=True
                 ),
+                SearchableField(
+                    name="tags",
+                    type=SearchFieldDataType.Collection(SearchFieldDataType.String),
+                    searchable=True,
+                    filterable=True,
+                    retrievable=True,
+                    facetable=True
+                ),
+                SearchableField(
+                    name="category",
+                    type=SearchFieldDataType.String,
+                    searchable=True,
+                    filterable=True,
+                    retrievable=True,
+                    facetable=True
+                ),
+                # Context/grouping (flexible - can be work_item_id, project, folder, etc.)
                 SimpleField(
-                    name="work_item_id",
+                    name="context_id",
                     type=SearchFieldDataType.String,
                     filterable=True,
                     retrievable=True,
                     facetable=True
                 ),
                 SearchableField(
-                    name="tags",
+                    name="context_name",
                     type=SearchFieldDataType.String,
                     searchable=True,
                     filterable=True,
                     retrievable=True,
                     facetable=True
                 ),
+                # Timestamps
                 SimpleField(
                     name="last_modified",
                     type=SearchFieldDataType.DateTimeOffset,
@@ -167,12 +202,19 @@ class AzureCognitiveSearch:
                     retrievable=True,
                     sortable=True
                 ),
+                # Chunk information
                 SimpleField(
                     name="chunk_index",
                     type=SearchFieldDataType.Int32,
                     filterable=True,
                     retrievable=True,
                     sortable=True
+                ),
+                # Optional: Custom metadata as JSON string for strategy-specific data
+                SimpleField(
+                    name="metadata_json",
+                    type=SearchFieldDataType.String,
+                    retrievable=True
                 )
             ]
             
@@ -197,18 +239,21 @@ class AzureCognitiveSearch:
                 ]
             )
             
-            # Configure semantic search
+            # Configure semantic search - matching create_index.py schema
             semantic_search = SemanticSearch(
                 configurations=[
                     SemanticConfiguration(
-                        name="semantic-config",
+                        name="general-semantic-config",
                         prioritized_fields=SemanticPrioritizedFields(
                             title_field=SemanticField(field_name="title"),
                             content_fields=[
-                                SemanticField(field_name="content")
+                                SemanticField(field_name="content"),
+                                SemanticField(field_name="file_name")
                             ],
                             keywords_fields=[
-                                SemanticField(field_name="tags")
+                                SemanticField(field_name="tags"),
+                                SemanticField(field_name="category"),
+                                SemanticField(field_name="context_name")
                             ]
                         )
                     )
@@ -228,11 +273,14 @@ class AzureCognitiveSearch:
             print(f"[SUCCESS] Index '{self.index_name}' created successfully!")
             print(f"   Service: {self.service_name}")
             print(f"   Endpoint: {self.endpoint}")
-            print(f"   Fields: {len(fields)}")
-            print("   Features:")
+            print(f"   Fields: {len(fields)} (optimized for general-purpose search)")
+            print("   Core Features:")
             print(f"   - Vector search enabled ({vector_dimensions} dimensions)")
             print("   - Semantic search configured")
-            print("   - Work item filtering and faceting")
+            print("   - File name and metadata search")
+            print("   - Context-based grouping (flexible)")
+            print("   - Tag and category filtering")
+            print("   - Extensible metadata support")
             return True
             
         except Exception as e:
@@ -324,20 +372,40 @@ class AzureCognitiveSearch:
                     print(f"[ERROR] Invalid embedding for chunk {i}, skipping...")
                     continue
                 
-                # Create search document
+                # Create search document - matching create_index.py schema
                 tags = document['metadata'].get('tags', [])
-                tags_str = ', '.join(tags) if isinstance(tags, list) else str(tags) if tags else ''
+                # Ensure tags is a list of strings for the Collection field
+                if isinstance(tags, str):
+                    tags = [tags] if tags else []
+                elif not isinstance(tags, list):
+                    tags = [str(tags)] if tags else []
+                
+                file_path = document['file_path']
+                file_name = Path(file_path).name
+                file_stem = Path(file_path).stem
+                file_type = Path(file_path).suffix.lstrip('.')
                 
                 search_doc = {
                     'id': doc_id,
                     'content': chunk,
                     'content_vector': embedding,
-                    'file_path': document['file_path'],
-                    'title': document['metadata'].get('title', file_name),
-                    'work_item_id': document['metadata'].get('work_item_id', 'Unknown'),
-                    'tags': tags_str,
+                    # Core file information
+                    'file_path': file_path,
+                    'file_name': file_name,
+                    'file_type': file_type,
+                    # Document metadata
+                    'title': document['metadata'].get('title', file_stem),
+                    'tags': tags,
+                    'category': document['metadata'].get('category', 'document'),
+                    # Context/grouping (flexible)
+                    'context_id': document['metadata'].get('work_item_id', document['metadata'].get('context_id', 'Unknown')),
+                    'context_name': document['metadata'].get('work_item_name', document['metadata'].get('context_name', 'Unknown')),
+                    # Timestamps
                     'last_modified': document['metadata'].get('last_modified', datetime.utcnow().isoformat() + 'Z'),
-                    'chunk_index': i
+                    # Chunk information
+                    'chunk_index': i,
+                    # Optional: Custom metadata as JSON string
+                    'metadata_json': json.dumps(document['metadata'])
                 }
                 
                 search_documents.append(search_doc)
@@ -394,27 +462,7 @@ class AzureCognitiveSearch:
                 print(f"[ERROR] Upload failed: {e}")
         
         return successful, failed
-
-    def upload_documents_batch(self, documents: List[Dict[str, Any]]) -> Tuple[int, int]:
-        """
-        Upload multiple documents in batch
-        
-        Args:
-            documents: List of document dictionaries
-            
-        Returns:
-            Tuple of (successful_uploads, total_documents)
-        """
-        successful = 0
-        total = len(documents)
-        
-        for i, document in enumerate(documents, 1):
-            print(f"Uploading document {i}/{total}: {Path(document['file_path']).name}")
-            if self.upload_document(document):
-                successful += 1
-        
-        return successful, total
-    
+   
     def delete_document(self, document_id: str) -> bool:
         """
         Delete a specific document by ID
@@ -450,10 +498,10 @@ class AzureCognitiveSearch:
             int: Number of documents deleted
         """
         try:
-            # Find all documents for the work item
+            # Find all documents for the work item - use context_id field
             results = self.search_client.search(
                 search_text="*",
-                filter=f"work_item_id eq '{work_item_id}'",
+                filter=f"context_id eq '{work_item_id}'",
                 select="id"
             )
             
@@ -582,15 +630,15 @@ class AzureCognitiveSearch:
         
         Args:
             query: Search query string
-            work_item_id: Optional work item filter
+            work_item_id: Optional work item filter (mapped to context_id)
             top: Maximum number of results
             
         Returns:
             List of search result dictionaries
         """
         try:
-            # Build filter if work item specified
-            filter_expr = f"work_item_id eq '{work_item_id}'" if work_item_id else None
+            # Build filter if work item specified - use context_id field
+            filter_expr = f"context_id eq '{work_item_id}'" if work_item_id else None
             
             results = self.search_client.search(
                 search_text=query,
@@ -625,8 +673,8 @@ class AzureCognitiveSearch:
                 print("[ERROR] Failed to generate query embedding")
                 return []
             
-            # Build filter if work item specified
-            filter_expr = f"work_item_id eq '{work_item_id}'" if work_item_id else None
+            # Build filter if work item specified - use context_id field
+            filter_expr = f"context_id eq '{work_item_id}'" if work_item_id else None
             
             # Create vector query
             vector_query = VectorizedQuery(vector=query_embedding, k_nearest_neighbors=top, fields="content_vector")
@@ -664,8 +712,8 @@ class AzureCognitiveSearch:
                 print("[ERROR] Failed to generate query embedding, falling back to text search")
                 return self.text_search(query, work_item_id, top)
             
-            # Build filter if work item specified
-            filter_expr = f"work_item_id eq '{work_item_id}'" if work_item_id else None
+            # Build filter if work item specified - use context_id field
+            filter_expr = f"context_id eq '{work_item_id}'" if work_item_id else None
             
             # Create vector query
             vector_query = VectorizedQuery(vector=query_embedding, k_nearest_neighbors=top, fields="content_vector")
@@ -697,14 +745,14 @@ class AzureCognitiveSearch:
             List of search result dictionaries
         """
         try:
-            # Build filter if work item specified
-            filter_expr = f"work_item_id eq '{work_item_id}'" if work_item_id else None
+            # Build filter if work item specified - use context_id field
+            filter_expr = f"context_id eq '{work_item_id}'" if work_item_id else None
             
             results = self.search_client.search(
                 search_text=query,
                 filter=filter_expr,
                 query_type="semantic",
-                semantic_configuration_name="semantic-config",
+                semantic_configuration_name="general-semantic-config",
                 top=top,
                 select="*"
             )
@@ -722,20 +770,20 @@ class AzureCognitiveSearch:
         Get list of all unique work item IDs in the index
         
         Returns:
-            List of work item IDs
+            List of work item IDs (using context_id field)
         """
         try:
             results = self.search_client.search(
                 search_text="*",
-                facets=["work_item_id"],
+                facets=["context_id"],
                 top=0
             )
             
             work_items = []
             if hasattr(results, 'get_facets') and results.get_facets():
                 facets = results.get_facets()
-                if 'work_item_id' in facets:
-                    work_items = [facet['value'] for facet in facets['work_item_id']]
+                if 'context_id' in facets:
+                    work_items = [facet['value'] for facet in facets['context_id']]
             
             return sorted(work_items)
             
