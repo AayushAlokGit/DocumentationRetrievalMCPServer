@@ -1,266 +1,128 @@
 """
-Azure Cognitive Search Index Creation
-Creates the search index with vector search capabilities
+Azure Cognitive Search Index Creation Script
+==========================================
+
+Creates the search index with vector search capabilities using the AzureCognitiveSearch service class.
+This script provides a simplified interface for index management by leveraging the centralized
+service class instead of directly implementing Azure SDK calls.
+
+Features:
+- Connection testing
+- Index creation with matching schema from service class
+- Index existence checking with statistics
+- Safe index deletion with confirmation
+- Comprehensive error handling and user feedback
+
+Usage:
+    python create_index.py
+
+The script will:
+1. Test connection to Azure Cognitive Search
+2. Check if index already exists
+3. Offer to recreate existing index if found
+4. Create new index with optimized schema
+5. Provide next steps for document upload
 """
 
 import os
-import json
-from dotenv import load_dotenv
-from azure.search.documents.indexes import SearchIndexClient
-from azure.search.documents.indexes.models import (
-    SearchIndex,
-    SearchField,
-    SearchFieldDataType,
-    SimpleField,
-    SearchableField,
-    VectorSearch,
-    HnswAlgorithmConfiguration,
-    VectorSearchProfile,
-    SemanticConfiguration,
-    SemanticPrioritizedFields,
-    SemanticField,
-    SemanticSearch
-)
-from azure.core.credentials import AzureKeyCredential
+import sys
+from pathlib import Path
 
-# Load environment variables
-load_dotenv()
+# Add the src directory to the path so we can import our modules
+current_dir = Path(__file__).parent
+src_dir = current_dir.parent.parent
+sys.path.insert(0, str(src_dir))
+
+from common.azure_cognitive_search import get_azure_search_service
 
 
-def create_search_index():
-    """Create the Azure Cognitive Search index with vector search capabilities"""
-    
-    # Get configuration from environment
-    service_name = os.getenv('AZURE_SEARCH_SERVICE')
-    admin_key = os.getenv('AZURE_SEARCH_KEY')
-    index_name = os.getenv('AZURE_SEARCH_INDEX', 'work-items-index')
-    
-    # Initialize the search index client
-    index_client = SearchIndexClient(
-        endpoint=f"https://{service_name}.search.windows.net",
-        credential=AzureKeyCredential(admin_key)
-    )
-    
-    # Define the fields for the index - optimized for general-purpose document search
-    fields = [
-        SimpleField(
-            name="id",
-            type=SearchFieldDataType.String,
-            key=True,
-            filterable=True,
-            retrievable=True
-        ),
-        SearchableField(
-            name="content",
-            type=SearchFieldDataType.String,
-            searchable=True,
-            retrievable=True,
-            analyzer_name="standard.lucene"
-        ),
-        SearchField(
-            name="content_vector",
-            type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
-            searchable=True,
-            vector_search_dimensions=1536,
-            vector_search_profile_name="vector-profile"
-        ),
-        # Core file information
-        SimpleField(
-            name="file_path",
-            type=SearchFieldDataType.String,
-            filterable=True,
-            retrievable=True,
-            facetable=True
-        ),
-        SearchableField(
-            name="file_name",
-            type=SearchFieldDataType.String,
-            searchable=True,
-            filterable=True,
-            retrievable=True,
-            facetable=True
-        ),
-        SimpleField(
-            name="file_type",
-            type=SearchFieldDataType.String,
-            filterable=True,
-            retrievable=True,
-            facetable=True
-        ),
-        # Document metadata
-        SearchableField(
-            name="title",
-            type=SearchFieldDataType.String,
-            searchable=True,
-            retrievable=True
-        ),
-        SearchableField(
-            name="tags",
-            type=SearchFieldDataType.Collection(SearchFieldDataType.String),
-            searchable=True,
-            filterable=True,
-            retrievable=True,
-            facetable=True
-        ),
-        SearchableField(
-            name="category",
-            type=SearchFieldDataType.String,
-            searchable=True,
-            filterable=True,
-            retrievable=True,
-            facetable=True
-        ),
-        # Context/grouping (flexible - can be work_item_id, project, folder, etc.)
-        SimpleField(
-            name="context_id",
-            type=SearchFieldDataType.String,
-            filterable=True,
-            retrievable=True,
-            facetable=True
-        ),
-        SearchableField(
-            name="context_name",
-            type=SearchFieldDataType.String,
-            searchable=True,
-            filterable=True,
-            retrievable=True,
-            facetable=True
-        ),
-        # Timestamps
-        SimpleField(
-            name="last_modified",
-            type=SearchFieldDataType.DateTimeOffset,
-            filterable=True,
-            retrievable=True,
-            sortable=True
-        ),
-        # Chunk information
-        SimpleField(
-            name="chunk_index",
-            type=SearchFieldDataType.Int32,
-            filterable=True,
-            retrievable=True,
-            sortable=True
-        ),
-        # Optional: Custom metadata as JSON string for strategy-specific data
-        SimpleField(
-            name="metadata_json",
-            type=SearchFieldDataType.String,
-            retrievable=True
-        )
-    ]
-    
-    # Configure vector search
-    vector_search = VectorSearch(
-        profiles=[
-            VectorSearchProfile(
-                name="vector-profile",
-                algorithm_configuration_name="hnsw-algorithm"
-            )
-        ],
-        algorithms=[
-            HnswAlgorithmConfiguration(
-                name="hnsw-algorithm",
-                parameters={
-                    "metric": "cosine",
-                    "m": 4,
-                    "efConstruction": 400,
-                    "efSearch": 500
-                }
-            )
-        ]
-    )
-    
-    # Configure semantic search - simplified for general-purpose use
-    semantic_search = SemanticSearch(
-        configurations=[
-            SemanticConfiguration(
-                name="general-semantic-config",
-                prioritized_fields=SemanticPrioritizedFields(
-                    title_field=SemanticField(field_name="title"),
-                    content_fields=[
-                        SemanticField(field_name="content"),
-                        SemanticField(field_name="file_name")
-                    ],
-                    keywords_fields=[
-                        SemanticField(field_name="tags"),
-                        SemanticField(field_name="category"),
-                        SemanticField(field_name="context_name")
-                    ]
-                )
-            )
-        ]
-    )
-    
-    # Create the search index
-    index = SearchIndex(
-        name=index_name,
-        fields=fields,
-        vector_search=vector_search,
-        semantic_search=semantic_search
-    )
+def create_search_index(vector_dimensions: int = 1536):
+    """Create the Azure Cognitive Search index using the service class"""
     
     try:
-        # Create or update the index
-        result = index_client.create_or_update_index(index)
-        print(f"[SUCCESS] Optimized document search index '{index_name}' created successfully!")
-        print(f"   Service: {service_name}")
-        print(f"   Endpoint: https://{service_name}.search.windows.net")
-        print(f"   Fields: {len(fields)} (optimized for general-purpose search)")
-        print("   Core Features:")
-        print("   - Vector search enabled (1536 dimensions)")
-        print("   - Semantic search configured")
-        print("   - File name and metadata search")
-        print("   - Context-based grouping (flexible)")
-        print("   - Tag and category filtering")
-        print("   - Extensible metadata support")
-        return True
+        # Get the Azure Search service instance
+        search_service = get_azure_search_service()
+        
+        # Use the service class method to create the index
+        success = search_service.create_index(vector_dimensions=vector_dimensions)
+        
+        if success:
+            print("\n🎉 Index creation successful!")
+        else:
+            print("\n[ERROR] Index creation failed!")
+            
+        return success
         
     except Exception as e:
-        print(f"[ERROR] Error creating index: {e}")
+        print(f"[ERROR] Error during index creation: {e}")
         return False
 
 
 def check_index_exists():
-    """Check if the search index already exists"""
-    
-    service_name = os.getenv('AZURE_SEARCH_SERVICE')
-    admin_key = os.getenv('AZURE_SEARCH_KEY')
-    index_name = os.getenv('AZURE_SEARCH_INDEX', 'work-items-index')
-    
-    index_client = SearchIndexClient(
-        endpoint=f"https://{service_name}.search.windows.net",
-        credential=AzureKeyCredential(admin_key)
-    )
+    """Check if the search index already exists using the service class"""
     
     try:
-        index = index_client.get_index(index_name)
-        print(f"[SUCCESS] Index '{index_name}' already exists")
-        print(f"   Fields: {len(index.fields)}")
-        return True
-    except Exception:
-        print(f"[ERROR] Index '{index_name}' does not exist")
+        # Get the Azure Search service instance
+        search_service = get_azure_search_service()
+        
+        # Use the service class method to check index existence
+        exists = search_service.index_exists()
+        
+        if exists:
+            print(f"[SUCCESS] Index '{search_service.index_name}' already exists")
+            # Get some basic stats
+            stats = search_service.get_index_stats()
+            print(f"   Documents: {stats.get('document_count', 0)}")
+            print(f"   Work Items: {stats.get('work_item_count', 0)}")
+        else:
+            print(f"[INFO] Index '{search_service.index_name}' does not exist")
+            
+        return exists
+        
+    except Exception as e:
+        print(f"[ERROR] Error checking index existence: {e}")
         return False
 
 
 def delete_index():
-    """Delete the search index (use with caution!)"""
-    
-    service_name = os.getenv('AZURE_SEARCH_SERVICE')
-    admin_key = os.getenv('AZURE_SEARCH_KEY')
-    index_name = os.getenv('AZURE_SEARCH_INDEX', 'work-items-index')
-    
-    index_client = SearchIndexClient(
-        endpoint=f"https://{service_name}.search.windows.net",
-        credential=AzureKeyCredential(admin_key)
-    )
+    """Delete the search index using the service class (use with caution!)"""
     
     try:
-        index_client.delete_index(index_name)
-        print(f"🗑️  Index '{index_name}' deleted successfully")
-        return True
+        # Get the Azure Search service instance
+        search_service = get_azure_search_service()
+        
+        # Use the service class method to delete the index
+        success = search_service.delete_index()
+        
+        return success
+        
     except Exception as e:
-        print(f"[ERROR] Error deleting index: {e}")
+        print(f"[ERROR] Error during index deletion: {e}")
+        return False
+
+
+def test_connection():
+    """Test connection to Azure Cognitive Search using the service class"""
+    
+    try:
+        # Get the Azure Search service instance
+        search_service = get_azure_search_service()
+        
+        # Use the service class method to test connection
+        success = search_service.test_connection()
+        
+        if success:
+            print("[SUCCESS] Connection to Azure Cognitive Search successful")
+            print(f"   Service: {search_service.service_name}")
+            print(f"   Endpoint: {search_service.endpoint}")
+            print(f"   Index: {search_service.index_name}")
+        else:
+            print("[ERROR] Connection to Azure Cognitive Search failed")
+            
+        return success
+        
+    except Exception as e:
+        print(f"[ERROR] Error testing connection: {e}")
         return False
 
 
@@ -270,24 +132,38 @@ def main():
     print("Azure Cognitive Search Index Setup")
     print("=" * 40)
     
+    # Test connection first
+    print("Testing connection to Azure Cognitive Search...")
+    if not test_connection():
+        print("\n[ERROR] Cannot connect to Azure Cognitive Search.")
+        print("Please check your environment variables and credentials.")
+        return
+    
     # Check if index exists
+    print("\nChecking if index exists...")
     if check_index_exists():
-        response = input("Index already exists. Recreate? (y/N): ")
+        response = input("\nIndex already exists. Recreate? (y/N): ")
         if response.lower() == 'y':
             print("Deleting existing index...")
-            delete_index()
+            if not delete_index():
+                print("[ERROR] Failed to delete existing index. Aborting.")
+                return
         else:
             print("Keeping existing index.")
             return
     
     # Create the index
-    print("Creating search index...")
+    print("\nCreating search index...")
     success = create_search_index()
     
     if success:
         print("\n🎉 Setup complete! You can now upload documents.")
+        print("\nNext steps:")
+        print("1. Use upload_single_file.py to upload individual documents")
+        print("2. Use upload_work_items.py to upload work item documentation")
+        print("3. Test search functionality with the MCP server")
     else:
-        print("\n[ERROR] Setup failed. Check your credentials and try again.")
+        print("\n[ERROR] Setup failed. Check the error messages above and try again.")
 
 
 if __name__ == "__main__":
