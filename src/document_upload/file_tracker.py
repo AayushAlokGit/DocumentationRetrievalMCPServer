@@ -99,6 +99,10 @@ def mark_file_as_processed(file_path: Path, processed_files: Dict[str, Dict[str,
         file_path: Path to the file that was processed
         processed_files: Dictionary to update with the file signature data
     """
+    # Ensure file_path is a Path object
+    if isinstance(file_path, str):
+        file_path = Path(file_path)
+        
     file_key = str(file_path)
     processed_files[file_key] = get_file_signature(file_path)
 

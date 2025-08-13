@@ -364,6 +364,37 @@ class AzureCognitiveSearch:
             print(f"[ERROR] Upload failed: {e}")
             return False
     
+    def upload_search_objects_batch(self, search_objects: List[Dict[str, Any]]) -> Tuple[int, int]:
+        """
+        Upload search objects directly to Azure Cognitive Search (new format)
+        
+        Args:
+            search_objects: List of search objects ready for upload
+            
+        Returns:
+            Tuple of (successful_uploads, failed_uploads)
+        """
+        successful = 0
+        failed = 0
+        
+        for i, search_object in enumerate(search_objects, 1):
+            print(f"Uploading document {i}/{len(search_objects)}: {search_object.get('file_name', 'Unknown')}")
+            try:
+                # Upload the search object directly using Azure SDK
+                result = self.search_client.upload_documents(documents=[search_object])
+                
+                if result[0].succeeded:
+                    successful += 1
+                else:
+                    failed += 1
+                    print(f"[ERROR] Upload failed: {result[0].error_message}")
+                    
+            except Exception as e:
+                failed += 1
+                print(f"[ERROR] Upload failed: {e}")
+        
+        return successful, failed
+
     def upload_documents_batch(self, documents: List[Dict[str, Any]]) -> Tuple[int, int]:
         """
         Upload multiple documents in batch
