@@ -238,11 +238,30 @@ python src/upload/scripts/upload_work_items.py --work-item WI-12345
 # Preview what will be uploaded (dry run)
 python src/upload/scripts/upload_work_items.py --dry-run
 
+# Force reprocessing of specific work item (deletes existing documents + re-uploads)
+python src/upload/scripts/upload_work_items.py --force --work-item WI-12345
+
 # Force reprocessing of all files (clears DocumentProcessingTracker and deletes all search documents)
 python src/upload/scripts/upload_work_items.py --reset
 
 # Upload single file
 python src/upload/scripts/upload_single_file.py path/to/file.md
+```
+
+### Document Management
+
+```bash
+# Delete all documents for a specific work item
+python src/upload/scripts/delete_by_work_item.py <work_item_id>
+
+# Delete documents without confirmation
+python src/upload/scripts/delete_by_work_item.py <work_item_id> --no-confirm
+
+# Delete documents matching file path pattern
+python src/upload/scripts/delete_by_file_path.py "filename.md"
+
+# Delete documents by file pattern without confirmation
+python src/upload/scripts/delete_by_file_path.py "docs/*.md" --no-confirm
 ```
 
 ### Index Management
@@ -262,14 +281,34 @@ When you add new work item documentation:
 1. **Add new files** to your Work Items directory
 2. **Run upload script** to process new files:
    ```bash
-   python scripts/upload_work_items.py
+   python src/upload/scripts/upload_work_items.py
    ```
 3. The system automatically **tracks processed files** and only uploads new/changed documents
 
-To force reprocessing of all files:
+### Force Reprocessing Options
+
+For specific work item (recommended for targeted updates):
 
 ```bash
-python scripts/upload_work_items.py --reset
+python src/upload/scripts/upload_work_items.py --force --work-item <work_item_id>
+```
+
+For complete system refresh:
+
+```bash
+python src/upload/scripts/upload_work_items.py --reset
+```
+
+### Document Cleanup
+
+Remove documents before reprocessing or for cleanup:
+
+```bash
+# Delete all documents for a work item
+python src/upload/scripts/delete_by_work_item.py <work_item_id>
+
+# Delete specific files by pattern
+python src/upload/scripts/delete_by_file_path.py "outdated_file.md"
 ```
 
 ## 🐛 Troubleshooting
@@ -296,6 +335,23 @@ python scripts/upload_work_items.py --reset
 
 - Upgrade Azure Cognitive Search to Basic tier or higher
 - Free tier doesn't support vector search capabilities
+
+### "Documents not updating"
+
+- Use force reprocessing for specific work items:
+  ```bash
+  python src/upload/scripts/upload_work_items.py --force --work-item <work_item_id>
+  ```
+- Check if files have actually changed (system tracks by file signature)
+- Use delete utility scripts to clean up old documents
+
+### "Inconsistent document counts"
+
+- Use delete utilities to clean up orphaned documents:
+  ```bash
+  python src/upload/scripts/delete_by_work_item.py <work_item_id>
+  ```
+- Then re-upload with force processing
 
 ## ✅ Success Checklist
 

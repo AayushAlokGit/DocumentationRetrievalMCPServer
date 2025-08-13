@@ -304,6 +304,7 @@ src/common/embedding_service.py
 src/upload/scripts/upload_work_items.py
 ├── Command-line interface for bulk uploads
 ├── Support for dry-run, specific work items, and force reprocessing
+├── Enhanced force reprocessing with document deletion
 └── Wrapper around main upload functionality
 
 src/upload/scripts/upload_single_file.py
@@ -320,6 +321,16 @@ src/upload/scripts/verify_document_upload_setup.py
 ├── Comprehensive system verification
 ├── Tests all components and connections
 └── Validates DocumentProcessingTracker functionality
+
+src/upload/scripts/delete_by_work_item.py
+├── Delete all documents for a specific work item
+├── Preview and confirmation functionality
+└── Targeted document cleanup
+
+src/upload/scripts/delete_by_file_path.py
+├── Delete documents matching file path patterns
+├── Flexible pattern matching (filename, path contains, exact match)
+└── Document cleanup by file pattern
 ```
 
 ### File Tracking
@@ -467,8 +478,24 @@ python src/upload/scripts/upload_work_items.py --work-item WI-12345
 # Dry run preview
 python src/upload/scripts/upload_work_items.py --dry-run
 
+# Force reprocess specific work item (deletes existing + re-uploads)
+python src/upload/scripts/upload_work_items.py --force --work-item WI-12345
+
 # Force reprocess all (deletes search documents and clears tracker)
 python src/upload/scripts/upload_work_items.py --reset
+```
+
+### Document Management Commands
+
+```bash
+# Delete all documents for specific work item
+python src/upload/scripts/delete_by_work_item.py WI-12345
+
+# Delete documents by file pattern
+python src/upload/scripts/delete_by_file_path.py "outdated_file.md"
+
+# Non-interactive deletion
+python src/upload/scripts/delete_by_work_item.py WI-12345 --no-confirm
 ```
 
 ### Processing Output Example
@@ -480,6 +507,10 @@ File: Available Work Items (5):
    • BUG-67890
    • FEATURE-11111
 
+[FORCE] Force mode: Marking 6 files for reprocessing (Work Item: WI-12345)...
+[SEARCH] Deleting all documents for work item 'WI-12345' from Azure Cognitive Search index...
+[SUCCESS] Deleted 20/20 documents for work item WI-12345
+
 [1/3] Processing: requirements.md
    Title: Created 3 chunks
    🧠 Generated 3 embeddings (3 valid)
@@ -489,6 +520,17 @@ File: Available Work Items (5):
    - Files processed successfully: 3
    - Files failed: 0
    - Total files in tracking: 15
+```
+
+### Force Reprocessing Output
+
+```
+[FORCE] Force mode: Marking 6 files for reprocessing (Work Item: PersonalDocumentationAssistantMCPServer)...
+[SEARCH] Deleting all documents for work item 'PersonalDocumentationAssistantMCPServer' from Azure Cognitive Search index...
+[SUCCESS] Deleted 20/20 documents for work item PersonalDocumentationAssistantMCPServer
+   [SUCCESS] Force reprocessing completed for work item: PersonalDocumentationAssistantMCPServer
+   • Search index documents deleted: ✅
+   • Files marked for reprocessing: ✅
 ```
 
 ---

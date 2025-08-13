@@ -1,35 +1,52 @@
-# Work Item Documentation Retriever
+# Personal Documentation Assistant MCP Server
 
-A powerful document retrieval system for Work Items using Azure Cognitive Search with vector search capabilities and AI-powered embeddings.
+A powerful AI-enhanced document retrieval system using Azure Cognitive Search with vector embeddings and Model Context Protocol (MCP) integration for VS Code.
 
-## 🎯 Project Components
+## 🎯 Project Overview
 
-This project consists of **two main parts**:
+This project provides **intelligent document search and retrieval** for your Work Items documentation through two integrated components:
 
-### 1. 📄 Document Processing & Upload System
+### 📄 Document Processing & Upload System
 
-- **Purpose**: Processes and indexes your work item documentation
-- **Components**: Scripts to discover, process, and upload markdown files to Azure Cognitive Search
-- **Usage**: Run once to set up your searchable index, then periodically to add new documents
-- **Key Files**: `src/upload/scripts/upload_work_items.py`, `src/upload/document_upload.py`, `src/upload/document_utils.py`
+- **Purpose**: Processes and indexes your work item documentation into Azure Cognitive Search
+- **Features**: Smart chunking, vector embeddings, idempotent processing, batch uploads
+- **Usage**: Run periodically to maintain your searchable document index
+- **Key Scripts**: `upload_work_items.py`, `document_upload.py`, `create_index.py`
 
-### 2. 🔌 MCP Server for VS Code Integration
+### 🔌 MCP Server for VS Code Integration
 
-- **Purpose**: Provides intelligent search capabilities directly within VS Code
-- **Components**: Model Context Protocol server that exposes search tools to VS Code agent
-- **Usage**: Runs as a background service, integrates with VS Code for AI-powered documentation queries
-- **Key Files**: `run_mcp_server.py`, `src/workitem_mcp/search_documents.py`, `src/common/azure_cognitive_search.py`
+- **Purpose**: Provides AI-powered search directly within VS Code through the Model Context Protocol
+- **Features**: Semantic search, work item filtering, context-aware results, tool integration
+- **Usage**: Runs as background service, integrates with VS Code Copilot for intelligent queries
+- **Key Components**: `run_mcp_server.py`, search tools, result formatting
 
-**Workflow**: First use the document upload system to index your files, then run the MCP server to enable AI-powered search in VS Code.
+**Complete Workflow**: Upload documents → Start MCP server → Query through VS Code Copilot
 
-## 🚀 Features
+## ✨ Key Features
 
-- **Vector Search**: AI-powered semantic search using Azure OpenAI embeddings
-- **Document Processing**: Automatic processing of Markdown files with frontmatter support
-- **Intelligent Chunking**: Smart text chunking for optimal search performance
-- **Work Item Integration**: Seamless integration with Work Items directory structure
-- **Interactive Search**: Command-line interface for easy querying
-- **VS Code Integration**: Model Context Protocol server for VS Code agent mode
+### Document Processing
+
+- **🧠 Vector Embeddings**: Uses Azure OpenAI text-embedding-ada-002 for semantic understanding
+- **📊 Smart Chunking**: Intelligent text segmentation for optimal search performance
+- **🔄 Idempotent Processing**: File signature tracking prevents duplicate processing
+- **📁 Work Item Structure**: Seamless integration with Work Items directory organization
+- **🏷️ Metadata Support**: Full frontmatter parsing for titles, tags, and work item IDs
+
+### Search Capabilities
+
+- **🔍 Hybrid Search**: Combines keyword and semantic vector search
+- **🎯 Work Item Filtering**: Search within specific work items or across all documentation
+- **💡 Semantic Understanding**: Find conceptually related content even with different wording
+- **📈 Relevance Scoring**: Advanced ranking algorithms for best results
+- **⚡ Fast Retrieval**: Optimized indexing for quick response times
+
+### VS Code Integration
+
+- **🤖 MCP Protocol**: Native integration with VS Code Copilot and AI assistants
+- **🛠️ Tool Ecosystem**: 5 specialized search and information tools
+- **💬 Natural Language**: Query using plain English questions and concepts
+- **📋 Structured Results**: Formatted output with source references and metadata
+- **🔧 Easy Setup**: Simple configuration through VS Code settings
 
 ## 📁 Project Structure
 
@@ -62,6 +79,8 @@ PersonalDocumentationAssistantMCPServer/
 │   │       ├── create_index.py       # Index creation
 │   │       ├── upload_work_items.py  # Batch upload
 │   │       ├── upload_single_file.py # Single file upload
+│   │       ├── delete_by_work_item.py # Delete by work item ID
+│   │       ├── delete_by_file_path.py # Delete by file path
 │   │       └── verify_document_upload_setup.py # System verification
 │   └──
 │   └── tests/                         # Test files
@@ -150,52 +169,114 @@ This project has **two separate setup processes** for each component:
 
 #### Document Upload Commands (📄)
 
-- `python src/upload/scripts/verify_document_upload_setup.py` - Verify document upload system setup is correct
+**System Setup & Verification:**
+
+- `python src/upload/scripts/verify_document_upload_setup.py` - Verify complete system setup
 - `python src/upload/scripts/create_index.py` - Create Azure Search index with vector capabilities
+
+**Document Processing:**
+
 - `python src/upload/scripts/upload_work_items.py` - Process and index all Work Items documents
-- `python src/upload/scripts/upload_work_items.py --work-item WI-123` - Upload specific work item
-- `python src/upload/scripts/upload_work_items.py --dry-run` - Preview what will be uploaded
-- `python src/upload/scripts/upload_work_items.py --reset` - Delete all search documents and reset tracker for complete reprocessing
+- `python src/upload/scripts/upload_work_items.py --work-item <ID>` - Upload specific work item by ID
+- `python src/upload/scripts/upload_work_items.py --dry-run` - Preview what will be processed without uploading
+- `python src/upload/scripts/upload_work_items.py --force --work-item <ID>` - Force reprocessing of specific work item (deletes existing + re-uploads)
+- `python src/upload/scripts/upload_work_items.py --reset` - Delete all documents and reset tracker for fresh start
+- `python src/upload/scripts/upload_single_file.py <file_path>` - Upload a single markdown file
+
+**Document Management:**
+
+- `python src/upload/scripts/delete_by_work_item.py <work_item_id>` - Delete all documents for a specific work item
+- `python src/upload/scripts/delete_by_work_item.py <work_item_id> --no-confirm` - Delete without confirmation
+- `python src/upload/scripts/delete_by_file_path.py <file_pattern>` - Delete documents matching file path pattern
+- `python src/upload/scripts/delete_by_file_path.py <file_pattern> --no-confirm` - Delete without confirmation
+
+**Testing:**
+
+- `python src/tests/test_simple_e2e.py` - Run simple end-to-end verification tests
+- `python src/tests/test_end_to_end.py` - Run comprehensive system tests
 
 #### MCP Server Commands (🔌)
 
+**Server Management:**
+
 - `python run_mcp_server.py` - Start the MCP server for VS Code integration
-- Use VS Code agent to query: "What work items dealt with authentication?"
+- Configure VS Code MCP integration using VS Code settings JSON
+
+**Available MCP Tools (use in VS Code Copilot):**
+
+- `search_work_items` - Search across all work item documentation with text/vector/hybrid search
+- `search_by_work_item` - Search within a specific work item's documents
+- `semantic_search` - Find conceptually similar content using vector embeddings
+- `get_work_item_list` - List all available work item IDs in the index
+- `get_work_item_summary` - Get summary statistics about work items and document counts
 
 ### Example Queries (in VS Code with MCP Server 🔌)
 
-```bash
-# Search for specific topics
-"What work items dealt with authentication?"
+**Natural Language Search:**
 
-# Find work items by type
-"Show me all bug fixes related to security"
+```
+"What work items dealt with authentication issues?"
+"Show me all bug fixes related to performance problems"
+"Find documents about API integration patterns"
+"List work items that mention database optimization"
+```
 
-# Search for code examples
-"Find API integration examples"
+**Specific Work Item Queries:**
 
-# Get work item summaries
-"List all available work items and their document counts"
+```
+"Search for error handling in work item Bug-12345"
+"What documentation exists for PersonalDocumentationAssistantMCPServer?"
+"Show me the implementation details in work item WI-67890"
+```
+
+**Conceptual/Semantic Search:**
+
+```
+"Find content related to troubleshooting and debugging"
+"Show me anything about code review processes"
+"Search for testing strategies and methodologies"
+"Find security-related documentation"
+```
+
+**Information Retrieval:**
+
+```
+"List all available work items"
+"Give me a summary of the documentation index"
+"How many documents are available for each work item?"
 ```
 
 ## 🔧 Configuration
 
-The system uses environment variables for configuration. Copy `.env.example` to `.env` and configure:
+The system uses environment variables for configuration. Create a `.env` file in the project root:
 
 ```env
-# Azure OpenAI Configuration
+# Required: Azure OpenAI Configuration
 AZURE_OPENAI_ENDPOINT=https://your-openai-service.openai.azure.com/
-AZURE_OPENAI_KEY=your-openai-key
+AZURE_OPENAI_KEY=your-openai-api-key
 EMBEDDING_DEPLOYMENT=text-embedding-ada-002
 
-# Azure Cognitive Search Configuration
-AZURE_SEARCH_SERVICE=your-search-service
-AZURE_SEARCH_KEY=your-search-key
+# Required: Azure Cognitive Search Configuration
+AZURE_SEARCH_SERVICE=your-search-service-name
+AZURE_SEARCH_KEY=your-search-admin-key
 AZURE_SEARCH_INDEX=work-items-index
 
-# Local Paths
-WORK_ITEMS_PATH=C:\path\to\your\Work Items
+# Required: Local Work Items Path
+WORK_ITEMS_PATH=C:\Users\YourName\Desktop\Work Items
+
+# Optional: Advanced Configuration
+OPENAI_API_VERSION=2024-02-01
+SEARCH_API_VERSION=2024-07-01
+MAX_CHUNK_SIZE=1000
+CHUNK_OVERLAP=200
 ```
+
+### Environment Setup Tips
+
+1. **Azure OpenAI**: Ensure your deployment name matches `EMBEDDING_DEPLOYMENT`
+2. **Search Service**: Use the admin key (not query key) for document uploads
+3. **Work Items Path**: Use absolute path with proper Windows path format
+4. **Index Name**: Will be created automatically if it doesn't exist
 
 ## 🧪 Testing
 
@@ -250,13 +331,47 @@ The system consists of two main parts working together:
 
 ## 🔍 MCP Tools
 
-Once integrated with VS Code, you can use these tools:
+Once integrated with VS Code, you can use these **5 specialized tools** through natural language queries:
 
-- **`search_work_items`**: Search across all work item documentation
-- **`get_work_item_list`**: List all available work item IDs
-- **`get_work_item_summary`**: Get documentation statistics
-- **`search_by_work_item`**: Search within a specific work item
-- **`semantic_search`**: Find conceptually similar content
+### Search Tools
+
+- **`search_work_items`**: Multi-modal search across all work item documentation
+
+  - Supports text, vector (semantic), and hybrid search modes
+  - Optional work item filtering and result count control
+  - Best for: General searches across entire documentation base
+
+- **`search_by_work_item`**: Targeted search within specific work item
+
+  - Focuses search on single work item's documents
+  - Ideal for deep-dive investigations
+  - Best for: "Find X in work item Y" type queries
+
+- **`semantic_search`**: Pure vector-based conceptual search
+  - Uses AI embeddings to find conceptually similar content
+  - Great for finding related topics with different wording
+  - Best for: Discovering related concepts and ideas
+
+### Information Tools
+
+- **`get_work_item_list`**: List all indexed work item IDs
+
+  - Returns complete inventory of available work items
+  - Useful for discovery and system overview
+  - Best for: "What work items are available?" queries
+
+- **`get_work_item_summary`**: Statistics and index overview
+  - Document counts per work item
+  - System health and indexing status
+  - Best for: Understanding documentation coverage
+
+### Usage in VS Code
+
+Simply ask questions naturally - the MCP server automatically selects the appropriate tool:
+
+- "What's in work item ABC-123?" → Uses `search_by_work_item`
+- "Find anything about authentication" → Uses `search_work_items`
+- "List all work items" → Uses `get_work_item_list`
 
 ## 📚 Document Support
 
@@ -275,6 +390,8 @@ The system includes comprehensive error handling:
 - Document processing errors
 - Search query failures
 - Automatic retry mechanisms
+- Work item ID validation
+- Document lifecycle management
 
 ## 📈 Performance
 
@@ -282,6 +399,8 @@ The system includes comprehensive error handling:
 - **Idempotent Uploads**: Tracks processed files to avoid re-processing
 - **Vector Optimization**: 1536-dimension embeddings for optimal search quality
 - **Chunking Strategy**: Smart text splitting for better search granularity
+- **Enhanced Force Reprocessing**: Properly deletes existing documents before re-upload
+- **Document Management**: Utility scripts for targeted cleanup and maintenance
 
 ## 🤝 Contributing
 
@@ -298,12 +417,30 @@ The system includes comprehensive error handling:
 - **"Search service connection failed"**: Verify Azure Search service name and key
 - **"No work items found"**: Ensure WORK_ITEMS_PATH points to correct directory
 - **"MCP server not connecting"**: Check VS Code MCP configuration paths
+- **"Force reprocessing not working"**: Use `--force --work-item <ID>` for targeted reprocessing
+- **"Documents not deleted"**: Use delete utility scripts for manual cleanup
+
+### Document Management
+
+Use the utility scripts for document lifecycle management:
+
+```bash
+# Check what documents exist for a work item
+python src/upload/scripts/delete_by_work_item.py <work_item_id> --dry-run
+
+# Clean up specific work item documents
+python src/upload/scripts/delete_by_work_item.py <work_item_id>
+
+# Remove documents by file pattern
+python src/upload/scripts/delete_by_file_path.py "filename.md"
+```
 
 ### Get Help
 
-1. Run `python verify_setup.py` to diagnose issues
-2. Check the troubleshooting section in [COMPLETE_SETUP_GUIDE.md](COMPLETE_SETUP_GUIDE.md)
+1. Run `python src/upload/scripts/verify_document_upload_setup.py` to diagnose issues
+2. Check the troubleshooting section in setup guides
 3. Review log files for detailed error messages
+4. Use force reprocessing for clean document state
 
 ## 📝 License
 

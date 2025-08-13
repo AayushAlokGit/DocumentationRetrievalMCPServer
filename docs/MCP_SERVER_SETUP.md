@@ -33,6 +33,14 @@ else:
 "
 ```
 
+**Expected Output**: `✅ Ready! Found [N] indexed documents`
+
+If you see 0 documents, run the upload command:
+
+```bash
+python src/upload/scripts/upload_work_items.py
+```
+
 ## 🚀 MCP Server Setup
 
 ### Step 1: Test MCP Server
