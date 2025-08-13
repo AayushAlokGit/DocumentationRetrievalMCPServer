@@ -72,7 +72,49 @@ If successful, press `Ctrl+C` to stop the test server.
 
 VS Code has built-in support for MCP servers starting from version 1.102. You configure MCP servers using a `.vscode/mcp.json` file in your workspace or in your user configuration.
 
-#### Option 1: Workspace Configuration (Recommended)
+#### Option 1: Local Workspace Configuration (Recommended)
+
+For this specific project, create a `.vscode` folder at the project root and add a `mcp.json` file:
+
+1. **Create the .vscode directory** in your project root:
+
+   ```
+   PersonalDocumentationAssistantMCPServer/
+   ├── .vscode/
+   │   └── mcp.json
+   ├── src/
+   ├── docs/
+   └── ...
+   ```
+
+2. **Create `.vscode/mcp.json`** with this exact configuration:
+
+```json
+{
+  "servers": {
+    "work-items-documentation": {
+      "type": "stdio",
+      "command": "C:\\Users\\aayushalok\\OneDrive - Microsoft\\Desktop\\Personal Projects\\PersonalDocumentationAssistantMCPServer\\venv\\Scripts\\python.exe",
+      "args": [
+        "C:\\Users\\aayushalok\\OneDrive - Microsoft\\Desktop\\Personal Projects\\PersonalDocumentationAssistantMCPServer\\run_mcp_server.py"
+      ],
+      "cwd": "C:\\Users\\aayushalok\\OneDrive - Microsoft\\Desktop\\Personal Projects\\PersonalDocumentationAssistantMCPServer",
+      "env": {
+        "PYTHONPATH": "C:\\Users\\aayushalok\\OneDrive - Microsoft\\Desktop\\Personal Projects\\PersonalDocumentationAssistantMCPServer\\src"
+      }
+    }
+  }
+}
+```
+
+This configuration:
+
+- Uses the exact Python executable from your virtual environment
+- Points to the correct `run_mcp_server.py` script
+- Sets the working directory to your project root
+- Configures PYTHONPATH to find the src modules
+
+#### Option 2: Generic Workspace Configuration
 
 Create a `.vscode/mcp.json` file in your project root:
 
@@ -82,10 +124,10 @@ Create a `.vscode/mcp.json` file in your project root:
     "work-items-documentation": {
       "type": "stdio",
       "command": "python",
-      "args": ["mcp_server.py"],
+      "args": ["run_mcp_server.py"],
       "cwd": "${workspaceFolder}",
       "env": {
-        "PYTHONPATH": "${workspaceFolder}"
+        "PYTHONPATH": "${workspaceFolder}/src"
       }
     }
   }
@@ -98,7 +140,7 @@ This configuration:
 - Runs the MCP server from your workspace folder
 - Sets up proper Python path for imports
 
-#### Option 2: User Configuration (Global)
+#### Option 3: User Configuration (Global)
 
 For global availability across all workspaces, run the command:
 
@@ -114,10 +156,10 @@ From VS Code Command Palette (`Ctrl+Shift+P`) and add:
     "work-items-documentation": {
       "type": "stdio",
       "command": "C:\\path\\to\\your\\venv\\Scripts\\python.exe",
-      "args": ["mcp_server.py"],
-      "cwd": "C:\\Users\\aayushalok\\OneDrive - Microsoft\\Desktop\\Personal Projects\\WorkItemDocumentationRetriever",
+      "args": ["run_mcp_server.py"],
+      "cwd": "C:\\Users\\aayushalok\\OneDrive - Microsoft\\Desktop\\Personal Projects\\PersonalDocumentationAssistantMCPServer",
       "env": {
-        "PYTHONPATH": "C:\\Users\\aayushalok\\OneDrive - Microsoft\\Desktop\\Personal Projects\\WorkItemDocumentationRetriever"
+        "PYTHONPATH": "C:\\Users\\aayushalok\\OneDrive - Microsoft\\Desktop\\Personal Projects\\PersonalDocumentationAssistantMCPServer\\src"
       }
     }
   }
