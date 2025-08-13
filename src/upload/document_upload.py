@@ -71,21 +71,38 @@ def delete_document_from_search(document_id, service_name, admin_key, index_name
     search_service = get_azure_search_service(service_name, admin_key, index_name)
     return search_service.delete_document(document_id)
 
-async def main():
-    """Main processing function for Work Items directory structure - Individual file processing with idempotency"""
+async def main(specific_work_item_dir: str = None):
+    """Main processing function for Work Items directory structure - Individual file processing with idempotency
+    
+    Args:
+        specific_work_item_dir: If provided, use this directory path instead of WORK_ITEMS_PATH
+    """
 
     # Configuration from environment
-    work_items_path = os.getenv('WORK_ITEMS_PATH', r"C:\Users\aayushalok\Desktop\Work Items")
+    base_work_items_path = os.getenv('WORK_ITEMS_PATH', r"C:\Users\aayushalok\Desktop\Work Items")
+    
+    # Use specific work item directory if provided, otherwise use base path
+    if specific_work_item_dir:
+        work_items_path = specific_work_item_dir
+        print(f"[SPECIFIC_DIR] Using specific work item directory: {work_items_path}")
+    else:
+        work_items_path = base_work_items_path
+        print(f"[BASE_DIR] Using base work items directory: {work_items_path}")
+    
     azure_openai_endpoint = os.getenv('AZURE_OPENAI_ENDPOINT')
     search_service_name = os.getenv('AZURE_SEARCH_SERVICE')
     search_admin_key = os.getenv('AZURE_SEARCH_KEY')
     search_index_name = os.getenv('AZURE_SEARCH_INDEX', 'work-items-index')
 
-    # Initialize processing tracker - now creates tracking file in work items directory
+    # Initialize processing tracker - always use base path for tracking file location
     tracker = DocumentProcessingTracker("processed_files.json")
     
     print("Starting document processing...")
     print(f"Work Items Path: {work_items_path}")
+    if specific_work_item_dir:
+        print(f"[WORK_ITEM] Processing specific work item directory: {specific_work_item_dir}")
+    else:
+        print(f"[ALL_WORK_ITEMS] Processing all work items from base directory")
     print(f"Azure OpenAI Endpoint: {azure_openai_endpoint}")
     print(f"Search Service: {search_service_name}")
     print(f"Search Index: {search_index_name}")
@@ -105,7 +122,10 @@ async def main():
 
     # Discover all markdown files
     markdown_files = discover_markdown_files(work_items_path)
-    print(f"[SEARCH] Found {len(markdown_files)} total markdown files across work item directories")
+    if specific_work_item_dir:
+        print(f"[SEARCH] Found {len(markdown_files)} markdown files in specific work item directory")
+    else:
+        print(f"[SEARCH] Found {len(markdown_files)} total markdown files across work item directories")
 
     # Filter out already processed files
     files_to_process = []
@@ -124,7 +144,10 @@ async def main():
     print(f"   - To process: {len(files_to_process)}")
     
     if not files_to_process:
-        print("[SUCCESS] All files are already processed!")
+        if specific_work_item_dir:
+            print(f"[SUCCESS] All files in specific work item directory are already processed!")
+        else:
+            print("[SUCCESS] All files are already processed!")
         return
 
     # Process files individually
@@ -135,6 +158,9 @@ async def main():
     for i, file_path in enumerate(files_to_process, 1):
         try:
             print(f"\n[{i}/{len(files_to_process)}] Processing: {file_path.name}")
+            if specific_work_item_dir:
+                print(f"   [WORK_ITEM] Processing file from specific work item directory")
+                print(f"   [FILE_PATH] Full path: {file_path}")
             
             # Read and parse file
             file_data = read_markdown_file(file_path)
@@ -143,6 +169,7 @@ async def main():
                 continue
 
             work_item_id = file_data['metadata']['work_item_id']
+            print(f"   [METADATA] Extracted work item ID: {work_item_id}")
             
             # Track work items for summary
             if work_item_id not in work_items_summary:
@@ -186,10 +213,10 @@ async def main():
                 tracker.mark_processed(file_path)
                 tracker.save()
                 processed_count += 1
-                print(f"   [SUCCESS] Successfully processed: {file_data['metadata']['title']}")
+                print(f"   [SUCCESS] Successfully processed: {file_data['metadata']['title']} (Work Item: {work_item_id})")
             else:
                 failed_count += 1
-                print(f"   [ERROR] Failed to upload: {file_path.name}")
+                print(f"   [ERROR] Failed to upload: {file_path.name} (Work Item: {work_item_id})")
 
             # Add a small delay to respect rate limits
             if i < len(files_to_process):  # Don't delay after the last file
@@ -201,13 +228,19 @@ async def main():
 
     # Final summary
     final_stats = tracker.get_stats()
-    print(f"\n🎉 Processing Complete!")
+    if specific_work_item_dir:
+        print(f"\n🎉 Processing Complete for specific work item directory!")
+    else:
+        print(f"\n🎉 Processing Complete!")
     print(f"   - Files processed successfully: {processed_count}")
     print(f"   - Files failed: {failed_count}")
     print(f"   - Total files in tracking: {final_stats['total_processed']}")
     
     if work_items_summary:
-        print(f"   - Work items affected:")
+        if specific_work_item_dir:
+            print(f"   - Work items processed:")
+        else:
+            print(f"   - Work items affected:")
         for work_item_id, file_count in work_items_summary.items():
             print(f"     • {work_item_id}: {file_count} files")
 

@@ -1,8 +1,31 @@
 """
 Bulk Upload Script for Work Item Documentation
-=============================================
-
-This script uploads all work item documents to Azure Cognitive Search index.
+=================================    if work_item_id:
+        print(f"[TARGET] Target Work Item: {work_item_id}")
+        files = get_files_for_work_item(work_items_path, work_item_id)
+        print(f"[DOCUMENT] Files to process for work item {work_item_id}: {len(files)}")
+        
+        for file in files:
+            relative_path = file.relative_to(work_items_dir)
+            print(f"   • File: {relative_path} (Work Item: {work_item_id})")
+    else:
+        print(f"[TARGET] Target: All Work Items")
+        work_items = get_work_items_from_path(work_items_path)
+        total_files = 0
+        
+        print(f"📁 Work Items to Process ({len(work_items)}):")
+        for wi in work_items:
+            print(f"[WORK_ITEM] Processing work item: {wi}")
+            files = get_files_for_work_item(work_items_path, wi)
+            total_files += len(files)
+            print(f"   • Work Item {wi}: {len(files)} files")
+            
+            # Log individual files for each work item
+            for file in files:
+                relative_path = file.relative_to(work_items_dir)
+                print(f"     - File: {relative_path} (Work Item: {wi})")
+        
+        print(f"[DOCUMENT] Total Files across all work items: {total_files}") script uploads all work item documents to Azure Cognitive Search index.
 It reads the WORK_ITEMS_PATH from environment variables and processes all 
 markdown files found in the work item directories.
 
@@ -58,12 +81,19 @@ def get_work_items_from_path(work_items_path: str) -> List[str]:
 def get_files_for_work_item(work_items_path: str, work_item_id: str) -> List[Path]:
     """Get all markdown files for a specific work item"""
     work_item_dir = Path(work_items_path) / work_item_id
+    print(f"[WORK_ITEM] Processing work item: {work_item_id}")
+    print(f"[WORK_ITEM] Work item directory: {work_item_dir}")
+    
     if not work_item_dir.exists():
+        print(f"[WORK_ITEM] Directory not found for work item: {work_item_id}")
         return []
     
     files = []
     for file in work_item_dir.rglob("*.md"):
+        print(f"[FILE] Found markdown file: {file} (Work Item: {work_item_id})")
         files.append(file)
+    
+    print(f"[WORK_ITEM] Total files found for {work_item_id}: {len(files)}")
     return files
 
 
@@ -126,9 +156,9 @@ async def upload_work_items(work_item_id: Optional[str] = None,
     work_items = get_work_items_from_path(work_items_path)
     print(f"File: Available Work Items ({len(work_items)}):")
     for wi in work_items[:10]:  # Show first 10
-        print(f"   • {wi}")
+        print(f"   • Work Item: {wi}")
     if len(work_items) > 10:
-        print(f"   ... and {len(work_items) - 10} more")
+        print(f"   ... and {len(work_items) - 10} more work items")
     
     # Validate specific work item if provided
     if work_item_id and work_item_id not in work_items:
@@ -168,39 +198,57 @@ async def upload_work_items(work_item_id: Optional[str] = None,
     if force and work_item_id:
         tracker = DocumentProcessingTracker("processed_files.json")
         files_to_force = get_files_for_work_item(work_items_path, work_item_id)
-        print(f"[FAST] Force mode: Marking {len(files_to_force)} files for reprocessing...")
+        print(f"[FAST] Force mode: Marking {len(files_to_force)} files for reprocessing (Work Item: {work_item_id})...")
         
         for file in files_to_force:
+            print(f"[FORCE] Checking file: {file} (Work Item: {work_item_id})")
             if tracker.is_processed(file):
                 tracker.mark_unprocessed(file)
+                print(f"[FORCE] Marked for reprocessing: {file} (Work Item: {work_item_id})")
+            else:
+                print(f"[FORCE] File not previously processed: {file} (Work Item: {work_item_id})")
         
         tracker.save()
-        print(f"   [SUCCESS] Files marked for reprocessing")
+        print(f"   [SUCCESS] Files marked for reprocessing for work item: {work_item_id}")
     
-    # Set up environment for specific work item upload
-    original_path = None
+    # Set up path for specific work item upload
+    specific_work_item_dir = None
     if work_item_id:
-        original_path = os.environ.get('WORK_ITEMS_PATH')
-        work_item_dir = work_items_dir / work_item_id
-        os.environ['WORK_ITEMS_PATH'] = str(work_item_dir)
+        specific_work_item_dir = str(work_items_dir / work_item_id)
         print(f"[TARGET] Uploading specific work item: {work_item_id}")
-        print(f"[FOLDER] Target directory: {work_item_dir}")
+        print(f"[FOLDER] Target directory: {specific_work_item_dir}")
+        
+        # Validate that the work item directory exists
+        if not Path(specific_work_item_dir).exists():
+            print(f"[ERROR] Work item directory not found: {specific_work_item_dir}")
+            return
     
     try:
         # Use the existing main upload function from document_upload.py
         print(f"[START] Starting upload using document_upload.main()...")
-        await upload_main()
+        if work_item_id:
+            print(f"[CONTEXT] Processing files for work item: {work_item_id}")
+            print(f"[CONTEXT] Upload will process files from: {specific_work_item_dir}")
+            await upload_main(specific_work_item_dir=specific_work_item_dir)
+        else:
+            print(f"[CONTEXT] Processing all work items from: {work_items_path}")
+            await upload_main()
         
-        print(f"\n🎉 Upload completed successfully!")
+        if work_item_id:
+            print(f"\n🎉 Upload completed successfully for work item: {work_item_id}!")
+        else:
+            print(f"\n🎉 Upload completed successfully for all work items!")
         print(f"Tips: Documents are now searchable via:")
         print(f"   • VS Code MCP server integration")
         print(f"   • search_documents.py script")
         print(f"   • Azure Cognitive Search REST API")
         
     finally:
-        # Restore original environment if it was changed
-        if original_path is not None:
-            os.environ['WORK_ITEMS_PATH'] = original_path
+        # No environment cleanup needed since we're not modifying environment variables
+        if work_item_id:
+            print(f"[CLEANUP] Processing completed for work item: {work_item_id}")
+        else:
+            print(f"[CLEANUP] Processing completed for all work items")
 
 
 def main():
