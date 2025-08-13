@@ -12,6 +12,7 @@ Usage:
 
 import sys
 import asyncio
+import os
 from pathlib import Path
 
 # Add src to path for imports
@@ -20,9 +21,13 @@ sys.path.insert(0, str(project_root / "src"))
 sys.path.insert(0, str(project_root / "src" / "common"))
 sys.path.insert(0, str(project_root / "src" / "upload"))
 
+from dotenv import load_dotenv
 from document_upload import upload_document_to_search
-from document_utils import read_markdown_file, extract_metadata, simple_chunk_text
-from embedding_service import get_embedding_generator
+from document_utils import read_markdown_file, simple_chunk_text
+from common.embedding_service import get_embedding_generator
+
+# Load environment variables
+load_dotenv()
 
 
 async def upload_single_file(file_path: str):
@@ -44,8 +49,13 @@ async def upload_single_file(file_path: str):
     
     try:
         # Read and process the file
-        content = read_markdown_file(file_path)
-        metadata = extract_metadata(content, file_path)
+        file_data = read_markdown_file(file_path)
+        if not file_data:
+            print("[ERROR] Failed to read or parse the markdown file")
+            return False
+            
+        content = file_data['content']
+        metadata = file_data['metadata']
         chunks = simple_chunk_text(content)
         
         print(f"📖 File parsed successfully")
@@ -80,9 +90,18 @@ async def upload_single_file(file_path: str):
             'embeddings': embeddings
         }
         
+        # Get Azure Search configuration
+        search_service_name = os.getenv('AZURE_SEARCH_SERVICE')
+        search_admin_key = os.getenv('AZURE_SEARCH_KEY')
+        search_index_name = os.getenv('AZURE_SEARCH_INDEX', 'work-items-index')
+        
+        if not search_service_name or not search_admin_key:
+            print("[ERROR] Azure Search configuration missing. Check AZURE_SEARCH_SERVICE and AZURE_SEARCH_KEY environment variables.")
+            return False
+        
         # Upload to search
         print("⬆️  Uploading to Azure Cognitive Search...")
-        success = await upload_document_to_search(document)
+        success = upload_document_to_search(document, search_service_name, search_admin_key, search_index_name)
         
         if success:
             print("🎉 SUCCESS! Document uploaded successfully")
