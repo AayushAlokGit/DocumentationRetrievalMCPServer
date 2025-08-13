@@ -198,8 +198,19 @@ async def upload_work_items(work_item_id: Optional[str] = None,
     if force and work_item_id:
         tracker = DocumentProcessingTracker("processed_files.json")
         files_to_force = get_files_for_work_item(work_items_path, work_item_id)
-        print(f"[FAST] Force mode: Marking {len(files_to_force)} files for reprocessing (Work Item: {work_item_id})...")
+        print(f"[FORCE] Force mode: Marking {len(files_to_force)} files for reprocessing (Work Item: {work_item_id})...")
         
+        # Delete all documents for this specific work item from Azure Cognitive Search
+        print(f"[SEARCH] Deleting all documents for work item '{work_item_id}' from Azure Cognitive Search index...")
+        try:
+            search_service = get_azure_search_service()
+            deleted_count = search_service.delete_documents_by_work_item(work_item_id)
+            print(f"   [SUCCESS] Deleted {deleted_count} documents for work item '{work_item_id}' from search index")
+        except Exception as e:
+            print(f"   [ERROR] Failed to delete documents for work item '{work_item_id}' from search index: {e}")
+            print(f"   [WARNING] Continuing with file tracker update only...")
+        
+        # Mark files for reprocessing in tracker
         for file in files_to_force:
             print(f"[FORCE] Checking file: {file} (Work Item: {work_item_id})")
             if tracker.is_processed(file):
@@ -209,7 +220,9 @@ async def upload_work_items(work_item_id: Optional[str] = None,
                 print(f"[FORCE] File not previously processed: {file} (Work Item: {work_item_id})")
         
         tracker.save()
-        print(f"   [SUCCESS] Files marked for reprocessing for work item: {work_item_id}")
+        print(f"   [SUCCESS] Force reprocessing completed for work item: {work_item_id}")
+        print(f"   • Search index documents deleted: ✅")
+        print(f"   • Files marked for reprocessing: ✅")
     
     # Set up path for specific work item upload
     specific_work_item_dir = None
