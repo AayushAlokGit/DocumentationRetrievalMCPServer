@@ -57,13 +57,13 @@ The system creates a comprehensive search index with the following fields:
 **Process**:
 
 ```python
-def discover_markdown_files(work_items_path: str) -> List[Path]:
+def discover_markdown_files(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY: str) -> List[Path]:
     # Scans directory structure for .md files
     # Supports both specific work item dirs and full Work Items directory
     # Filters out empty files (0 bytes)
 ```
 
-**Input**: Work Items directory path (from `WORK_ITEMS_PATH` environment variable)
+**Input**: Work Items directory path (from `PERSONAL_DOCUMENTATION_ROOT_DIRECTORY` environment variable)
 **Output**: Sorted list of valid markdown file paths
 
 ### 2. Document Reading and Parsing
@@ -338,7 +338,7 @@ src/upload/scripts/delete_by_file_path.py
 ```
 src/upload/file_tracker.py
 ├── DocumentProcessingTracker class (renamed from ProcessingTracker)
-├── Environment-based initialization from WORK_ITEMS_PATH
+├── Environment-based initialization from PERSONAL_DOCUMENTATION_ROOT_DIRECTORY
 ├── Direct signature storage (path, size, mtime) - no hashing
 ├── Idempotent processing logic
 └── Tracking file located in work items directory
@@ -362,7 +362,7 @@ AZURE_SEARCH_KEY=your-search-key
 AZURE_SEARCH_INDEX=work-items-index
 
 # Local Configuration
-WORK_ITEMS_PATH=C:\path\to\Work Items
+PERSONAL_DOCUMENTATION_ROOT_DIRECTORY=C:\path\to\Work Items
 ```
 
 ### Processing Configuration
@@ -395,9 +395,9 @@ def get_file_signature(file_path: Path) -> Dict[str, any]:
 
 - **Class**: `DocumentProcessingTracker` (renamed from ProcessingTracker)
 - **Tracking File**: `processed_files.json` (created in Work Items directory)
-- **Location**: `{WORK_ITEMS_PATH}/processed_files.json`
+- **Location**: `{PERSONAL_DOCUMENTATION_ROOT_DIRECTORY}/processed_files.json`
 - **Content**: Mapping of file paths to signature dictionaries with direct values
-- **Initialization**: Automatic from `WORK_ITEMS_PATH` environment variable
+- **Initialization**: Automatic from `PERSONAL_DOCUMENTATION_ROOT_DIRECTORY` environment variable
 - **Purpose**: Skip unchanged files, reprocess modified files
 - **Reset Option**: Force reprocessing with `--reset` flag
 - **Enhanced Reset**: Deletes all documents from Azure Search index and clears tracker
@@ -419,6 +419,7 @@ When using the `--reset` flag, the system performs:
 3. **Complete Refresh**: Ensures all files will be reprocessed on next upload
 
 This provides a clean slate for scenarios like:
+
 - Schema changes requiring reindexing
 - Major content updates across all files
 - Troubleshooting processing issues

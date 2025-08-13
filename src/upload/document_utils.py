@@ -13,12 +13,12 @@ from typing import List, Dict, Optional
 import frontmatter
 
 
-def discover_markdown_files(work_items_path: str) -> List[Path]:
+def discover_markdown_files(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY: str) -> List[Path]:
     """
     Find all markdown files in the Work Items directory structure.
     
     Args:
-        work_items_path: Path to the Work Items directory or a specific work item directory
+        PERSONAL_DOCUMENTATION_ROOT_DIRECTORY: Path to the Work Items directory or a specific work item directory
         
     Returns:
         List[Path]: Sorted list of valid markdown file paths
@@ -26,10 +26,10 @@ def discover_markdown_files(work_items_path: str) -> List[Path]:
     Raises:
         FileNotFoundError: If the directory doesn't exist
     """
-    work_items_dir = Path(work_items_path)
+    work_items_dir = Path(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY)
 
     if not work_items_dir.exists():
-        raise FileNotFoundError(f"Directory does not exist: {work_items_path}")
+        raise FileNotFoundError(f"Directory does not exist: {PERSONAL_DOCUMENTATION_ROOT_DIRECTORY}")
 
     markdown_files = []
 

@@ -99,7 +99,7 @@ AZURE_SEARCH_ADMIN_KEY=your-search-admin-key
 AZURE_SEARCH_INDEX_NAME=work-items-index
 
 # Application Configuration
-WORK_ITEMS_PATH=./data/work-items
+PERSONAL_DOCUMENTATION_ROOT_DIRECTORY=./data/work-items
 MCP_SERVER_PORT=3000
 LOG_LEVEL=INFO
 
@@ -120,7 +120,7 @@ Create `.vscode/settings.json`:
       "args": ["src/server/main.py"],
       "cwd": "${workspaceFolder}",
       "env": {
-        "WORK_ITEMS_PATH": "./data/work-items"
+        "PERSONAL_DOCUMENTATION_ROOT_DIRECTORY": "./data/work-items"
       }
     }
   },
@@ -418,16 +418,16 @@ def check_work_items_directory():
     """Check work items directory"""
     print("Checking work items directory")
 
-    work_items_path = Path(os.getenv('WORK_ITEMS_PATH', './data/work-items'))
+    PERSONAL_DOCUMENTATION_ROOT_DIRECTORY = Path(os.getenv('PERSONAL_DOCUMENTATION_ROOT_DIRECTORY', './data/work-items'))
 
-    if not work_items_path.exists():
-        print(f"❌ Work items directory does not exist: {work_items_path}")
+    if not PERSONAL_DOCUMENTATION_ROOT_DIRECTORY.exists():
+        print(f"❌ Work items directory does not exist: {PERSONAL_DOCUMENTATION_ROOT_DIRECTORY}")
         return False
 
-    md_files = list(work_items_path.rglob("*.md"))
+    md_files = list(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY.rglob("*.md"))
 
     if not md_files:
-        print(f"⚠️  No markdown files found in: {work_items_path}")
+        print(f"⚠️  No markdown files found in: {PERSONAL_DOCUMENTATION_ROOT_DIRECTORY}")
         print("Add some .md files to get started")
     else:
         print(f"✅ Found {len(md_files)} markdown files in work items directory")
@@ -629,7 +629,7 @@ services:
       - AZURE_SEARCH_SERVICE_NAME=${AZURE_SEARCH_SERVICE_NAME}
       - AZURE_SEARCH_ADMIN_KEY=${AZURE_SEARCH_ADMIN_KEY}
       - AZURE_SEARCH_INDEX_NAME=${AZURE_SEARCH_INDEX_NAME}
-      - WORK_ITEMS_PATH=/app/data/work-items
+      - PERSONAL_DOCUMENTATION_ROOT_DIRECTORY=/app/data/work-items
       - LOG_LEVEL=INFO
     volumes:
       - ./data/work-items:/app/data/work-items:ro

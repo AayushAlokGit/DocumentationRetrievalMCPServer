@@ -48,7 +48,7 @@ This document outlines the technical architecture for the Work Item Documentatio
 ### File Processing Features
 
 - **Signature-based Tracking**: Uses file path, size, and modification time for change detection
-- **Automatic Environment Setup**: Initializes from `WORK_ITEMS_PATH` environment variable
+- **Automatic Environment Setup**: Initializes from `PERSONAL_DOCUMENTATION_ROOT_DIRECTORY` environment variable
 - **Idempotent Processing**: Skips unchanged files to improve efficiency
 - **Direct Value Storage**: Stores signature components directly for better debugging visibility
 

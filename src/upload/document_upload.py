@@ -75,19 +75,19 @@ async def main(specific_work_item_dir: str = None):
     """Main processing function for Work Items directory structure - Individual file processing with idempotency
     
     Args:
-        specific_work_item_dir: If provided, use this directory path instead of WORK_ITEMS_PATH
+        specific_work_item_dir: If provided, use this directory path instead of PERSONAL_DOCUMENTATION_ROOT_DIRECTORY
     """
 
     # Configuration from environment
-    base_work_items_path = os.getenv('WORK_ITEMS_PATH', r"C:\Users\aayushalok\Desktop\Work Items")
+    base_PERSONAL_DOCUMENTATION_ROOT_DIRECTORY = os.getenv('PERSONAL_DOCUMENTATION_ROOT_DIRECTORY', r"C:\Users\aayushalok\Desktop\Work Items")
     
     # Use specific work item directory if provided, otherwise use base path
     if specific_work_item_dir:
-        work_items_path = specific_work_item_dir
-        print(f"[SPECIFIC_DIR] Using specific work item directory: {work_items_path}")
+        PERSONAL_DOCUMENTATION_ROOT_DIRECTORY = specific_work_item_dir
+        print(f"[SPECIFIC_DIR] Using specific work item directory: {PERSONAL_DOCUMENTATION_ROOT_DIRECTORY}")
     else:
-        work_items_path = base_work_items_path
-        print(f"[BASE_DIR] Using base work items directory: {work_items_path}")
+        PERSONAL_DOCUMENTATION_ROOT_DIRECTORY = base_PERSONAL_DOCUMENTATION_ROOT_DIRECTORY
+        print(f"[BASE_DIR] Using base work items directory: {PERSONAL_DOCUMENTATION_ROOT_DIRECTORY}")
     
     azure_openai_endpoint = os.getenv('AZURE_OPENAI_ENDPOINT')
     search_service_name = os.getenv('AZURE_SEARCH_SERVICE')
@@ -98,7 +98,7 @@ async def main(specific_work_item_dir: str = None):
     tracker = DocumentProcessingTracker("processed_files.json")
     
     print("Starting document processing...")
-    print(f"Work Items Path: {work_items_path}")
+    print(f"Work Items Path: {PERSONAL_DOCUMENTATION_ROOT_DIRECTORY}")
     if specific_work_item_dir:
         print(f"[WORK_ITEM] Processing specific work item directory: {specific_work_item_dir}")
     else:
@@ -121,7 +121,7 @@ async def main(specific_work_item_dir: str = None):
     print(f"[LIST] Found {stats['total_processed']} previously processed files in tracking")
 
     # Discover all markdown files
-    markdown_files = discover_markdown_files(work_items_path)
+    markdown_files = discover_markdown_files(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY)
     if specific_work_item_dir:
         print(f"[SEARCH] Found {len(markdown_files)} markdown files in specific work item directory")
     else:

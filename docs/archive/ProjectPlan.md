@@ -639,7 +639,7 @@ async def main():
     load_dotenv()
 
     # Required environment variables
-    base_path = os.getenv('WORK_ITEMS_PATH', './data/work-items')
+    base_path = os.getenv('PERSONAL_DOCUMENTATION_ROOT_DIRECTORY', './data/work-items')
     azure_openai_endpoint = os.getenv('AZURE_OPENAI_ENDPOINT')
     azure_openai_key = os.getenv('AZURE_OPENAI_API_KEY')
     embedding_deployment = os.getenv('AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME')
@@ -982,7 +982,7 @@ AZURE_OPENAI_EMBEDDING_DEPLOYMENT_NAME=your-embedding-deployment
 AZURE_SEARCH_SERVICE_NAME=your-search-service
 AZURE_SEARCH_ADMIN_KEY=your-search-admin-key
 AZURE_SEARCH_INDEX_NAME=work-items-index
-WORK_ITEMS_PATH=./data/work-items
+PERSONAL_DOCUMENTATION_ROOT_DIRECTORY=./data/work-items
 MCP_SERVER_PORT=3000
 LOG_LEVEL=info
 ```
@@ -996,7 +996,7 @@ LOG_LEVEL=info
       "command": "python",
       "args": ["src/server/main.py"],
       "env": {
-        "WORK_ITEMS_PATH": "./data/work-items"
+        "PERSONAL_DOCUMENTATION_ROOT_DIRECTORY": "./data/work-items"
       }
     }
   }

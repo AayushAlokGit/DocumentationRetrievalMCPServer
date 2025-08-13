@@ -140,7 +140,7 @@ AZURE_SEARCH_ADMIN_KEY=your-search-admin-key
 AZURE_SEARCH_INDEX_NAME=work-items-index
 
 # Application Configuration
-WORK_ITEMS_PATH=./data/work-items
+PERSONAL_DOCUMENTATION_ROOT_DIRECTORY=./data/work-items
 MCP_SERVER_PORT=3000
 LOG_LEVEL=info
 

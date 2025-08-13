@@ -262,7 +262,7 @@ AZURE_SEARCH_KEY=your-search-admin-key
 AZURE_SEARCH_INDEX=work-items-index
 
 # Required: Local Work Items Path
-WORK_ITEMS_PATH=C:\Users\YourName\Desktop\Work Items
+PERSONAL_DOCUMENTATION_ROOT_DIRECTORY=C:\Users\YourName\Desktop\Work Items
 
 # Optional: Advanced Configuration
 OPENAI_API_VERSION=2024-02-01
@@ -415,7 +415,7 @@ The system includes comprehensive error handling:
 
 - **"Failed to connect to Azure OpenAI"**: Check your Azure OpenAI endpoint and key
 - **"Search service connection failed"**: Verify Azure Search service name and key
-- **"No work items found"**: Ensure WORK_ITEMS_PATH points to correct directory
+- **"No work items found"**: Ensure PERSONAL_DOCUMENTATION_ROOT_DIRECTORY points to correct directory
 - **"MCP server not connecting"**: Check VS Code MCP configuration paths
 - **"Force reprocessing not working"**: Use `--force --work-item <ID>` for targeted reprocessing
 - **"Documents not deleted"**: Use delete utility scripts for manual cleanup

@@ -2,7 +2,7 @@
 Bulk Upload Script for Work Item Documentation
 =================================    if work_item_id:
         print(f"[TARGET] Target Work Item: {work_item_id}")
-        files = get_files_for_work_item(work_items_path, work_item_id)
+        files = get_files_for_work_item(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY, work_item_id)
         print(f"[DOCUMENT] Files to process for work item {work_item_id}: {len(files)}")
         
         for file in files:
@@ -10,13 +10,13 @@ Bulk Upload Script for Work Item Documentation
             print(f"   • File: {relative_path} (Work Item: {work_item_id})")
     else:
         print(f"[TARGET] Target: All Work Items")
-        work_items = get_work_items_from_path(work_items_path)
+        work_items = get_work_items_from_path(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY)
         total_files = 0
         
         print(f"📁 Work Items to Process ({len(work_items)}):")
         for wi in work_items:
             print(f"[WORK_ITEM] Processing work item: {wi}")
-            files = get_files_for_work_item(work_items_path, wi)
+            files = get_files_for_work_item(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY, wi)
             total_files += len(files)
             print(f"   • Work Item {wi}: {len(files)} files")
             
@@ -26,7 +26,7 @@ Bulk Upload Script for Work Item Documentation
                 print(f"     - File: {relative_path} (Work Item: {wi})")
         
         print(f"[DOCUMENT] Total Files across all work items: {total_files}") script uploads all work item documents to Azure Cognitive Search index.
-It reads the WORK_ITEMS_PATH from environment variables and processes all 
+It reads the PERSONAL_DOCUMENTATION_ROOT_DIRECTORY from environment variables and processes all 
 markdown files found in the work item directories.
 
 This script is a wrapper around the main upload functionality in document_upload.py
@@ -65,9 +65,9 @@ from common.azure_cognitive_search import get_azure_search_service
 load_dotenv()
 
 
-def get_work_items_from_path(work_items_path: str) -> List[str]:
+def get_work_items_from_path(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY: str) -> List[str]:
     """Get list of all work item directories from the given path"""
-    work_items_dir = Path(work_items_path)
+    work_items_dir = Path(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY)
     if not work_items_dir.exists():
         return []
     
@@ -78,9 +78,9 @@ def get_work_items_from_path(work_items_path: str) -> List[str]:
     return sorted(work_items)
 
 
-def get_files_for_work_item(work_items_path: str, work_item_id: str) -> List[Path]:
+def get_files_for_work_item(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY: str, work_item_id: str) -> List[Path]:
     """Get all markdown files for a specific work item"""
-    work_item_dir = Path(work_items_path) / work_item_id
+    work_item_dir = Path(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY) / work_item_id
     print(f"[WORK_ITEM] Processing work item: {work_item_id}")
     print(f"[WORK_ITEM] Work item directory: {work_item_dir}")
     
@@ -97,19 +97,19 @@ def get_files_for_work_item(work_items_path: str, work_item_id: str) -> List[Pat
     return files
 
 
-def show_upload_preview(work_items_path: str, work_item_id: Optional[str] = None):
+def show_upload_preview(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY: str, work_item_id: Optional[str] = None):
     """Show what will be uploaded without actually uploading"""
-    work_items_dir = Path(work_items_path)
+    work_items_dir = Path(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY)
     
     print("� Upload Preview (Dry Run)")
     print("=" * 40)
-    print(f"[FOLDER] Work Items Path: {work_items_path}")
+    print(f"[FOLDER] Work Items Path: {PERSONAL_DOCUMENTATION_ROOT_DIRECTORY}")
     print(f"[SEARCH] Search Service: {os.getenv('AZURE_SEARCH_SERVICE')}")
     print(f"[LIST] Search Index: {os.getenv('AZURE_SEARCH_INDEX', 'work-items-index')}")
     
     if work_item_id:
         print(f"[TARGET] Target Work Item: {work_item_id}")
-        files = get_files_for_work_item(work_items_path, work_item_id)
+        files = get_files_for_work_item(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY, work_item_id)
         print(f"[DOCUMENT] Files to process: {len(files)}")
         
         for file in files:
@@ -117,12 +117,12 @@ def show_upload_preview(work_items_path: str, work_item_id: Optional[str] = None
             print(f"   • {relative_path}")
     else:
         print(f"[TARGET] Target: All Work Items")
-        work_items = get_work_items_from_path(work_items_path)
+        work_items = get_work_items_from_path(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY)
         total_files = 0
         
         print(f"� Work Items to Process ({len(work_items)}):")
         for wi in work_items:
-            files = get_files_for_work_item(work_items_path, wi)
+            files = get_files_for_work_item(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY, wi)
             total_files += len(files)
             print(f"   • {wi}: {len(files)} files")
         
@@ -142,18 +142,18 @@ async def upload_work_items(work_item_id: Optional[str] = None,
     print("=" * 50)
     
     # Get configuration
-    work_items_path = os.getenv('WORK_ITEMS_PATH')
-    if not work_items_path:
-        print("[ERROR] WORK_ITEMS_PATH environment variable not set")
+    PERSONAL_DOCUMENTATION_ROOT_DIRECTORY = os.getenv('PERSONAL_DOCUMENTATION_ROOT_DIRECTORY')
+    if not PERSONAL_DOCUMENTATION_ROOT_DIRECTORY:
+        print("[ERROR] PERSONAL_DOCUMENTATION_ROOT_DIRECTORY environment variable not set")
         return
     
-    work_items_dir = Path(work_items_path)
+    work_items_dir = Path(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY)
     if not work_items_dir.exists():
-        print(f"[ERROR] Work items directory not found: {work_items_path}")
+        print(f"[ERROR] Work items directory not found: {PERSONAL_DOCUMENTATION_ROOT_DIRECTORY}")
         return
     
     # Show available work items
-    work_items = get_work_items_from_path(work_items_path)
+    work_items = get_work_items_from_path(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY)
     print(f"File: Available Work Items ({len(work_items)}):")
     for wi in work_items[:10]:  # Show first 10
         print(f"   • Work Item: {wi}")
@@ -168,7 +168,7 @@ async def upload_work_items(work_item_id: Optional[str] = None,
     
     # Handle dry run
     if dry_run:
-        show_upload_preview(work_items_path, work_item_id)
+        show_upload_preview(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY, work_item_id)
         return
     
     # Handle reset tracker
@@ -197,7 +197,7 @@ async def upload_work_items(work_item_id: Optional[str] = None,
     # Handle force reprocessing for specific work item
     if force and work_item_id:
         tracker = DocumentProcessingTracker("processed_files.json")
-        files_to_force = get_files_for_work_item(work_items_path, work_item_id)
+        files_to_force = get_files_for_work_item(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY, work_item_id)
         print(f"[FORCE] Force mode: Marking {len(files_to_force)} files for reprocessing (Work Item: {work_item_id})...")
         
         # Delete all documents for this specific work item from Azure Cognitive Search
@@ -244,7 +244,7 @@ async def upload_work_items(work_item_id: Optional[str] = None,
             print(f"[CONTEXT] Upload will process files from: {specific_work_item_dir}")
             await upload_main(specific_work_item_dir=specific_work_item_dir)
         else:
-            print(f"[CONTEXT] Processing all work items from: {work_items_path}")
+            print(f"[CONTEXT] Processing all work items from: {PERSONAL_DOCUMENTATION_ROOT_DIRECTORY}")
             await upload_main()
         
         if work_item_id:

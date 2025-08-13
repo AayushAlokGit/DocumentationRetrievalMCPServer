@@ -242,12 +242,12 @@ from typing import List, Dict, Optional
 import frontmatter
 import re
 
-def discover_markdown_files(work_items_path: str) -> List[Path]:
+def discover_markdown_files(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY: str) -> List[Path]:
     """Find all markdown files in the Work Items directory structure"""
-    work_items_dir = Path(work_items_path)
+    work_items_dir = Path(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY)
 
     if not work_items_dir.exists():
-        raise FileNotFoundError(f"Work Items directory does not exist: {work_items_path}")
+        raise FileNotFoundError(f"Work Items directory does not exist: {PERSONAL_DOCUMENTATION_ROOT_DIRECTORY}")
 
     markdown_files = []
 
@@ -357,11 +357,11 @@ def read_markdown_file(file_path: Path) -> Optional[Dict]:
 # Usage for Work Items directory structure
 from pathlib import Path
 
-def process_work_items_directory(work_items_path: str):
+def process_work_items_directory(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY: str):
     """Process all markdown files in the Work Items directory structure"""
 
     # Discover files across all work item subdirectories
-    files = discover_markdown_files(work_items_path)
+    files = discover_markdown_files(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY)
     print(f"Found {len(files)} markdown files across work item directories")
 
     # Group files by work item for processing
@@ -391,8 +391,8 @@ def process_work_items_directory(work_items_path: str):
     return processed_files
 
 # Example usage - point to your desktop Work Items folder
-work_items_path = r"C:\Users\YourUsername\Desktop\Work Items"
-documents = process_work_items_directory(work_items_path)
+PERSONAL_DOCUMENTATION_ROOT_DIRECTORY = r"C:\Users\YourUsername\Desktop\Work Items"
+documents = process_work_items_directory(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY)
 ```### Step 2: Simple Text Chunking
 
 ```python
@@ -572,7 +572,7 @@ async def main():
     """Main processing function for Work Items directory structure"""
 
     # Configuration - set these in your environment
-    work_items_path = os.getenv('WORK_ITEMS_PATH', r"C:\Users\YourUsername\Desktop\Work Items")
+    PERSONAL_DOCUMENTATION_ROOT_DIRECTORY = os.getenv('PERSONAL_DOCUMENTATION_ROOT_DIRECTORY', r"C:\Users\YourUsername\Desktop\Work Items")
     azure_openai_endpoint = os.getenv('AZURE_OPENAI_ENDPOINT')
     azure_openai_key = os.getenv('AZURE_OPENAI_KEY')
     embedding_deployment = os.getenv('EMBEDDING_DEPLOYMENT', 'text-embedding-ada-002')
@@ -583,7 +583,7 @@ async def main():
     # Initialize file tracker for idempotent processing
     from src.file_tracker import ProcessingTracker
     tracker = ProcessingTracker("processed_files.json")
-    
+
     print(f"File Tracker Stats: {tracker.get_stats()}")
 
     # Initialize Azure OpenAI client
@@ -594,7 +594,7 @@ async def main():
     )
 
     # Process documents from Work Items directory structure
-    markdown_files = discover_markdown_files(work_items_path)
+    markdown_files = discover_markdown_files(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY)
     print(f"Found {len(markdown_files)} markdown files across work item directories")
 
     all_documents = []
@@ -606,7 +606,7 @@ async def main():
             if tracker.is_processed(file_path):
                 print(f"⏭️  Skipping unchanged file: {file_path.name}")
                 continue
-                
+
             # Read and parse file
             file_data = read_markdown_file(file_path)
             if not file_data:
@@ -642,7 +642,7 @@ async def main():
 
     # Save tracking data after processing
     tracker.save()
-    
+
     # Print summary
     print(f"\nProcessing Summary:")
     print(f"- Total files processed: {len(all_documents)}")
@@ -671,7 +671,7 @@ Create a `.env` file with your configuration:
 
 ```bash
 # Path to Work Items directory on desktop
-WORK_ITEMS_PATH=C:\Users\YourUsername\Desktop\Work Items
+PERSONAL_DOCUMENTATION_ROOT_DIRECTORY=C:\Users\YourUsername\Desktop\Work Items
 
 # Azure OpenAI Configuration
 AZURE_OPENAI_ENDPOINT=https://your-openai.openai.azure.com/
@@ -685,7 +685,7 @@ AZURE_SEARCH_INDEX=work-items-index
 ```
 
 **Important Notes:**
-- Update `WORK_ITEMS_PATH` to point to your actual "Work Items" folder on desktop
+- Update `PERSONAL_DOCUMENTATION_ROOT_DIRECTORY` to point to your actual "Work Items" folder on desktop
 - Each subdirectory in "Work Items" should be named with the work item identifier
 - Only `.md` files will be processed; other files in the directories will be ignored
 
@@ -808,12 +808,12 @@ import frontmatter
 from pathlib import Path
 from typing import List, Dict, Optional
 
-def discover_markdown_files(work_items_path: str) -> List[Path]:
+def discover_markdown_files(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY: str) -> List[Path]:
     """
     Find all markdown files in the Work Items directory structure.
 
     Args:
-        work_items_path: Path to the Work Items directory
+        PERSONAL_DOCUMENTATION_ROOT_DIRECTORY: Path to the Work Items directory
 
     Returns:
         List[Path]: Sorted list of valid markdown file paths
@@ -821,10 +821,10 @@ def discover_markdown_files(work_items_path: str) -> List[Path]:
     Raises:
         FileNotFoundError: If the Work Items directory doesn't exist
     """
-    work_items_dir = Path(work_items_path)
+    work_items_dir = Path(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY)
 
     if not work_items_dir.exists():
-        raise FileNotFoundError(f"Work Items directory does not exist: {work_items_path}")
+        raise FileNotFoundError(f"Work Items directory does not exist: {PERSONAL_DOCUMENTATION_ROOT_DIRECTORY}")
 
     markdown_files = []
 
@@ -1121,7 +1121,7 @@ Before running full document upload:
    # Automatically skips files that haven't been modified
    # Tracks processing state across multiple runs
    ```
-   
+
    **Benefits:**
    - **Cost Savings:** Avoids regenerating embeddings for unchanged files
    - **Time Efficiency:** Skips processing for unmodified documents
@@ -1167,7 +1167,7 @@ WorkItemDocumentationRetriever/
 ```
 
 **Configuration Notes:**
-- Update `WORK_ITEMS_PATH` to point to your actual "Work Items" folder
+- Update `PERSONAL_DOCUMENTATION_ROOT_DIRECTORY` to point to your actual "Work Items" folder
 - Each subdirectory should be named with the work item identifier
 - Only `.md` files will be processed
 ````

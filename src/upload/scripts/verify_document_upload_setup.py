@@ -49,7 +49,7 @@ async def verify_document_upload_environment() -> Dict[str, bool]:
         'EMBEDDING_DEPLOYMENT',
         'AZURE_SEARCH_SERVICE',
         'AZURE_SEARCH_KEY',
-        'WORK_ITEMS_PATH'
+        'PERSONAL_DOCUMENTATION_ROOT_DIRECTORY'
     ]
     
     optional_vars = [
@@ -85,21 +85,21 @@ async def verify_work_items_directory() -> Dict[str, Any]:
     """Verify work items directory structure for document upload"""
     print_header("Document Upload System - Work Items Directory")
     
-    work_items_path = os.getenv('WORK_ITEMS_PATH')
-    results = {'path_set': bool(work_items_path)}
+    PERSONAL_DOCUMENTATION_ROOT_DIRECTORY = os.getenv('PERSONAL_DOCUMENTATION_ROOT_DIRECTORY')
+    results = {'path_set': bool(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY)}
     
-    if not work_items_path:
-        print_result("Work Items Path", False, "WORK_ITEMS_PATH not set in .env")
+    if not PERSONAL_DOCUMENTATION_ROOT_DIRECTORY:
+        print_result("Work Items Path", False, "PERSONAL_DOCUMENTATION_ROOT_DIRECTORY not set in .env")
         return results
     
-    work_items_dir = Path(work_items_path)
+    work_items_dir = Path(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY)
     results['directory_exists'] = work_items_dir.exists()
     
     if not work_items_dir.exists():
-        print_result("Directory Exists", False, f"Directory not found: {work_items_path}")
+        print_result("Directory Exists", False, f"Directory not found: {PERSONAL_DOCUMENTATION_ROOT_DIRECTORY}")
         return results
     
-    print_result("Directory Exists", True, f"Found: {work_items_path}")
+    print_result("Directory Exists", True, f"Found: {PERSONAL_DOCUMENTATION_ROOT_DIRECTORY}")
     
     # Count work item directories (subdirectories with markdown files)
     work_item_dirs = []
@@ -253,11 +253,11 @@ async def verify_document_processing_pipeline() -> bool:
         print_result("File Tracker", True, "Document processing tracker available")
         
         # Test file tracking functionality
-        work_items_path = os.getenv('WORK_ITEMS_PATH')
-        if work_items_path and Path(work_items_path).exists():
+        PERSONAL_DOCUMENTATION_ROOT_DIRECTORY = os.getenv('PERSONAL_DOCUMENTATION_ROOT_DIRECTORY')
+        if PERSONAL_DOCUMENTATION_ROOT_DIRECTORY and Path(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY).exists():
             try:
                 # Test tracking with actual markdown files
-                markdown_files = discover_markdown_files(work_items_path)
+                markdown_files = discover_markdown_files(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY)
                 if markdown_files:
                     test_file = markdown_files[0]
                     
@@ -308,10 +308,10 @@ async def verify_document_processing_pipeline() -> bool:
             tracker.tracking_file.unlink()
         
         # Test document upload functionality
-        work_items_path = os.getenv('WORK_ITEMS_PATH')
-        if work_items_path and Path(work_items_path).exists():
+        PERSONAL_DOCUMENTATION_ROOT_DIRECTORY = os.getenv('PERSONAL_DOCUMENTATION_ROOT_DIRECTORY')
+        if PERSONAL_DOCUMENTATION_ROOT_DIRECTORY and Path(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY).exists():
             try:
-                markdown_files = discover_markdown_files(work_items_path)
+                markdown_files = discover_markdown_files(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY)
                 print_result("File Discovery", len(markdown_files) > 0,
                             f"Discovered {len(markdown_files)} markdown files for processing")
                         
@@ -359,7 +359,7 @@ def print_document_upload_summary(results: Dict[str, bool]):
         print("   • Missing .env file: Copy .env.example to .env and configure")
         print("   • Azure credentials: Check Azure OpenAI and Cognitive Search credentials")
         print("   • Dependencies: Run 'pip install -r requirements.txt'")
-        print("   • Work items path: Ensure WORK_ITEMS_PATH points to directory with markdown files")
+        print("   • Work items path: Ensure PERSONAL_DOCUMENTATION_ROOT_DIRECTORY points to directory with markdown files")
         print("\n📖 See DOCUMENT_UPLOAD_SETUP.md for detailed setup instructions")
 
 async def main():

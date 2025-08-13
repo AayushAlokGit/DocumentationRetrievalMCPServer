@@ -110,7 +110,7 @@ The Document Upload System processes your work item documentation and creates a 
    AZURE_SEARCH_INDEX=work-items-index
 
    # Local Paths - UPDATE THIS PATH
-   WORK_ITEMS_PATH=C:\path\to\your\Work Items
+   PERSONAL_DOCUMENTATION_ROOT_DIRECTORY=C:\path\to\your\Work Items
 
    # Processing Configuration (Optional)
    CHUNK_SIZE=1000
@@ -134,7 +134,7 @@ Expected output:
 ✅ PASS Required: AZURE_OPENAI_KEY
 ✅ PASS Required: AZURE_SEARCH_SERVICE
 ✅ PASS Required: AZURE_SEARCH_KEY
-✅ PASS Required: WORK_ITEMS_PATH
+✅ PASS Required: PERSONAL_DOCUMENTATION_ROOT_DIRECTORY
 
 🤖 Document Upload System - Azure OpenAI (Embeddings)
 ✅ PASS Embedding Service Initialization
@@ -327,7 +327,7 @@ python src/upload/scripts/delete_by_file_path.py "outdated_file.md"
 
 ### "No work items found"
 
-- Check `WORK_ITEMS_PATH` points to correct directory
+- Check `PERSONAL_DOCUMENTATION_ROOT_DIRECTORY` points to correct directory
 - Ensure work item directories contain `.md` files
 - Verify directory structure: `Work Items/WI-123/file.md`
 

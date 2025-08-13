@@ -124,7 +124,7 @@ class DocumentProcessingTracker:
         Initialize the document processing tracker.
         
         The tracker automatically determines its tracking source from the environment:
-        - Primary: Uses WORK_ITEMS_PATH environment variable
+        - Primary: Uses PERSONAL_DOCUMENTATION_ROOT_DIRECTORY environment variable
         - Fallback: Uses current working directory
         
         Args:
@@ -139,17 +139,17 @@ class DocumentProcessingTracker:
         Initialize the tracking source based on environment configuration.
         
         This method provides future extensibility for different tracking sources
-        while currently using the WORK_ITEMS_PATH environment variable.
+        while currently using the PERSONAL_DOCUMENTATION_ROOT_DIRECTORY environment variable.
         """
-        # Primary tracking source: WORK_ITEMS_PATH environment variable
-        work_items_path = os.getenv('WORK_ITEMS_PATH')
+        # Primary tracking source: PERSONAL_DOCUMENTATION_ROOT_DIRECTORY environment variable
+        PERSONAL_DOCUMENTATION_ROOT_DIRECTORY = os.getenv('PERSONAL_DOCUMENTATION_ROOT_DIRECTORY')
         
-        if not work_items_path:
-            raise EnvironmentError("WORK_ITEMS_PATH environment variable is required but not set")
+        if not PERSONAL_DOCUMENTATION_ROOT_DIRECTORY:
+            raise EnvironmentError("PERSONAL_DOCUMENTATION_ROOT_DIRECTORY environment variable is required but not set")
         
-        work_items_dir = Path(work_items_path)
+        work_items_dir = Path(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY)
         if not work_items_dir.exists():
-            raise FileNotFoundError(f"WORK_ITEMS_PATH directory not found: {work_items_path}")
+            raise FileNotFoundError(f"PERSONAL_DOCUMENTATION_ROOT_DIRECTORY directory not found: {PERSONAL_DOCUMENTATION_ROOT_DIRECTORY}")
         
         # Use work items directory as tracking source
         self.tracking_source = work_items_dir

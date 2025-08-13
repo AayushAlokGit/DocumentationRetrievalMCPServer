@@ -418,7 +418,7 @@ embedding_deployment_name: str
     search_index_name: str
 
     # Application
-    work_items_path: str
+    PERSONAL_DOCUMENTATION_ROOT_DIRECTORY: str
     log_level: str
 
 def load_config() -> Config:
@@ -433,7 +433,7 @@ load_dotenv()
         search_service_name=os.getenv('AZURE_SEARCH_SERVICE_NAME'),
         search_admin_key=os.getenv('AZURE_SEARCH_ADMIN_KEY'),
         search_index_name=os.getenv('AZURE_SEARCH_INDEX_NAME', 'work-items-index'),
-        work_items_path=os.getenv('WORK_ITEMS_PATH', r'C:\Users\YourUsername\Desktop\Work Items'),
+        PERSONAL_DOCUMENTATION_ROOT_DIRECTORY=os.getenv('PERSONAL_DOCUMENTATION_ROOT_DIRECTORY', r'C:\Users\YourUsername\Desktop\Work Items'),
         log_level=os.getenv('LOG_LEVEL', 'INFO')
     )
 
@@ -453,14 +453,14 @@ Add this to your VS Code settings or MCP configuration:
       "args": ["src/server/main.py"],
       "cwd": "/path/to/WorkItemDocumentationRetriever",
       "env": {
-        "WORK_ITEMS_PATH": "C:\\Users\\YourUsername\\Desktop\\Work Items"
+        "PERSONAL_DOCUMENTATION_ROOT_DIRECTORY": "C:\\Users\\YourUsername\\Desktop\\Work Items"
       }
     }
   }
 }
 ```
 
-**Important**: Update the `WORK_ITEMS_PATH` to point to your actual "Work Items" directory on desktop.`
+**Important**: Update the `PERSONAL_DOCUMENTATION_ROOT_DIRECTORY` to point to your actual "Work Items" directory on desktop.`
 
 ## Usage Examples
 
