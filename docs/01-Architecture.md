@@ -37,12 +37,20 @@ This document outlines the technical architecture for the Work Item Documentatio
 
 ## 4. Document Processing Pipeline
 
-- **Input**: Local markdown files
+- **Input**: Local markdown files from Work Items directory
 - **Processing**: Text chunking, metadata extraction
 - **Embedding**: Generate embeddings using Azure OpenAI
 - **Storage**: Store in Azure Cognitive Search with metadata
+- **File Tracking**: Use `DocumentProcessingTracker` for idempotent processing
 - **Retrieval**: Vector similarity search to find relevant context
 - **Response Generation**: Chat completion with retrieved context and system prompts
+
+### File Processing Features
+
+- **Signature-based Tracking**: Uses file path, size, and modification time for change detection
+- **Automatic Environment Setup**: Initializes from `WORK_ITEMS_PATH` environment variable
+- **Idempotent Processing**: Skips unchanged files to improve efficiency
+- **Direct Value Storage**: Stores signature components directly for better debugging visibility
 
 ## Chat Completion Workflow
 
@@ -97,29 +105,44 @@ For the initial implementation, we'll focus on a single, powerful tool:
 - `get_work_item_details` - Specific work item retrieval
 - `list_work_items` - Browse available items
 
-## Simplified File Structure
+## Current File Structure
 
 ```
-WorkItemDocumentationRetriever/
-├── src/
-│   ├── server/
-│   │   ├── __init__.py
-│   │   └── main.py                  # MCP server entry point
-│   ├── services/
-│   │   ├── __init__.py
-│   │   ├── azure_openai.py          # Azure OpenAI integration
-│   │   └── azure_search.py          # Azure Cognitive Search operations
-│   └── utils/
-│       ├── __init__.py
-│       ├── config.py                # Configuration management
-│       └── logger.py                # Logging utilities
-├── data/
-│   └── work-items/                  # Local markdown files
-├── scripts/
-│   ├── setup.py                     # Project setup
-│   ├── upload_documents.py          # Document upload
-│   └── validate_config.py           # Configuration validation
-├── tests/
+PersonalDocumentationAssistantMCPServer/
+├── run_mcp_server.py                  # MCP Server entry point
+├── upload_documents.py               # Document upload CLI
+├──
+├── src/                               # Core application code
+│   ├── common/                        # Shared services
+│   │   ├── azure_cognitive_search.py # Azure Search service
+│   │   ├── embedding_service.py      # Embedding generation
+│   │   └── openai_service.py         # OpenAI integration
+│   ├──
+│   ├── workitem_mcp/                  # MCP Server components
+│   │   ├── server.py                 # MCP Server implementation
+│   │   ├── search_documents.py       # Search functionality
+│   │   └── tools/                    # MCP tools and routing
+│   │       ├── tool_router.py        # Tool dispatch routing
+│   │       ├── search_tools.py       # Search tool implementations
+│   │       ├── info_tools.py         # Information tools
+│   │       ├── result_formatter.py   # Result formatting
+│   │       └── tool_schemas.py       # Tool schema definitions
+│   ├──
+│   ├── upload/                        # Document upload system
+│   │   ├── document_upload.py        # Document processing pipeline
+│   │   ├── document_utils.py         # Document utilities
+│   │   ├── file_tracker.py           # DocumentProcessingTracker
+│   │   └── scripts/                  # Upload utilities
+│   │       ├── create_index.py       # Index creation
+│   │       ├── upload_work_items.py  # Batch upload
+│   │       ├── upload_single_file.py # Single file upload
+│   │       └── verify_document_upload_setup.py # System verification
+│   └──
+│   └── tests/                         # Test files
+├──
+├── docs/                              # Documentation
+├── requirements.txt                   # Python dependencies
+└── .env                              # Environment variables
 │   ├── __init__.py
 │   └── test_server.py
 ├── .env.example                     # Environment variables template

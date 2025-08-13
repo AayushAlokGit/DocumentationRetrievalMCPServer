@@ -23,7 +23,7 @@ Run this to ensure your document index is ready:
 ```bash
 python -c "
 import sys; sys.path.append('src')
-from azure_cognitive_search import get_azure_search_service
+from common.azure_cognitive_search import get_azure_search_service
 search_svc = get_azure_search_service()
 doc_count = search_svc.get_document_count()
 if doc_count > 0:
@@ -45,7 +45,7 @@ venv\Scripts\activate  # Windows
 # source venv/bin/activate  # macOS/Linux
 
 # Test MCP server startup
-python mcp_server.py
+python run_mcp_server.py
 ```
 
 Expected output:

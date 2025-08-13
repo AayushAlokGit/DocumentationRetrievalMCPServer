@@ -16,6 +16,7 @@ The knowledge base will be derived from a local folder structure containing work
   - Other files (will be ignored for now)
 
 **Example Structure:**
+
 ```
 Work Items/
 ├── WI-12345/
@@ -35,10 +36,12 @@ Work Items/
 ## Technical Architecture
 
 The solution uses:
+
 - **Azure OpenAI** for LLM capabilities and text embeddings
 - **Azure Cognitive Search** as the vector database for efficient information retrieval
 - **Model Context Protocol (MCP)** server architecture for VS Code integration
 - **Python** implementation for processing and indexing
+- **DocumentProcessingTracker** for idempotent file processing with signature-based tracking
 
 ## Key Features
 
@@ -48,3 +51,4 @@ The solution uses:
 4. **Vector Indexing**: Generate embeddings and store in Azure Cognitive Search
 5. **Intelligent Querying**: Provide context-aware answers about work items through VS Code
 6. **Incremental Updates**: Support for updating documentation as work items evolve
+7. **Idempotent Processing**: Skip unchanged files using direct signature tracking (path, size, mtime)

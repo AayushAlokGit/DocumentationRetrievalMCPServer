@@ -11,14 +11,14 @@ This project consists of **two main parts**:
 - **Purpose**: Processes and indexes your work item documentation
 - **Components**: Scripts to discover, process, and upload markdown files to Azure Cognitive Search
 - **Usage**: Run once to set up your searchable index, then periodically to add new documents
-- **Key Files**: `scripts/upload_work_items.py`, `src/document_upload.py`, `src/document_utils.py`
+- **Key Files**: `src/upload/scripts/upload_work_items.py`, `src/upload/document_upload.py`, `src/upload/document_utils.py`
 
 ### 2. 🔌 MCP Server for VS Code Integration
 
 - **Purpose**: Provides intelligent search capabilities directly within VS Code
 - **Components**: Model Context Protocol server that exposes search tools to VS Code agent
 - **Usage**: Runs as a background service, integrates with VS Code for AI-powered documentation queries
-- **Key Files**: `mcp_server.py`, `src/search_documents.py`, `src/azure_cognitive_search.py`
+- **Key Files**: `run_mcp_server.py`, `src/workitem_mcp/search_documents.py`, `src/common/azure_cognitive_search.py`
 
 **Workflow**: First use the document upload system to index your files, then run the MCP server to enable AI-powered search in VS Code.
 
@@ -34,25 +34,38 @@ This project consists of **two main parts**:
 ## 📁 Project Structure
 
 ```
-WorkItemDocumentationRetriever/
-├── mcp_server.py                      # 🔌 MCP Server entry point
+PersonalDocumentationAssistantMCPServer/
+├── run_mcp_server.py                  # 🔌 MCP Server entry point
+├── upload_documents.py               # 📄 Document upload CLI
 ├──
 ├── src/                               # Core application code
-│   ├── search_documents.py           # 🔌 Search functionality for MCP server
-│   ├── azure_cognitive_search.py     # 🔌📄 Shared Azure Search service
-│   ├── document_upload.py            # 📄 Document processing and upload
-│   ├── document_utils.py             # 📄 Document processing utilities
-│   ├── embedding_service.py          # 🔌📄 Shared embedding service
-│   ├── openai_service.py             # 🔌📄 Shared OpenAI service
-│   └── file_tracker.py               # 📄 File processing tracking
+│   ├── common/                        # 🔌📄 Shared services
+│   │   ├── azure_cognitive_search.py # Azure Search service
+│   │   ├── embedding_service.py      # Embedding generation
+│   │   └── openai_service.py         # OpenAI integration
+│   ├──
+│   ├── workitem_mcp/                  # � MCP Server components
+│   │   ├── server.py                 # MCP Server implementation
+│   │   ├── search_documents.py       # Search functionality
+│   │   └── tools/                    # MCP tools and routing
+│   │       ├── tool_router.py        # Tool dispatch routing
+│   │       ├── search_tools.py       # Search tool implementations
+│   │       ├── info_tools.py         # Information tools
+│   │       ├── result_formatter.py   # Result formatting
+│   │       └── tool_schemas.py       # Tool schema definitions
+│   ├──
+│   ├── upload/                        # 📄 Document upload system
+│   │   ├── document_upload.py        # Document processing pipeline
+│   │   ├── document_utils.py         # Document utilities
+│   │   ├── file_tracker.py           # File processing tracking
+│   │   └── scripts/                  # Upload utilities
+│   │       ├── create_index.py       # Index creation
+│   │       ├── upload_work_items.py  # Batch upload
+│   │       ├── upload_single_file.py # Single file upload
+│   │       └── verify_document_upload_setup.py # System verification
+│   └──
+│   └── tests/                         # Test files
 ├──
-├── scripts/                           # 📄 Document upload utilities
-│   ├── create_azure_cognitive_search_index.py  # 📄 Index creation
-│   ├── upload_work_items.py          # 📄 Batch document upload
-│   └── upload_single_file.py         # 📄 Single file upload
-├──
-├── tests/                             # Test files
-├── config/                            # Configuration files
 ├── docs/                              # Documentation
 ├── requirements.txt                   # Python dependencies
 └── .env                              # Environment variables (create from .env.example)
@@ -110,13 +123,13 @@ This project has **two separate setup processes** for each component:
 1. **Set up the search index:**
 
    ```bash
-   python scripts/create_azure_cognitive_search_index.py
+   python src/upload/scripts/create_index.py
    ```
 
 2. **Upload your documents:**
 
    ```bash
-   python scripts/upload_work_items.py
+   python src/upload/scripts/upload_work_items.py
    ```
 
 ### Part 2: MCP Server for VS Code
@@ -137,15 +150,15 @@ This project has **two separate setup processes** for each component:
 
 #### Document Upload Commands (📄)
 
-- `python verify_document_upload_setup.py` - Verify document upload system setup is correct
-- `python scripts/create_azure_cognitive_search_index.py` - Create Azure Search index with vector capabilities
-- `python scripts/upload_work_items.py` - Process and index all Work Items documents
-- `python scripts/upload_work_items.py --work-item WI-123` - Upload specific work item
-- `python scripts/upload_work_items.py --dry-run` - Preview what will be uploaded
+- `python src/upload/scripts/verify_document_upload_setup.py` - Verify document upload system setup is correct
+- `python src/upload/scripts/create_index.py` - Create Azure Search index with vector capabilities
+- `python src/upload/scripts/upload_work_items.py` - Process and index all Work Items documents
+- `python src/upload/scripts/upload_work_items.py --work-item WI-123` - Upload specific work item
+- `python src/upload/scripts/upload_work_items.py --dry-run` - Preview what will be uploaded
 
 #### MCP Server Commands (🔌)
 
-- `python mcp_server.py` - Start the MCP server for VS Code integration
+- `python run_mcp_server.py` - Start the MCP server for VS Code integration
 - Use VS Code agent to query: "What work items dealt with authentication?"
 
 ### Example Queries (in VS Code with MCP Server 🔌)
@@ -217,6 +230,7 @@ The system consists of two main parts working together:
 3. **Text Chunking**: Splits documents into searchable chunks
 4. **Embedding Generation**: Creates vector embeddings using Azure OpenAI
 5. **Index Storage**: Stores documents and vectors in Azure Cognitive Search
+6. **File Tracking**: Uses `DocumentProcessingTracker` for idempotent processing
 
 ### Part 2: MCP Server for VS Code (🔌)
 
@@ -224,12 +238,14 @@ The system consists of two main parts working together:
 2. **Search Engine**: Handles text, vector, and hybrid search queries
 3. **Context Retrieval**: Finds relevant documentation for AI assistant
 4. **Tool Exposure**: Exposes search tools to VS Code agent mode
+5. **Result Formatting**: Formats search results for optimal AI consumption
 
 ### Shared Components
 
 - **Azure OpenAI Service**: Used by both parts for embeddings and chat
 - **Azure Cognitive Search**: Central search index used by both parts
 - **Configuration Management**: Shared environment and settings
+- **DocumentProcessingTracker**: Idempotent file processing with direct signature tracking
 
 ## 🔍 MCP Tools
 

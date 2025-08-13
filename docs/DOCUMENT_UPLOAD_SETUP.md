@@ -123,26 +123,27 @@ The Document Upload System processes your work item documentation and creates a 
 Run the document upload verification script to check all connections:
 
 ```bash
-python verify_document_upload_setup.py
+python src/upload/scripts/verify_document_upload_setup.py
 ```
 
 Expected output:
 
 ```
-� Document Upload System - Environment Variables
+🔍 Document Upload System - Environment Variables
 ✅ PASS Required: AZURE_OPENAI_ENDPOINT
 ✅ PASS Required: AZURE_OPENAI_KEY
 ✅ PASS Required: AZURE_SEARCH_SERVICE
 ✅ PASS Required: AZURE_SEARCH_KEY
 ✅ PASS Required: WORK_ITEMS_PATH
 
-� Document Upload System - Azure OpenAI (Embeddings)
+🤖 Document Upload System - Azure OpenAI (Embeddings)
 ✅ PASS Embedding Service Initialization
 ✅ PASS Azure OpenAI Connection
 ✅ PASS Embedding Generation
 
-� Document Upload System - Azure Cognitive Search
+🔍 Document Upload System - Azure Cognitive Search
 ✅ PASS Search Service Initialization
+✅ PASS File Processing Tracker (DocumentProcessingTracker)
 ```
 
 ### Step 5: Create Search Index
@@ -150,7 +151,7 @@ Expected output:
 Create the Azure Cognitive Search index with vector search capabilities:
 
 ```bash
-python scripts/create_azure_cognitive_search_index.py
+python src/upload/scripts/create_index.py
 ```
 
 Expected output:
@@ -170,22 +171,24 @@ Upload all your work item documentation:
 
 ```bash
 # Upload all work items
-python scripts/upload_work_items.py
+python src/upload/scripts/upload_work_items.py
 
 # Or test with dry run first
-python scripts/upload_work_items.py --dry-run
+python src/upload/scripts/upload_work_items.py --dry-run
 ```
 
 Expected output:
 
 ```
+[TRACKER] Initialized with work items tracking source: C:\Work Items\processed_files.json
 🚀 Starting document upload process...
 📁 Discovered 45 markdown files across 12 work items
 🔄 Processing documents in batches...
 ✅ Uploaded 234 document chunks successfully
+⏭️  Skipped 15 files (already processed - no changes detected)
 📊 Processing complete:
    • Work Items: 12
-   • Files: 45
+   • Files: 45 (30 processed, 15 skipped)
    • Chunks: 234
    • Index: work-items-index
 ```
@@ -197,7 +200,7 @@ Expected output:
 ```bash
 python -c "
 import sys; sys.path.append('src')
-from azure_cognitive_search import get_azure_search_service
+from common.azure_cognitive_search import get_azure_search_service
 search_svc = get_azure_search_service()
 print(f'📊 Documents indexed: {search_svc.get_document_count()}')
 print(f'📋 Work items: {len(search_svc.get_work_items())}')
@@ -209,7 +212,7 @@ print(f'📋 Work items: {len(search_svc.get_work_items())}')
 ```bash
 python -c "
 import sys; sys.path.append('src')
-from search_documents import DocumentSearcher
+from workitem_mcp.search_documents import DocumentSearcher
 import asyncio
 
 async def test_search():
@@ -227,26 +230,26 @@ asyncio.run(test_search())
 
 ```bash
 # Upload all work items
-python scripts/upload_work_items.py
+python src/upload/scripts/upload_work_items.py
 
 # Upload specific work item
-python scripts/upload_work_items.py --work-item WI-12345
+python src/upload/scripts/upload_work_items.py --work-item WI-12345
 
 # Preview what will be uploaded (dry run)
-python scripts/upload_work_items.py --dry-run
+python src/upload/scripts/upload_work_items.py --dry-run
 
-# Force reprocessing of all files
-python scripts/upload_work_items.py --reset
+# Force reprocessing of all files (clears DocumentProcessingTracker)
+python src/upload/scripts/upload_work_items.py --reset
 
 # Upload single file
-python scripts/upload_single_file.py path/to/file.md
+python src/upload/scripts/upload_single_file.py path/to/file.md
 ```
 
 ### Index Management
 
 ```bash
 # Create/recreate index
-python scripts/create_azure_cognitive_search_index.py
+python src/upload/scripts/create_index.py
 
 # Verify setup
 python verify_document_upload_setup.py
