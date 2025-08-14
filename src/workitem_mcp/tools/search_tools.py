@@ -143,7 +143,7 @@ async def handle_search_by_chunk(searcher, arguments: dict) -> list[types.TextCo
             search_description = f"Content search for '{query}' in chunks matching '{chunk_pattern}'"
         else:
             # Just find chunks matching the pattern
-            results = await searcher.text_search("*", {"chunk_index": chunk_pattern}, max_results)
+            results = searcher.text_search("*", {"chunk_index": chunk_pattern}, max_results)
             search_description = f"All chunks matching pattern '{chunk_pattern}'"
         
         if not results:
@@ -185,7 +185,7 @@ async def handle_search_file_chunks(searcher, arguments: dict) -> list[types.Tex
             search_description = f"Content search for '{query}' in file '{file_name}'"
         else:
             # Get all chunks from this file
-            results = await searcher.text_search("*", {"file_name": file_name}, max_results)
+            results = searcher.text_search("*", {"file_name": file_name}, max_results)
             search_description = f"All chunks from file '{file_name}'"
         
         if not results:
@@ -225,7 +225,7 @@ async def handle_search_chunk_range(searcher, arguments: dict) -> list[types.Tex
     
     try:
         # Get all chunks from this file first
-        all_chunks = await searcher.text_search("*", {"file_name": file_name}, 50)  # Get more chunks to filter
+        all_chunks = searcher.text_search("*", {"file_name": file_name}, 50)  # Get more chunks to filter
         
         if not all_chunks:
             return [types.TextContent(
