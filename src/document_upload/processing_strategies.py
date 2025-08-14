@@ -722,74 +722,6 @@ class PersonalDocumentationAssistantProcessingStrategy(DocumentProcessingStrateg
         
         return search_objects
     
-    async def process_document_with_embeddings(self, file_path: Path) -> Optional[List[Dict[str, Any]]]:
-        """
-        Complete document processing pipeline: metadata extraction → chunking → embedding → search objects.
-        
-        This method processes a single document through all phases:
-        1. Extract metadata from document content and file path
-        2. Chunk the document content into manageable pieces
-        3. Generate embeddings for each chunk
-        4. Create Azure search index objects combining metadata, chunks, and embeddings
-        
-        Args:
-            file_path: Path to the document to process
-            
-        Returns:
-            Optional[List[Dict[str, Any]]]: List of search index objects ready for Azure upload,
-                                          or None if processing failed
-        """
-        try:
-            # Phase 1: Read document and extract metadata
-            file_data = _read_document_file(file_path)
-            if not file_data:
-                print(f"Failed to read document: {file_path}")
-                return None
-            
-            content = file_data['content']
-            metadata = self.extract_metadata(content, file_path)
-            
-            # Phase 2: Chunk the document content
-            chunks = self.chunk_document_content(content)
-            if not chunks:
-                print(f"No chunks generated for document: {file_path}")
-                return None
-            
-            # Phase 3: Generate embeddings for all chunks
-            chunk_embeddings = await self.generate_chunk_embeddings(chunks)
-            
-            # Phase 4: Create ProcessedDocument object
-            context_id, context_name = self.extract_context_info(metadata)
-            additional_metadata = self.prepare_additional_metadata(metadata)
-            
-            processed_doc = ProcessedDocument(
-                document_id=self.generate_document_id(file_path),
-                file_path=str(file_path),
-                file_name=file_path.name,
-                file_type=metadata.get('file_type', 'unknown'),
-                title=metadata.get('title', file_path.stem),
-                content=content,
-                content_chunks=chunks,
-                tags=metadata.get('tags', []),
-                category=metadata.get('category', metadata.get('document_category')),
-                context_id=context_id,
-                context_name=context_name,
-                last_modified=metadata.get('last_modified', datetime.now().isoformat() + 'Z'),
-                chunk_count=len(chunks),
-                processing_strategy=self.get_strategy_name(),
-                metadata_json=json.dumps(additional_metadata) if additional_metadata else None
-            )
-            
-            # Phase 5: Create search index objects for each chunk
-            search_objects = self.create_chunk_search_objects(processed_doc, chunk_embeddings)
-            
-            print(f"✅ Processed {file_path.name}: {len(chunks)} chunks, {len(search_objects)} search objects")
-            return search_objects
-            
-        except Exception as e:
-            print(f"❌ Error processing document {file_path}: {e}")
-            return None
-    
     async def create_search_index_objects(self, processed_documents: List[ProcessedDocument]):
         """
         Create Azure Cognitive Search index objects optimized for Personal Documentation Assistant.
@@ -809,6 +741,28 @@ class PersonalDocumentationAssistantProcessingStrategy(DocumentProcessingStrateg
             # Create search objects for each chunk with its embedding and metadata
             search_objects = self.create_chunk_search_objects(doc, chunk_embeddings)
             
+            # IMPORTANT: Using yield here implements a generator pattern for memory efficiency
+            # 
+            # Why yield is crucial for this pipeline:
+            # 1. MEMORY EFFICIENCY: Instead of creating all search objects in memory at once
+            #    (which could be 100+ documents × 3-5 objects each = 300-500+ objects),
+            #    yield returns objects one at a time, keeping memory usage minimal
+            #
+            # 2. STREAMING PROCESSING: The upload phase can process and upload objects
+            #    immediately as they're generated, rather than waiting for all objects
+            #    to be created first. This enables true streaming document processing.
+            #
+            # 3. SCALABILITY: For large document collections, this prevents memory overflow
+            #    and allows the pipeline to handle thousands of documents efficiently
+            #
+            # 4. EARLY TERMINATION: If an error occurs during upload, processing can
+            #    stop immediately without wasting resources on remaining objects
+            #
+            # Example flow:
+            # for search_object in create_search_index_objects(docs):  # One at a time
+            #     upload_to_azure(search_object)  # Process immediately
+            #     # Only 1 object in memory at any time vs 300+ without yield
+
             # Yield each search object
             for search_object in search_objects:
                 yield search_object
