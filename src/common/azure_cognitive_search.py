@@ -808,30 +808,57 @@ class AzureCognitiveSearch:
     
     # ===== UTILITY METHODS =====
     
-    def get_unique_field_values(self, field_name: str) -> List[str]:
+    def get_unique_field_values(self, field_name: str, max_values: int = 1000) -> List[str]:
         """
-        Get unique values for any facetable field
+        Get unique values for any field by querying all documents directly
         
         Args:
             field_name: Name of the field to get unique values for
+            max_values: Maximum number of unique values to return (default: 1000)
             
         Returns:
             List of unique values for the field
         """
         try:
-            results = self.search_client.search(
-                search_text="*",
-                facets=[field_name],
-                top=0
-            )
+            unique_values_set = set()
+            skip = 0
+            batch_size = 1000
             
-            unique_values = []
-            if hasattr(results, 'get_facets') and results.get_facets():
-                facets = results.get_facets()
-                if field_name in facets:
-                    unique_values = [facet['value'] for facet in facets[field_name]]
+            while True:
+                # Get batch of documents with only the field we need
+                results = self.search_client.search(
+                    search_text="*",
+                    select=field_name,
+                    top=batch_size,
+                    skip=skip
+                )
+                
+                batch = list(results)
+                if not batch:
+                    break
+                
+                # Extract unique values from this batch
+                for doc in batch:
+                    value = doc.get(field_name)
+                    if value is not None:
+                        if isinstance(value, list):
+                            # Handle array fields (like tags)
+                            unique_values_set.update(str(item).strip() for item in value if item is not None)
+                        else:
+                            # Handle single value fields
+                            unique_values_set.add(str(value).strip())
+                
+                skip += batch_size
+                
+                # Stop early if we have enough unique values
+                if len(unique_values_set) >= max_values:
+                    break
             
-            return sorted(unique_values)
+            # Convert to sorted list and apply limit
+            unique_values = sorted(list(unique_values_set))[:max_values]
+            
+            print(f"[DEBUG] Found {len(unique_values)} unique values for '{field_name}'")
+            return unique_values
             
         except Exception as e:
             print(f"[ERROR] Failed to get unique values for field '{field_name}': {e}")
