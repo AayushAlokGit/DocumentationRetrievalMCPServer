@@ -644,7 +644,7 @@ class DocumentProcessingPipeline:
                 print(f"   ⚙️  Phase 2 - Files processed: {processing_result.successfully_processed}")
                 print(f"   📤 Phase 3 - Search objects uploaded: {upload_result.successfully_uploaded}")
                 print(f"   📋 Tracker - Files marked as processed: {upload_result.upload_metadata.get('documents_successfully_uploaded', 0)}")
-                print(f"   ✅ End-to-end success rate: {(upload_result.successfully_uploaded / discovery_result.total_files * 100):.1f}%" if discovery_result.total_files > 0 else "   ✅ No files to process")
+                print(f"   ✅ End-to-end success rate: {(upload_result.successfully_uploaded / upload_result.total_search_objects * 100):.1f}%" if upload_result.total_search_objects > 0 else "   ✅ No files to process")
                 
             else:
                 print(f"\n⚠️  Skipping upload phase - no documents successfully processed")

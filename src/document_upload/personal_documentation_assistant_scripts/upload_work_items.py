@@ -299,7 +299,7 @@ async def upload_work_items(work_item_id: Optional[str] = None,
             for error in upload_result.errors[:3]:
                 print(f"      • {error}")
         
-        success_rate = (upload_result.successfully_uploaded / discovery_result.total_files * 100) if discovery_result.total_files > 0 else 0
+        success_rate = (upload_result.successfully_uploaded / upload_result.total_search_objects * 100) if upload_result.total_search_objects > 0 else 0
         print(f"   ✅ Overall success rate: {success_rate:.1f}%")
         
     except Exception as e:
