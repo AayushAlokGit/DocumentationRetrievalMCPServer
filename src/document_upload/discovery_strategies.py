@@ -153,10 +153,10 @@ class GeneralDocumentDiscoveryStrategy(DocumentDiscoveryStrategy):
     
     def discover_documents(self, root_path: str, **kwargs) -> List[Path]:
         """
-        Discover all supported document files in the directory structure.
+        Discover all supported document files in the directory structure or process a single file.
         
         Args:
-            root_path: Root directory to start discovery from
+            root_path: Root directory to start discovery from OR path to a single file
             **kwargs: Additional parameters (recursive, max_files, exclude_patterns)
             
         Returns:
@@ -167,24 +167,34 @@ class GeneralDocumentDiscoveryStrategy(DocumentDiscoveryStrategy):
         max_files = kwargs.get('max_files', None)
         exclude_patterns = kwargs.get('exclude_patterns', [])
         
-        root_directory = Path(root_path)
+        root_path_obj = Path(root_path)
         
-        if not root_directory.exists():
-            raise FileNotFoundError(f"Directory does not exist: {root_path}")
+        if not root_path_obj.exists():
+            raise FileNotFoundError(f"Path does not exist: {root_path}")
         
         document_files = []
         extensions = self.get_supported_extensions()
         
-        # Find all supported document files
-        for ext in extensions:
-            if recursive:
-                # Use rglob for recursive search
-                found_files = list(root_directory.rglob(f"*{ext}"))
+        # Handle single file case
+        if root_path_obj.is_file():
+            # Check if the single file has a supported extension
+            if root_path_obj.suffix.lower() in extensions:
+                document_files = [root_path_obj]
             else:
-                # Use glob for non-recursive search (current directory only)
-                found_files = list(root_directory.glob(f"*{ext}"))
-            
-            document_files.extend(found_files)
+                # File doesn't have supported extension, return empty list
+                document_files = []
+        else:
+            # Handle directory case (existing logic)
+            # Find all supported document files
+            for ext in extensions:
+                if recursive:
+                    # Use rglob for recursive search
+                    found_files = list(root_path_obj.rglob(f"*{ext}"))
+                else:
+                    # Use glob for non-recursive search (current directory only)
+                    found_files = list(root_path_obj.glob(f"*{ext}"))
+                
+                document_files.extend(found_files)
         
         # Filter valid files
         valid_files = self._filter_valid_files(document_files)
