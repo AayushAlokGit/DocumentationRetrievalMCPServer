@@ -120,94 +120,179 @@ The Document Upload System processes your work item documentation and creates a 
 
 ### Step 4: Verify Document Upload Setup
 
-Run the document upload verification script to check all connections:
+Run the comprehensive verification script to validate all system components:
 
 ```bash
-python src/upload/scripts/verify_document_upload_setup.py
+python src\document_upload\common_scripts\verify_document_upload_setup.py
 ```
 
-Expected output:
+This script performs **comprehensive system validation** including:
+
+- 🔍 **Environment Variables**: Validates all required Azure credentials and paths
+- 🤖 **Azure OpenAI Connection**: Tests embedding service and model deployment
+- 🔍 **Azure Cognitive Search**: Verifies service connectivity, index existence, and document counts
+- � **Work Items Directory**: Scans for work item folders and supported documents (.md, .txt, .docx)
+- 🧪 **Pipeline Components**: Tests import of processing strategies and document handling
+- ⚡ **End-to-End Test**: Validates complete document processing pipeline
+
+Expected output includes:
 
 ```
-🔍 Document Upload System - Environment Variables
-✅ PASS Required: AZURE_OPENAI_ENDPOINT
-✅ PASS Required: AZURE_OPENAI_KEY
-✅ PASS Required: AZURE_SEARCH_SERVICE
-✅ PASS Required: AZURE_SEARCH_KEY
-✅ PASS Required: PERSONAL_DOCUMENTATION_ROOT_DIRECTORY
+🔍 Environment Variables
+✅ Environment file exists                Found: .env
+✅ AZURE_OPENAI_ENDPOINT                 https://your-service.openai.azure.com/
+✅ AZURE_OPENAI_KEY                      Configured (32 chars)
+✅ AZURE_SEARCH_SERVICE                  your-search-service
+✅ AZURE_SEARCH_KEY                      Configured (32 chars)
+✅ PERSONAL_DOCUMENTATION_ROOT_DIRECTORY C:\path\to\Work Items
 
-🤖 Document Upload System - Azure OpenAI (Embeddings)
-✅ PASS Embedding Service Initialization
-✅ PASS Azure OpenAI Connection
-✅ PASS Embedding Generation
+🤖 Azure OpenAI (Embeddings)
+✅ Azure OpenAI connection               Service accessible
+✅ Embedding service initialization      Using deployment: text-embedding-ada-002
+✅ Test embedding generation             Generated 1536-dimensional vector
 
-🔍 Document Upload System - Azure Cognitive Search
-✅ PASS Search Service Initialization
-✅ PASS File Processing Tracker (DocumentProcessingTracker)
+🔍 Azure Cognitive Search
+✅ Azure Cognitive Search connection     Service accessible, found 2 indexes
+✅ Azure Search Index exists             Index 'work-items-index' found
+✅ Index document count                  Index contains 234 documents
+
+📁 Work Items Directory Structure
+✅ Work items directory exists           Found: C:\path\to\Work Items
+✅ Work item directories found           Found 12 work item directories
+✅ Documents found                       Found 145 documents in first 10 work items
+
+📊 Verification Summary
+✅ Environment: 6/6 tests passed
+✅ Azure: 5/5 tests passed
+✅ Directory: 3/3 tests passed
+✅ Pipeline: 4/4 tests passed
+✅ Test: 1/1 tests passed
+
+📊 Overall: 19/19 tests passed
+🎉 All verification tests passed! Your system is ready for document upload.
+
+🚀 SYSTEM READY: You can now run document upload scripts!
+📋 Next steps:
+   1. Run: python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --dry-run
+   2. Run: python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --work-item "Task XXXXX"
+   3. Force reprocess: python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --work-item "Task XXXXX" --force
 ```
+
+**🔧 System Readiness Assessment:**
+The script evaluates both **critical requirements** (must pass for system to function) and **optional features** (nice-to-have enhancements).
 
 ### Step 5: Create Search Index
 
 Create the Azure Cognitive Search index with vector search capabilities:
 
 ```bash
-python src/upload/scripts/create_index.py
+python src\document_upload\common_scripts\create_index.py
 ```
+
+This script:
+
+- **Creates index** with name from `AZURE_SEARCH_INDEX` environment variable
+- **Configures vector search** with 1536-dimensional embeddings (matching OpenAI ada-002)
+- **Checks existence** and safely handles index recreation if needed
+- **Validates configuration** against your Azure Cognitive Search service tier
 
 Expected output:
 
 ```
 🔧 Creating Azure Cognitive Search index: work-items-index
-✅ Search index created successfully
-📊 Index features:
-   • Vector search enabled (1536 dimensions)
-   • Hybrid search capabilities
-   • Semantic search configuration
+✅ Index created successfully with vector search capabilities
+📊 Index configuration:
+   • Vector dimensions: 1536 (OpenAI ada-002 compatible)
+   • Search fields: content, file_path, work_item_id, title
+   • Vector field: content_vector
+   • Hybrid search enabled
 ```
 
 ### Step 6: Upload Your Documents
 
-Upload all your work item documentation:
+The main upload script provides comprehensive document processing with multiple operation modes:
 
 ```bash
-# Upload all work items
-python src/upload/scripts/upload_work_items.py
-
-# Or test with dry run first
-python src/upload/scripts/upload_work_items.py --dry-run
+# Preview what will be processed (recommended first step)
+python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --dry-run
 ```
 
-Expected output:
+**Available Command Options:**
+
+```bash
+# Basic Operations
+python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py
+# Processes all work items, skipping unchanged files (using file signature tracking)
+
+python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --work-item "Task 12345"
+# Process only specific work item (supports partial matching)
+
+python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --dry-run
+# Preview mode: shows what would be processed without making changes
+
+# Force Processing Options
+python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --force --work-item "Task 12345"
+# Force reprocessing of specific work item (deletes existing + re-uploads)
+
+python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --reset
+# Full system reset: clears tracking data + deletes all indexed documents + reprocesses everything
+```
+
+**Expected Output (Normal Processing):**
 
 ```
-[TRACKER] Initialized with work items tracking source: C:\Work Items\processed_files.json
-🚀 Starting document upload process...
-📁 Discovered 45 markdown files across 12 work items
-🔄 Processing documents in batches...
-✅ Uploaded 234 document chunks successfully
-⏭️  Skipped 15 files (already processed - no changes detected)
-📊 Processing complete:
-   • Work Items: 12
-   • Files: 45 (30 processed, 15 skipped)
-   • Chunks: 234
+[TRACKER] Initialized DocumentProcessingTracker with: C:\Work Items\.processed_files.json
+� Scanning work items directory: C:\Work Items
+� Discovered 12 work item directories
+📄 Found 45 documents (.md, .txt, .docx files)
+
+� Starting document processing pipeline...
+📊 Processing batch 1/3 (15 files)
+✅ WI-12345\requirements.md → 3 chunks processed
+✅ WI-12345\implementation.md → 5 chunks processed
+⏭️  WI-12345\notes.md → skipped (no changes detected)
+
+📊 Processing Summary:
+   • Work Items Processed: 12
+   • Files Discovered: 45
+   • Files Processed: 30 (new/changed)
+   • Files Skipped: 15 (unchanged)
+   • Document Chunks Created: 234
+   • Processing Time: 45.2 seconds
    • Index: work-items-index
+```
+
+**Expected Output (Dry Run):**
+
+```
+🏃 DRY RUN MODE - No actual processing will occur
+
+📁 Would process work items: WI-12345, BUG-67890, EPIC-11111
+📄 Would process 45 files (30 new/changed, 15 unchanged)
+⚡ Would generate approximately 234 document chunks
+📋 Would update index: work-items-index
+
+💡 To proceed with actual processing, remove --dry-run flag
 ```
 
 ## 🧪 Testing Your Upload
 
-### Test 1: Verify Document Count
+### Test 1: Quick Document Count Check
 
 ```bash
 python -c "
 import sys; sys.path.append('src')
-from common.azure_cognitive_search import get_azure_search_service
-search_svc = get_azure_search_service()
-print(f'📊 Documents indexed: {search_svc.get_document_count()}')
-print(f'📋 Work items: {len(search_svc.get_work_items())}')
+from common.azure_cognitive_search import AzureCognitiveSearch
+search_svc = AzureCognitiveSearch()
+count = search_svc.get_document_count()
+work_items = search_svc.get_work_items()
+print(f'📊 Documents indexed: {count}')
+print(f'📋 Work items: {len(work_items)}')
+print(f'🏷️  Work item IDs: {list(work_items)[:5]}...')
 "
 ```
 
-### Test 2: Test Search Functionality
+### Test 2: Search Functionality Validation
 
 ```bash
 python -c "
@@ -217,141 +302,383 @@ import asyncio
 
 async def test_search():
     searcher = DocumentSearcher()
-    results = searcher.text_search('authentication', None, 3)
-    print(f'🔍 Found {len(results)} results for \"authentication\"')
+
+    # Test text search
+    text_results = await searcher.text_search('authentication', max_results=3)
+    print(f'🔍 Text search results: {len(text_results)} for \"authentication\"')
+
+    # Test vector search
+    vector_results = await searcher.vector_search('security requirements', max_results=3)
+    print(f'🧠 Vector search results: {len(vector_results)} for \"security requirements\"')
+
+    # Test hybrid search
+    hybrid_results = await searcher.hybrid_search('API documentation', max_results=3)
+    print(f'⚡ Hybrid search results: {len(hybrid_results)} for \"API documentation\"')
 
 asyncio.run(test_search())
 "
 ```
 
-## 🔧 Available Commands
+### Test 3: Comprehensive System Validation
 
-### Upload Commands
+Re-run the verification script to confirm everything is working:
 
 ```bash
-# Upload all work items
-python src/upload/scripts/upload_work_items.py
-
-# Upload specific work item
-python src/upload/scripts/upload_work_items.py --work-item WI-12345
-
-# Preview what will be uploaded (dry run)
-python src/upload/scripts/upload_work_items.py --dry-run
-
-# Force reprocessing of specific work item (deletes existing documents + re-uploads)
-python src/upload/scripts/upload_work_items.py --force --work-item WI-12345
-
-# Force reprocessing of all files (clears DocumentProcessingTracker and deletes all search documents)
-python src/upload/scripts/upload_work_items.py --reset
-
-# Upload single file
-python src/upload/scripts/upload_single_file.py path/to/file.md
+python src\document_upload\common_scripts\verify_document_upload_setup.py
 ```
 
-### Document Management
+Look for the final status: **🚀 SYSTEM READY: You can now run document upload scripts!**
+
+## 🔧 Available Scripts & Commands
+
+The document upload system provides a comprehensive set of utilities for different workflows:
+
+### 📄 Document Upload & Processing
+
+**Main Upload Script** (Primary Interface):
 
 ```bash
-# Delete all documents for a specific work item
-python src/upload/scripts/delete_by_work_item.py <work_item_id>
+# Upload all work items (processes only new/changed files)
+python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py
 
-# Delete documents without confirmation
-python src/upload/scripts/delete_by_work_item.py <work_item_id> --no-confirm
+# Preview changes before processing
+python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --dry-run
 
-# Delete documents matching file path pattern
-python src/upload/scripts/delete_by_file_path.py "filename.md"
+# Process specific work item
+python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --work-item "Task 12345"
 
-# Delete documents by file pattern without confirmation
-python src/upload/scripts/delete_by_file_path.py "docs/*.md" --no-confirm
+# Force reprocessing (deletes existing documents for work item + re-uploads)
+python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --work-item "Task 12345" --force
+
+# Complete system reset (clears all tracking + deletes all documents + reprocesses everything)
+python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --reset
 ```
 
-### Index Management
+**Single File Upload** (Development/Testing):
 
 ```bash
-# Create/recreate index
-python src/upload/scripts/create_index.py
+# Upload individual file
+python src\document_upload\common_scripts\upload_single_file.py "C:\Work Items\WI-12345\requirements.md"
+```
 
-# Verify setup
-python verify_document_upload_setup.py
+### 🗑️ Document Management & Cleanup
+
+**Work Item Deletion** (Targeted Cleanup):
+
+```bash
+# Delete all documents for specific work item (with confirmation)
+python src\document_upload\personal_documentation_assistant_scripts\delete_by_work_item.py "Task 12345"
+
+# Delete without confirmation prompt
+python src\document_upload\personal_documentation_assistant_scripts\delete_by_work_item.py "Task 12345" --no-confirm
+```
+
+**File Pattern Deletion** (Flexible Cleanup):
+
+```bash
+# Delete documents matching specific filename
+python src\document_upload\common_scripts\delete_by_file_path.py "outdated_requirements.md"
+
+# Delete using wildcard patterns
+python src\document_upload\common_scripts\delete_by_file_path.py "temp_*.md"
+
+# Delete without confirmation
+python src\document_upload\common_scripts\delete_by_file_path.py "draft_*.md" --no-confirm
+```
+
+### 🏗️ Index & System Management
+
+**Index Operations**:
+
+```bash
+# Create or recreate search index
+python src\document_upload\common_scripts\create_index.py
+```
+
+**System Verification**:
+
+```bash
+# Comprehensive system health check
+python src\document_upload\common_scripts\verify_document_upload_setup.py
+```
+
+### 🔄 Common Workflow Patterns
+
+**Initial Setup & Bulk Upload**:
+
+```bash
+# 1. Verify system is ready
+python src\document_upload\common_scripts\verify_document_upload_setup.py
+
+# 2. Preview what will be processed
+python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --dry-run
+
+# 3. Perform actual upload
+python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py
+```
+
+**Adding New Work Item**:
+
+```bash
+# Process only the new work item
+python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --work-item "NEW-ITEM-123"
+```
+
+**Updating Existing Work Item**:
+
+```bash
+# Option 1: Let system detect changes automatically
+python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --work-item "EXISTING-ITEM"
+
+# Option 2: Force complete reprocessing
+python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --work-item "EXISTING-ITEM" --force
+```
+
+**Cleaning Up Before Reprocessing**:
+
+```bash
+# 1. Delete existing documents
+python src\document_upload\personal_documentation_assistant_scripts\delete_by_work_item.py "WORK-ITEM-ID" --no-confirm
+
+# 2. Reprocess with fresh upload
+python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --work-item "WORK-ITEM-ID"
 ```
 
 ## 🔄 Updating Documentation
 
-When you add new work item documentation:
+The system is designed for **efficient incremental updates** using sophisticated file tracking:
 
-1. **Add new files** to your Work Items directory
-2. **Run upload script** to process new files:
+### 🎯 Smart Change Detection
+
+The **DocumentProcessingTracker** automatically detects file changes using:
+
+- **File Path**: Tracks document location
+- **File Size**: Detects content additions/deletions
+- **Modification Time**: Identifies when files were last edited
+- **Signature Hash**: Creates unique fingerprint for each file state
+
+**When you run upload scripts:**
+
+1. ✅ **New files** → Automatically processed
+2. ✅ **Modified files** → Automatically reprocessed
+3. ⏭️ **Unchanged files** → Automatically skipped (improves performance)
+
+### 📁 Adding New Documentation
+
+**For new work items:**
+
+```bash
+# 1. Add files to your Work Items directory structure:
+#    Work Items/NEW-TASK-456/requirements.md
+#    Work Items/NEW-TASK-456/implementation.md
+
+# 2. Process the new work item
+python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --work-item "NEW-TASK-456"
+```
+
+**For adding files to existing work items:**
+
+```bash
+# Just run regular upload - system detects new files automatically
+python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --work-item "EXISTING-TASK"
+```
+
+### ✏️ Updating Existing Documentation
+
+**For minor edits (recommended):**
+
+```bash
+# 1. Edit your markdown files in Work Items directory
+# 2. Run upload - system detects changes automatically
+python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py
+```
+
+**For major restructuring:**
+
+```bash
+# Force complete reprocessing of specific work item
+python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --work-item "TASK-123" --force
+```
+
+### 🔄 Force Reprocessing Options
+
+**Targeted Reprocessing** (Recommended for specific updates):
+
+```bash
+# Deletes existing documents for work item + reprocesses everything
+python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --force --work-item "TASK-123"
+```
+
+**Complete System Refresh** (Use sparingly):
+
+```bash
+# ⚠️  WARNING: Clears ALL tracking data + deletes ALL documents + reprocesses everything
+python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --reset
+```
+
+### 🧹 Document Cleanup Workflows
+
+**Before reprocessing a work item:**
+
+```bash
+# 1. Clean up existing documents
+python src\document_upload\personal_documentation_assistant_scripts\delete_by_work_item.py "TASK-123" --no-confirm
+
+# 2. Reprocess with fresh upload
+python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --work-item "TASK-123"
+```
+
+**Remove outdated files by pattern:**
+
+```bash
+# Clean up old temporary or draft files
+python src\document_upload\common_scripts\delete_by_file_path.py "temp_*.md" --no-confirm
+python src\document_upload\common_scripts\delete_by_file_path.py "draft_*.md" --no-confirm
+```
+
+### 🎛️ Performance Optimization Tips
+
+1. **Use work item targeting** for faster processing:
+
    ```bash
-   python src/upload/scripts/upload_work_items.py
+   python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --work-item "SPECIFIC-TASK"
    ```
-3. The system automatically **tracks processed files** and only uploads new/changed documents
 
-### Force Reprocessing Options
+2. **Preview changes** before processing large datasets:
 
-For specific work item (recommended for targeted updates):
+   ```bash
+   python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --dry-run
+   ```
 
-```bash
-python src/upload/scripts/upload_work_items.py --force --work-item <work_item_id>
-```
+3. **Let the tracker work** - avoid unnecessary `--force` operations which bypass change detection
 
-For complete system refresh:
-
-```bash
-python src/upload/scripts/upload_work_items.py --reset
-```
-
-### Document Cleanup
-
-Remove documents before reprocessing or for cleanup:
-
-```bash
-# Delete all documents for a work item
-python src/upload/scripts/delete_by_work_item.py <work_item_id>
-
-# Delete specific files by pattern
-python src/upload/scripts/delete_by_file_path.py "outdated_file.md"
-```
+4. **Clean up before bulk operations** to avoid processing outdated content
 
 ## 🐛 Troubleshooting
 
-### "Failed to connect to Azure OpenAI"
+### 🔧 Environment & Configuration Issues
 
-- Check `AZURE_OPENAI_ENDPOINT` and `AZURE_OPENAI_KEY` in `.env`
-- Verify the embedding model is deployed in Azure OpenAI Studio
-- Ensure the deployment name matches `EMBEDDING_DEPLOYMENT`
+**"Failed to connect to Azure OpenAI"**
 
-### "Search service connection failed"
+- ✅ Check `AZURE_OPENAI_ENDPOINT` format: `https://your-service.openai.azure.com/`
+- ✅ Verify `AZURE_OPENAI_KEY` is valid (32+ characters)
+- ✅ Confirm embedding model deployment exists in Azure OpenAI Studio
+- ✅ Ensure `EMBEDDING_DEPLOYMENT` matches exact deployment name
+- ✅ Test connection: Run verification script for detailed diagnostics
 
-- Check `AZURE_SEARCH_SERVICE` and `AZURE_SEARCH_KEY` in `.env`
-- Verify Azure Cognitive Search service is running
-- Ensure service tier is Basic or higher (Free tier doesn't support vectors)
+**"Search service connection failed"**
 
-### "No work items found"
+- ✅ Verify `AZURE_SEARCH_SERVICE` is just the service name (not full URL)
+- ✅ Check `AZURE_SEARCH_KEY` is the admin key (not query key)
+- ✅ Confirm Azure Cognitive Search service is running and accessible
+- ✅ Ensure service tier is **Basic or higher** (Free tier lacks vector search)
 
-- Check `PERSONAL_DOCUMENTATION_ROOT_DIRECTORY` points to correct directory
-- Ensure work item directories contain `.md` files
-- Verify directory structure: `Work Items/WI-123/file.md`
+**"Index not found" / "404 errors"**
 
-### "Vector search not supported"
+- ✅ Run index creation: `python src\document_upload\common_scripts\create_index.py`
+- ✅ Check `AZURE_SEARCH_INDEX` environment variable matches created index name
+- ✅ Verify Azure Search service has adequate capacity for new indexes
 
-- Upgrade Azure Cognitive Search to Basic tier or higher
-- Free tier doesn't support vector search capabilities
+### 📁 Directory & File Issues
 
-### "Documents not updating"
+**"No work items found"**
 
-- Use force reprocessing for specific work items:
+- ✅ Verify `PERSONAL_DOCUMENTATION_ROOT_DIRECTORY` path exists and is accessible
+- ✅ Check directory structure: `Work Items\TASK-123\file.md` (not flat file structure)
+- ✅ Ensure work item directories contain supported files (`.md`, `.txt`, `.docx`)
+- ✅ Run verification script to see directory scanning results
+
+**"Documents not processing"**
+
+- ✅ Check file permissions (read access required)
+- ✅ Verify file encoding (UTF-8 recommended)
+- ✅ Ensure files aren't locked by other applications
+- ✅ Check file size limits (very large files may cause memory issues)
+
+### 🔄 Processing & Upload Issues
+
+**"Documents not updating after changes"**
+
+- 🔍 **Check file tracking**: System uses file signature (path + size + mtime)
+- ✅ Verify files were actually saved with new modification time
+- ✅ Force reprocessing for specific work item:
   ```bash
-  python src/upload/scripts/upload_work_items.py --force --work-item <work_item_id>
+  python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --work-item "TASK-123" --force
   ```
-- Check if files have actually changed (system tracks by file signature)
-- Use delete utility scripts to clean up old documents
-
-### "Inconsistent document counts"
-
-- Use delete utilities to clean up orphaned documents:
+- ✅ Clear tracking data if necessary:
   ```bash
-  python src/upload/scripts/delete_by_work_item.py <work_item_id>
+  python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --reset
   ```
-- Then re-upload with force processing
+
+**"Vector search not supported"**
+
+- ✅ Upgrade Azure Cognitive Search to **Basic tier or higher**
+- ✅ Free tier doesn't support vector search capabilities
+- ✅ Recreate index after tier upgrade
+
+**"Memory errors during processing"**
+
+- ✅ Process smaller batches using `--work-item` targeting
+- ✅ System uses generators for O(1) memory complexity, but very large files can still cause issues
+- ✅ Split large documents into smaller files
+- ✅ Ensure adequate system RAM (4GB+ recommended for large document sets)
+
+### 📊 Index & Search Issues
+
+**"Inconsistent document counts"**
+
+- 🧹 Clean up orphaned documents:
+  ```bash
+  python src\document_upload\personal_documentation_assistant_scripts\delete_by_work_item.py "TASK-123" --no-confirm
+  ```
+- ✅ Reprocess with clean upload:
+  ```bash
+  python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --work-item "TASK-123"
+  ```
+
+**"Search returns no results"**
+
+- ✅ Verify documents were actually indexed (check document count)
+- ✅ Test with broader search terms
+- ✅ Check that search index contains expected work item IDs
+- ✅ Try different search modes (text, vector, hybrid)
+
+**"Duplicate documents appearing"**
+
+- 🧹 Clear specific work item and reprocess:
+  ```bash
+  python src\document_upload\personal_documentation_assistant_scripts\delete_by_work_item.py "TASK-123" --no-confirm
+  python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --work-item "TASK-123"
+  ```
+
+### 🛠️ Diagnostic Commands
+
+**Run comprehensive diagnostics:**
+
+```bash
+python src\document_upload\common_scripts\verify_document_upload_setup.py
+```
+
+**Check specific work item processing:**
+
+```bash
+python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py --work-item "TASK-123" --dry-run
+```
+
+**Test search functionality:**
+
+```bash
+python -c "
+import sys; sys.path.append('src')
+from workitem_mcp.search_documents import DocumentSearcher
+import asyncio
+async def test():
+    searcher = DocumentSearcher()
+    results = await searcher.text_search('test', max_results=1)
+    print(f'Search test: {len(results)} results')
+asyncio.run(test())
+"
+```
 
 ## ✅ Success Checklist
 

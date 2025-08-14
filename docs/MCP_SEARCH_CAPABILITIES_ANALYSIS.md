@@ -6,7 +6,7 @@ This document provides a comprehensive analysis of the search capabilities expos
 
 ## 🔍 Search Capabilities Overview
 
-The MCP server exposes **5 core search tools** through the Model Context Protocol, enabling VS Code agents to perform sophisticated document queries:
+The MCP server exposes **8 core search tools** through the Model Context Protocol, enabling VS Code agents to perform sophisticated document queries:
 
 ```mermaid
 graph TD
@@ -16,21 +16,65 @@ graph TD
     C --> E[Vector Search]
     C --> F[Hybrid Search]
     C --> G[Semantic Search]
-    C --> H[Work Item Filtering]
+    C --> H[Work I**Query Enhancement**:
 
-    D --> I[Azure Cognitive Search]
-    E --> I
-    F --> I
-    G --> I
-    H --> I
+**Automatic Context Tagging**:
 
-    I --> J[Formatted Results]
-    J --> A
+- Every document automatically tagged with its context ID (work item)
+- Enables efficient filtering and faceted search
+- Improves result relevance for scoped queries
+
+**Enhanced Chunk Navigation**:
+
+- **Granular Results**: Find specific sections within large documents using chunk_index
+- **Context Preservation**: Overlapping chunks maintain coherence across boundaries
+- **Relevance Improvement**: Smaller chunks = more precise matches
+- **File-Level Access**: Retrieve all chunks from specific files
+- **Sequential Reading**: Access chunk ranges for document sections
+
+**Advanced Filtering Capabilities**:
+
+- **Multi-Field Filtering**: Combine context_id, file_name, file_type, chunk_index
+- **List Value Support**: Search multiple work items simultaneously
+- **Flexible Grouping**: context_id supports various organizational structures]
+    C --> I[Chunk Navigation]
+
+    D --> J[Azure Cognitive Search]
+    E --> J
+    F --> J
+    G --> J
+    H --> J
+    I --> J
+
+    J --> K[Formatted Results]
+    K --> A
 ```
 
 ---
 
 ## 🛠️ Available Search Tools
+
+### Core Search Tools (3)
+
+#### 1. `search_work_items` - Multi-Modal Search
+
+#### 2. `search_by_work_item` - Scoped Search
+
+#### 3. `semantic_search` - Concept-Based Search
+
+### Chunk Navigation Tools (3)
+
+#### 4. `search_by_chunk` - Precise Chunk Identification
+
+#### 5. `search_file_chunks` - File-Specific Chunk Retrieval
+
+#### 6. `search_chunk_range` - Sequential Chunk Reading
+
+### Information Tools (2)
+
+#### 7. `get_work_item_list` - Available Work Items
+
+#### 8. `get_work_item_summary` - Index Statistics
 
 ### 1. `search_work_items` - Multi-Modal Search
 
@@ -136,7 +180,98 @@ graph TD
 // → Vector search for semantically similar content across all work items
 ```
 
-### 4. `get_work_item_list` - Available Work Items
+### 4. `search_by_chunk` - Precise Chunk Identification
+
+**Purpose**: Search using the enhanced chunk index field for precise chunk identification
+
+**Schema**:
+
+```json
+{
+  "name": "search_by_chunk",
+  "parameters": {
+    "chunk_pattern": "string (required)",
+    "query": "string (optional)",
+    "max_results": "integer (default: 5, max: 15)"
+  }
+}
+```
+
+**Implementation**: Uses chunk_index field filtering with optional content search
+
+**Example Usage**:
+
+```javascript
+// In VS Code agent
+"Get chunk 0 from AppDescription.md";
+// → chunk_pattern: "AppDescription.md_chunk_0"
+
+"Search for API content in AppDescription.md chunks";
+// → chunk_pattern: "AppDescription.md", query: "API"
+```
+
+### 5. `search_file_chunks` - File-Specific Chunk Retrieval
+
+**Purpose**: Search for all chunks from a specific file, optionally with content filtering
+
+**Schema**:
+
+```json
+{
+  "name": "search_file_chunks",
+  "parameters": {
+    "file_name": "string (required)",
+    "query": "string (optional)",
+    "max_results": "integer (default: 10, max: 20)"
+  }
+}
+```
+
+**Implementation**: Uses file_name filtering with automatic chunk sorting by chunk index
+
+**Example Usage**:
+
+```javascript
+// In VS Code agent
+"Get all chunks from README.md";
+// → file_name: "README.md"
+
+"Find error handling content in setup.md";
+// → file_name: "setup.md", query: "error handling"
+```
+
+### 6. `search_chunk_range` - Sequential Chunk Reading
+
+**Purpose**: Search for a specific range of chunks from a file (useful for getting document sections)
+
+**Schema**:
+
+```json
+{
+  "name": "search_chunk_range",
+  "parameters": {
+    "file_name": "string (required)",
+    "start_chunk": "integer (default: 0, min: 0)",
+    "end_chunk": "integer (optional, min: 0)",
+    "max_results": "integer (default: 10, max: 20)"
+  }
+}
+```
+
+**Implementation**: Filters chunks by range based on chunk number extraction from chunk_index
+
+**Example Usage**:
+
+```javascript
+// In VS Code agent
+"Get chunks 5 through 10 from documentation.md";
+// → file_name: "documentation.md", start_chunk: 5, end_chunk: 10
+
+"Get all chunks from chunk 3 onwards in guide.md";
+// → file_name: "guide.md", start_chunk: 3
+```
+
+### 7. `get_work_item_list` - Available Work Items
 
 **Purpose**: List all work items available in the search index
 
@@ -149,22 +284,24 @@ graph TD
 }
 ```
 
-**Implementation**: Faceted search on `work_item_id` field
+**Implementation**: Retrieves unique values from `context_id` field using Azure Search faceting
 
 **Example Output**:
 
 ```
-[LIST] Available Work Items (15 total):
+[LIST] Available Work Items (22 total):
 
-• BUG-67890
-• FEATURE-11111
-• WI-12345
-• WI-12346
-• WI-12347
+• Bug 5238380
+• Bug 5238451
+• Bug 5242933
+• Deal Closing Agent
+• PersonalDocumentationAssistantMCPServer
+• Task 5199335
+• Task 5215074
 ...
 ```
 
-### 5. `get_work_item_summary` - Index Statistics
+### 8. `get_work_item_summary` - Index Statistics
 
 **Purpose**: Get comprehensive statistics about the documentation index
 
@@ -183,14 +320,14 @@ graph TD
 [SUMMARY] Work Item Documentation Summary
 ==================================================
 
-[FOLDER] Total Work Items: 15
-[DOCUMENT] Total Documents: 342
+[FOLDER] Total Work Items: 22
+[DOCUMENT] Total Documents: 1,247
 [SEARCH] Search Index: work-items-index
 
 [LIST] Available Work Items:
-   • BUG-67890
-   • FEATURE-11111
-   • WI-12345
+   • Bug 5238380
+   • Bug 5238451
+   • PersonalDocumentationAssistantMCPServer
    ...
 
 Tips: Use the search_work_items tool to find specific information
@@ -241,6 +378,9 @@ class ToolRouter:
             "search_work_items": handle_search_work_items,
             "search_by_work_item": handle_search_by_work_item,
             "semantic_search": handle_semantic_search,
+            "search_by_chunk": handle_search_by_chunk,
+            "search_file_chunks": handle_search_file_chunks,
+            "search_chunk_range": handle_search_chunk_range,
             "get_work_item_list": handle_get_work_item_list,
             "get_work_item_summary": handle_get_work_item_summary,
         }
@@ -260,8 +400,8 @@ class ToolRouter:
 **Text Search Implementation**:
 
 ```python
-def text_search(self, query: str, work_item_id: Optional[str] = None, top: int = 5):
-    filter_expr = f"work_item_id eq '{work_item_id}'" if work_item_id else None
+def text_search(self, query: str, filters: Optional[Dict[str, Any]] = None, top: int = 5):
+    filter_expr = FilterBuilder.build_filter(filters) if filters else None
 
     results = self.search_client.search(
         search_text=query,
@@ -275,7 +415,7 @@ def text_search(self, query: str, work_item_id: Optional[str] = None, top: int =
 **Vector Search Implementation**:
 
 ```python
-async def vector_search(self, query: str, work_item_id: Optional[str] = None, top: int = 5):
+async def vector_search(self, query: str, filters: Optional[Dict[str, Any]] = None, top: int = 5):
     # Generate embedding for query
     query_embedding = await self.embedding_generator.generate_embedding(query)
 
@@ -286,6 +426,7 @@ async def vector_search(self, query: str, work_item_id: Optional[str] = None, to
         fields="content_vector"
     )
 
+    filter_expr = FilterBuilder.build_filter(filters) if filters else None
     results = self.search_client.search(
         search_text=None,
         vector_queries=[vector_query],
@@ -298,10 +439,11 @@ async def vector_search(self, query: str, work_item_id: Optional[str] = None, to
 **Hybrid Search Implementation**:
 
 ```python
-async def hybrid_search(self, query: str, work_item_id: Optional[str] = None, top: int = 5):
+async def hybrid_search(self, query: str, filters: Optional[Dict[str, Any]] = None, top: int = 5):
     query_embedding = await self.embedding_generator.generate_embedding(query)
     vector_query = VectorizedQuery(vector=query_embedding, k_nearest_neighbors=top, fields="content_vector")
 
+    filter_expr = FilterBuilder.build_filter(filters) if filters else None
     # Combines both text and vector search
     results = self.search_client.search(
         search_text=query,           # Text component
@@ -312,7 +454,33 @@ async def hybrid_search(self, query: str, work_item_id: Optional[str] = None, to
     )
 ```
 
-#### 3. Result Formatting (`src/workitem_mcp/tools/result_formatter.py`)
+#### 3. DocumentSearcher Wrapper (`src/workitem_mcp/search_documents.py`)
+
+**Purpose**: Compatibility wrapper providing simplified interface to Azure Cognitive Search
+
+```python
+class DocumentSearcher:
+    def __init__(self):
+        self.search_service = get_azure_search_service()
+
+    # Legacy-style method signatures (work_item_id parameter)
+    def text_search(self, query: str, work_item_id: str = None, top_k: int = 5):
+        filters = {"context_id": work_item_id} if work_item_id else None
+        return self.search_service.text_search(query, filters, top_k)
+
+    async def vector_search(self, query: str, work_item_id: str = None, top_k: int = 5):
+        filters = {"context_id": work_item_id} if work_item_id else None
+        return await self.search_service.vector_search(query, filters, top_k)
+```
+
+**Important Note**: The DocumentSearcher methods use legacy `work_item_id` parameter names, but the MCP search tools call them with `filters` parameter. This creates a **parameter signature mismatch** where:
+
+- **Search Tools Call**: `searcher.text_search(query, filters, max_results)`
+- **DocumentSearcher Expects**: `text_search(query, work_item_id=None, top_k=5)`
+
+The current code works because Python treats the second positional argument as `work_item_id`, but this is fragile and misleading.
+
+#### 4. Result Formatting (`src/workitem_mcp/tools/result_formatter.py`)
 
 **Purpose**: Transforms raw Azure Search results into LLM-friendly format
 
@@ -325,8 +493,9 @@ def format_search_results(results: List[Dict], title: str, query: str) -> str:
         formatted += f"[DOCUMENT] Result {i}\n"
         formatted += f"ID: {result.get('id', 'N/A')}\n"
         formatted += f"Title: {result.get('title', 'Untitled')}\n"
-        formatted += f"Work Item: {result.get('work_item_id', 'N/A')}\n"
+        formatted += f"[INFO] Work Item: {result.get('context_id', 'N/A')}\n"
         formatted += f"Relevance Score: {result.get('@search.score', 0):.2f}\n"
+        formatted += f"Chunk Index: {result.get('chunk_index', 'N/A')}\n"
 
         # Content preview with length limits
         content = result.get('content', '')
@@ -338,8 +507,8 @@ def format_search_results(results: List[Dict], title: str, query: str) -> str:
 
 - **Relevance Scores**: Shows search confidence
 - **Content Previews**: Truncated for readability
-- **Metadata Display**: Work item, file path, tags
-- **Usage Tips**: Suggests next actions
+- **Metadata Display**: Work item (context_id), file path, chunk information
+- **Usage Tips**: Suggests next actions and available tools
 
 ---
 
@@ -400,15 +569,20 @@ Where:
 **Filter Expression Building**:
 
 ```python
-filter_expr = f"work_item_id eq '{work_item_id}'" if work_item_id else None
+# Modern filter approach using FilterBuilder
+filters = {"context_id": work_item_id} if work_item_id else None
+filter_expr = FilterBuilder.build_filter(filters)
 ```
 
 **Azure Search OData Syntax**:
 
-- **Equality**: `work_item_id eq 'WI-12345'`
-- **Multiple Values**: `work_item_id eq 'WI-12345' or work_item_id eq 'WI-12346'`
-- **Date Filtering**: `last_modified gt 2025-01-01T00:00:00Z`
-- **Tag Filtering**: `tags/any(t: t eq 'security')`
+- **Equality**: `context_id eq 'WI-12345'`
+- **Multiple Values**: `context_id eq 'WI-12345' or context_id eq 'WI-12346'`
+- **Complex Filters**: `context_id eq 'WI-12345' and file_type eq 'md'`
+- **Chunk Filtering**: `chunk_index eq 'AppDescription.md_chunk_0'`
+- **File Filtering**: `file_name eq 'README.md'`
+
+**Important Note**: The actual field name is `context_id`, not `work_item_id`. This provides flexibility for different grouping strategies (work items, projects, folders, etc.).
 
 ---
 
@@ -455,26 +629,26 @@ filter_expr = f"work_item_id eq '{work_item_id}'" if work_item_id else None
 
 ```
 [SEARCH] Text Search Results
-Query: 'authentication implementation' | Results: 3
+Query: 'authentication implementation' | Results: 2
 
 [DOCUMENT] Result 1
-Title: User Authentication System
-Work Item: WI-12345
-Relevance Score: 2.45
-Content: The authentication implementation uses JWT tokens...
+Title: Opty Research Solution Analysis
+Work Item: Task 5215074
+Relevance Score: 0.03
+Content: Error Handling and Resilience - Retry Mechanisms: Exponential backoff for transient failures...
 ```
 
 **Vector Search Results**:
 
 ```
 [SEARCH] Vector Search Results
-Query: 'authentication implementation' | Results: 3
+Query: 'authentication implementation' | Results: 2
 
 [DOCUMENT] Result 1
-Title: Security Framework Setup
-Work Item: BUG-67890
+Title: Document Upload Analysis
+Work Item: PersonalDocumentationAssistantMCPServer
 Relevance Score: 0.89
-Content: This document covers the security framework including login systems...
+Content: Error Resilience: Continue processing despite individual failures...
 ```
 
 **Hybrid Search Results**:
@@ -484,16 +658,16 @@ Content: This document covers the security framework including login systems...
 Query: 'authentication implementation' | Results: 3
 
 [DOCUMENT] Result 1
-Title: User Authentication System
-Work Item: WI-12345
-Relevance Score: 3.21
-Content: The authentication implementation uses JWT tokens...
+Title: Opty Research Solution Analysis
+Work Item: Task 5215074
+Relevance Score: 0.03
+Content: Error Handling and Resilience - Retry Mechanisms...
 
 [DOCUMENT] Result 2
-Title: Security Framework Setup
-Work Item: BUG-67890
-Relevance Score: 2.67
-Content: This document covers the security framework...
+Title: Document Upload Analysis
+Work Item: PersonalDocumentationAssistantMCPServer
+Relevance Score: 0.02
+Content: Error Resilience: Continue processing despite individual failures...
 ```
 
 ### Example 2: Semantic Concept Search
@@ -504,56 +678,105 @@ Content: This document covers the security framework...
 
 1. **Embedding Generation**: Query → 1536-dimensional vector
 2. **Similarity Search**: Find chunks with similar meaning
-3. **Results**: Documents about DB problems, connection errors, data access issues
+3. **Results**: Documents about monitoring, analytics, integration issues
 
 **Example Results**:
 
 ```
 [SEARCH] Semantic Search Results for: database connectivity issues
-Query: 'database connectivity issues' | Results: 4
+Query: 'database connectivity issues' | Results: 2
 
 [DOCUMENT] Result 1
-Title: Connection Pool Configuration
-Work Item: BUG-67891
-Relevance Score: 0.87
-Content: The application intermittently fails to connect to the SQL database...
+Title: Opty Research Solution Analysis
+Work Item: Task 5215074
+Relevance Score: 0.81
+Content: Power Platform Analytics - Solution performance metrics and dashboards...
 
 [DOCUMENT] Result 2
-Title: Data Access Layer Issues
-Work Item: WI-12347
-Relevance Score: 0.83
-Content: Users report timeout errors when accessing customer data...
+Title: Opty Research Solution Analysis
+Work Item: Opportunity Research Solution Details
+Relevance Score: 0.81
+Content: Integration Monitoring - External service availability and performance...
 ```
 
 ### Example 3: Work Item Scoped Search
 
-**Query**: Search within "WI-12345" for "API endpoints"
+**Query**: Search within "PersonalDocumentationAssistantMCPServer" for "processing"
 
 **Implementation**:
 
 ```python
 # Automatic filtering applied
-filter_expr = "work_item_id eq 'WI-12345'"
-results = hybrid_search("API endpoints", work_item_id="WI-12345")
+filters = {"context_id": "PersonalDocumentationAssistantMCPServer"}
+results = hybrid_search("processing", filters)
 ```
 
 **Results**:
 
 ```
-[SEARCH] Search Results for Work Item: WI-12345
-Query: 'API endpoints' | Results: 2
+[SEARCH] Search Results for Work Item: PersonalDocumentationAssistantMCPServer
+Query: 'processing' | Results: 2
 
 [DOCUMENT] Result 1
-Title: REST API Documentation
-Work Item: WI-12345
-File: C:\Work Items\WI-12345\api-docs.md
-Content: The following API endpoints are available for user management...
+Title: Document Upload Analysis
+Work Item: PersonalDocumentationAssistantMCPServer
+File: C:\Users\...\PersonalDocumentationAssistantMCPServer\DOCUMENT_UPLOAD_ANALYSIS.md
+Content: Error Resilience: Continue processing despite individual failures...
 
 [DOCUMENT] Result 2
-Title: Integration Testing
-Work Item: WI-12345
-File: C:\Work Items\WI-12345\testing.md
-Content: Test all API endpoints using the following curl commands...
+Title: MCP Search Capabilities Analysis
+Work Item: PersonalDocumentationAssistantMCPServer
+File: C:\Users\...\PersonalDocumentationAssistantMCPServer\MCP_SEARCH_CAPABILITIES_ANALYSIS.md
+Content: This document provides comprehensive analysis of search capabilities...
+```
+
+### Example 4: Chunk Navigation Examples
+
+**Precise Chunk Access**:
+
+```
+[SEARCH] Chunk Search Results: AppDescription.md_chunk_0
+Query: 'All chunks matching pattern 'AppDescription.md_chunk_0'' | Results: 1
+
+[DOCUMENT] Result 1
+Chunk Index: AppDescription.md_chunk_0
+→ File: AppDescription.md, Chunk #: 0
+Content: # Personal Documentation Assistant MCP Server...
+```
+
+**File Chunk Listing**:
+
+```
+[SEARCH] File Chunks: README.md
+Query: 'All chunks from file 'README.md'' | Results: 5
+
+[DOCUMENT] Result 1
+Chunk Index: README.md_chunk_0
+→ File: README.md, Chunk #: 0
+
+[DOCUMENT] Result 2
+Chunk Index: README.md_chunk_1
+→ File: README.md, Chunk #: 1
+...
+```
+
+**Chunk Range Retrieval**:
+
+```
+[SEARCH] Chunk Range: documentation.md (chunks 2-4)
+Query: 'Chunks 2 to 4 from documentation.md' | Results: 3
+
+[DOCUMENT] Result 1
+Chunk Index: documentation.md_chunk_2
+→ File: documentation.md, Chunk #: 2
+
+[DOCUMENT] Result 2
+Chunk Index: documentation.md_chunk_3
+→ File: documentation.md, Chunk #: 3
+
+[DOCUMENT] Result 3
+Chunk Index: documentation.md_chunk_4
+→ File: documentation.md, Chunk #: 4
 ```
 
 ---
@@ -618,7 +841,7 @@ except Exception as e:
 
 **Result Pagination**:
 
-- Configurable result limits (max 20 for search_work_items)
+- Configurable result limits (max 20 for search_work_items, 15 for semantic_search, 10 for chunk tools)
 - Prevents overwhelming responses
 - Allows progressive result exploration
 
@@ -626,7 +849,7 @@ except Exception as e:
 
 - Always use `select="*"` to get complete document data
 - Includes all metadata for comprehensive responses
-- Enables rich result formatting
+- Enables rich result formatting with chunk navigation details
 
 ---
 
@@ -710,8 +933,24 @@ SemanticConfiguration(
 
 ```javascript
 // Use work item filtering for focused search
-"What testing approaches were used in WI-12345?"
-→ search_by_work_item(work_item_id="WI-12345", query="testing approaches")
+"What testing approaches were used in PersonalDocumentationAssistantMCPServer?"
+→ search_by_work_item(work_item_id="PersonalDocumentationAssistantMCPServer", query="testing approaches")
+```
+
+**Document Structure Navigation**:
+
+```javascript
+// Get all chunks from a specific file
+"Show me all sections of the README.md file"
+→ search_file_chunks(file_name="README.md")
+
+// Get specific chunk range
+"Show me the first 3 sections of setup documentation"
+→ search_chunk_range(file_name="setup.md", start_chunk=0, end_chunk=2)
+
+// Find specific chunk
+"Get the introduction section of AppDescription.md"
+→ search_by_chunk(chunk_pattern="AppDescription.md_chunk_0")
 ```
 
 #### Query Optimization Tips
@@ -722,12 +961,14 @@ SemanticConfiguration(
 - **Natural Language**: Hybrid search handles conversational queries well
 - **Multiple Concepts**: Include related terms for broader coverage
 - **Work Item Context**: Use scoped search when investigating specific items
+- **File Structure Awareness**: Use chunk navigation for document exploration
 
 **Result Interpretation**:
 
-- **Relevance Scores**: Higher scores indicate better matches
+- **Relevance Scores**: Higher scores indicate better matches (text search uses different scale than vector)
 - **Multiple Results**: Review several results for comprehensive understanding
 - **Cross-References**: Look for mentions of related work items
+- **Chunk Context**: Use chunk_index information to understand document structure
 
 ---
 
@@ -803,15 +1044,24 @@ SemanticConfiguration(
 
 ## 📝 Conclusion
 
-The Work Item Documentation MCP Server provides a sophisticated multi-modal search system that combines the precision of text search with the intelligence of semantic vector search. Through its integration with Azure Cognitive Search and Azure OpenAI, it delivers powerful document discovery capabilities directly within VS Code.
+The Work Item Documentation MCP Server provides a sophisticated multi-modal search system that combines the precision of text search with the intelligence of semantic vector search and granular chunk navigation. Through its integration with Azure Cognitive Search and Azure OpenAI, it delivers powerful document discovery capabilities directly within VS Code.
 
 **Key Strengths**:
 
-- **Multi-Modal Search**: Text, vector, and hybrid approaches
-- **Intelligent Filtering**: Work item scoping and metadata filtering
-- **Semantic Understanding**: Vector embeddings enable conceptual queries
-- **Performance Optimized**: HNSW algorithm and result formatting
+- **Comprehensive Tool Set**: 8 specialized tools covering core search, chunk navigation, and information retrieval
+- **Multi-Modal Search**: Text, vector, and hybrid approaches for different query types
+- **Intelligent Filtering**: Work item scoping and advanced filtering with context_id field
+- **Granular Navigation**: Chunk-level access with file-specific and range-based retrieval
+- **Semantic Understanding**: Vector embeddings enable conceptual queries and content discovery
+- **Performance Optimized**: HNSW algorithm and efficient result formatting
 - **Error Resilient**: Graceful degradation and comprehensive error handling
-- **Developer Friendly**: Rich result formatting and usage guidance
+- **Developer Friendly**: Rich result formatting with usage guidance and navigation tips
 
-This search architecture enables VS Code users to efficiently discover, explore, and understand their work item documentation through natural language queries, significantly improving productivity and knowledge discovery workflows.
+**Advanced Capabilities**:
+
+- **Flexible Grouping**: context_id field supports various organizational structures beyond work items
+- **Enhanced Chunk System**: Precise chunk identification and sequential document reading
+- **Multi-Field Filtering**: Combine multiple filter criteria for targeted searches
+- **Structured Navigation**: File-level and chunk-level document exploration
+
+This search architecture enables VS Code users to efficiently discover, explore, and understand their work item documentation through natural language queries, precise chunk navigation, and intelligent filtering, significantly improving productivity and knowledge discovery workflows.
