@@ -289,9 +289,9 @@ class AzureCognitiveSearch:
                     sortable=True
                 ),
                 # Chunk information
-                SimpleField(
+                SearchableField(
                     name="chunk_index",
-                    type=SearchFieldDataType.Int32,
+                    type=SearchFieldDataType.String,
                     filterable=True,
                     retrievable=True,
                     sortable=True
@@ -339,7 +339,13 @@ class AzureCognitiveSearch:
                             keywords_fields=[
                                 SemanticField(field_name="tags"),
                                 SemanticField(field_name="category"),
-                                SemanticField(field_name="context_name")
+                                SemanticField(field_name="context_name"),
+                                # chunk_index as searchable field enables:
+                                # - Direct chunk navigation (e.g., "AppDescription.md_chunk_0")
+                                # - Better semantic understanding of document structure
+                                # - Enhanced ranking for queries about specific sections
+                                # - File-aware chunk searching with enhanced format
+                                SemanticField(field_name="chunk_index")
                             ]
                         )
                     )

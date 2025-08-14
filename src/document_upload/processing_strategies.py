@@ -701,6 +701,10 @@ class PersonalDocumentationAssistantProcessingStrategy(DocumentProcessingStrateg
             # Convert tags array to comma-separated string (Azure Search expects string, not array)
             tags_str = ', '.join(processed_doc.tags) if isinstance(processed_doc.tags, list) else str(processed_doc.tags) if processed_doc.tags else ''
             
+            # Create enhanced chunk index with file path and chunk number for better identification
+            # Format: "filename.ext_chunk_N" for easy identification and sorting
+            enhanced_chunk_index = f"{processed_doc.file_name}_chunk_{chunk_index}"
+            
             # Create search index object matching the exact schema from create_index.py
             search_object = {
                 "id": f"{processed_doc.document_id}_chunk_{chunk_index}",
@@ -715,7 +719,7 @@ class PersonalDocumentationAssistantProcessingStrategy(DocumentProcessingStrateg
                 "context_id": processed_doc.context_id,  # Work item ID
                 "context_name": processed_doc.context_name,
                 "last_modified": processed_doc.last_modified,
-                "chunk_index": chunk_index,
+                "chunk_index": enhanced_chunk_index,
                 "metadata_json": processed_doc.metadata_json
             }
             search_objects.append(search_object)
