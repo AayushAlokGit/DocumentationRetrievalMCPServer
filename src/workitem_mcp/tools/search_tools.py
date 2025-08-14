@@ -24,13 +24,16 @@ async def handle_search_work_items(searcher, arguments: dict) -> list[types.Text
         return [types.TextContent(type="text", text="[ERROR] Query parameter is required")]
     
     try:
+        # Use new filter-based approach with legacy bridging
+        filters = {"context_id": work_item_id} if work_item_id else None
+        
         # Perform the appropriate search
         if search_type == "text":
-            results = searcher.text_search(query, work_item_id, max_results)
+            results = searcher.text_search(query, filters, max_results)
         elif search_type == "vector":
-            results = await searcher.vector_search(query, work_item_id, max_results)
+            results = await searcher.vector_search(query, filters, max_results)
         elif search_type == "hybrid":
-            results = await searcher.hybrid_search(query, work_item_id, max_results)
+            results = await searcher.hybrid_search(query, filters, max_results)
         else:
             return [types.TextContent(
                 type="text",
@@ -66,8 +69,9 @@ async def handle_search_by_work_item(searcher, arguments: dict) -> list[types.Te
         )]
     
     try:
-        # Use hybrid search with work item filter
-        results = await searcher.hybrid_search(query, work_item_id, max_results)
+        # Use hybrid search with work item filter - new filter approach
+        filters = {"context_id": work_item_id}
+        results = await searcher.hybrid_search(query, filters, max_results)
         
         if not results:
             return [types.TextContent(
@@ -97,7 +101,7 @@ async def handle_semantic_search(searcher, arguments: dict) -> list[types.TextCo
         return [types.TextContent(type="text", text="[ERROR] concept parameter is required")]
     
     try:
-        # Perform vector search for semantic similarity
+        # Perform vector search for semantic similarity - no filters
         results = await searcher.vector_search(concept, None, max_results)
         
         if not results:

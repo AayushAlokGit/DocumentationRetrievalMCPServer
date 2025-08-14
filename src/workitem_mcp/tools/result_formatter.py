@@ -25,18 +25,47 @@ def format_search_results(results: List[Dict], title: str, query: str) -> str:
         # Basic metadata
         formatted += f"ID: {result.get('id', 'N/A')}\n"
         formatted += f"Title: {result.get('title', 'Untitled')}\n"
-        formatted += f"[INFO] Work Item: {result.get('work_item_id', 'N/A')}\n"
+        formatted += f"[INFO] Work Item: {result.get('context_id', 'N/A')}\n"
         formatted += f"File: {result.get('file_path', 'N/A')}\n"
+        
+        # Additional file information if available
+        file_name = result.get('file_name')
+        if file_name:
+            formatted += f"File Name: {file_name}\n"
+        
+        file_type = result.get('file_type')
+        if file_type:
+            formatted += f"File Type: {file_type}\n"
+        
+        # Context information
+        context_name = result.get('context_name')
+        if context_name:
+            formatted += f"Context: {context_name}\n"
+        
+        # Category information
+        category = result.get('category')
+        if category:
+            formatted += f"Category: {category}\n"
         
         # Search score if available
         if '@search.score' in result:
             score = result['@search.score']
             formatted += f"Relevance Score: {score:.2f}\n"
         
+        # Chunk information if available
+        chunk_index = result.get('chunk_index')
+        if chunk_index is not None:
+            formatted += f"Chunk: {chunk_index}\n"
+        
+        # Timestamp information
+        last_modified = result.get('last_modified')
+        if last_modified:
+            formatted += f"Last Modified: {last_modified}\n"
+        
         # Tags if available
-        tags = result.get('tags', [])
+        tags = result.get('tags', "")
         if tags:
-            formatted += f"Tags: {', '.join(tags)}\n"
+            formatted += f"Tags: {tags}\n"
         
         # Content preview
         content = result.get('content', '')

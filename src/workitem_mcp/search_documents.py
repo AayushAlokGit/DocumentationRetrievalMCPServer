@@ -40,25 +40,29 @@ class DocumentSearcher:
     
     def text_search(self, query: str, work_item_id: str = None, top_k: int = 5):
         """Perform text search using Azure Cognitive Search"""
-        return self.search_service.text_search(query, work_item_id, top_k)
+        filters = {"context_id": work_item_id} if work_item_id else None
+        return self.search_service.text_search(query, filters, top_k)
     
     async def vector_search(self, query: str, work_item_id: str = None, top_k: int = 5):
         """Perform vector search using Azure Cognitive Search"""
-        return await self.search_service.vector_search(query, work_item_id, top_k)
+        filters = {"context_id": work_item_id} if work_item_id else None
+        return await self.search_service.vector_search(query, filters, top_k)
     
     async def hybrid_search(self, query: str, work_item_id: str = None, top_k: int = 5):
         """Perform hybrid search using Azure Cognitive Search"""
-        return await self.search_service.hybrid_search(query, work_item_id, top_k)
+        filters = {"context_id": work_item_id} if work_item_id else None
+        return await self.search_service.hybrid_search(query, filters, top_k)
     
     def semantic_search(self, query: str, work_item_id: str = None, top_k: int = 5):
         """Perform semantic search using Azure Cognitive Search"""
-        return self.search_service.semantic_search(query, work_item_id, top_k)
+        filters = {"context_id": work_item_id} if work_item_id else None
+        return self.search_service.semantic_search(query, filters, top_k)
     
     # ===== UTILITY METHODS =====
     
     def get_work_items(self):
         """Get list of all work item IDs in the index"""
-        return self.search_service.get_work_items()
+        return self.search_service.get_unique_field_values("context_id")
     
     def get_document_count(self):
         """Get total number of documents in the index"""

@@ -15,7 +15,8 @@ logger = logging.getLogger("work-items-mcp")
 async def handle_get_work_item_list(searcher, arguments: dict) -> list[types.TextContent]:
     """Handle work item list requests"""
     try:
-        work_items = searcher.get_work_items()
+        # Use new generic method with legacy bridging
+        work_items = searcher.get_unique_field_values("context_id")
         
         if not work_items:
             return [types.TextContent(type="text", text="[LIST] No work items found in the index")]
@@ -33,7 +34,8 @@ async def handle_get_work_item_list(searcher, arguments: dict) -> list[types.Tex
 async def handle_get_work_item_summary(searcher, arguments: dict) -> list[types.TextContent]:
     """Handle work item summary requests"""
     try:
-        work_items = searcher.get_work_items()
+        # Use new generic method with legacy bridging
+        work_items = searcher.get_unique_field_values("context_id")
         total_docs = searcher.get_document_count()
         
         summary = f"[SUMMARY] Work Item Documentation Summary\n"
