@@ -24,7 +24,6 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from discovery_strategies import DocumentDiscoveryStrategy, DocumentDiscoveryResult
 from processing_strategies import DocumentProcessingStrategy, ProcessedDocument, DocumentProcessingResult
-from file_tracker import get_file_signature
 
 # Import Azure search service for upload phase
 from common.azure_cognitive_search import get_azure_search_service
@@ -39,8 +38,6 @@ class DocumentUploadResult:
     upload_time: float
     errors: List[str]
     upload_metadata: Optional[Dict[str, Any]] = None
-    successfully_uploaded_document_tracking_signatures: Optional[List[Dict[str, Any]]] = None
-    failed_upload_document_tracking_signatures: Optional[List[Dict[str, Any]]] = None
 
 
 class DocumentDiscoveryPhase:
@@ -301,20 +298,22 @@ class DocumentUploadPhase:
             self.processing_strategy = PersonalDocumentationAssistantProcessingStrategy()
     
     async def upload_documents(self, processed_documents: List[ProcessedDocument], 
-                        service_name: str, admin_key: str, index_name: str) -> DocumentUploadResult:
+                        service_name: str, admin_key: str, index_name: str, 
+                        tracker=None) -> DocumentUploadResult:
         """
         Upload processed documents to Azure Cognitive Search.
         
         This method processes each document individually:
         1. Creates search index objects with embeddings for each document
         2. Uploads the objects to Azure Cognitive Search immediately
-        3. Tracks upload success/failure per document
+        3. Marks successfully uploaded files as processed in the tracker immediately
         
         Args:
             processed_documents: List of processed documents from Phase 2
             service_name: Azure Search service name
             admin_key: Azure Search admin key
             index_name: Azure Search index name
+            tracker: DocumentProcessingTracker instance for marking files as processed
             
         Returns:
             DocumentUploadResult: Upload results with statistics and errors
@@ -324,8 +323,8 @@ class DocumentUploadPhase:
         successfully_uploaded = 0
         failed_uploads = 0
         errors = []
-        successfully_uploaded_document_signatures = []
-        failed_upload_document_signatures = []
+        successfully_uploaded_files = []
+        failed_upload_files = []
         
         print(f"   📤 Uploading {len(processed_documents)} processed documents to Azure Search...")
         
@@ -335,7 +334,6 @@ class DocumentUploadPhase:
         
         # Process each document individually
         for doc_idx, processed_doc in enumerate(processed_documents, 1):
-            document_upload_success = False
             try:
                 print(f"   📄 Document {doc_idx}/{len(processed_documents)}: {processed_doc.file_name}")
                 
@@ -365,17 +363,20 @@ class DocumentUploadPhase:
                         error_msg = f"Document {doc_idx} ({processed_doc.file_name}): {failed}/{doc_total_objects} objects failed to upload"
                         errors.append(error_msg)
                         print(f"⚠️  ({successful} succeeded, {failed} failed)")
-                        # Mark as failed if any objects failed to upload - store signature instead of document
-                        failed_upload_document_signatures.append(get_file_signature(processed_doc.file_path))
+                        failed_upload_files.append(Path(processed_doc.file_path))
                     else:
                         print("✅")
-                        # Mark as successful only if all objects uploaded successfully - store signature instead of document
-                        document_upload_success = True
-                        successfully_uploaded_document_signatures.append(get_file_signature(processed_doc.file_path))
+                        successfully_uploaded_files.append(Path(processed_doc.file_path))
+                        
+                        # Mark file as processed immediately after successful upload
+                        if tracker is not None:
+                            tracker.mark_processed(Path(processed_doc.file_path))
+                            print(f"      📋 Marked as processed in tracker")
                 else:
                     error_msg = f"Document {doc_idx} ({processed_doc.file_name}): No search objects generated"
                     errors.append(error_msg)
                     print(f"      ❌ No search objects generated")
+                    failed_upload_files.append(Path(processed_doc.file_path))
                     
             except Exception as e:
                 error_msg = f"Document {doc_idx} ({processed_doc.file_name}): Upload error - {str(e)}"
@@ -383,18 +384,23 @@ class DocumentUploadPhase:
                 print(f"      ❌ Error: {str(e)}")
                 # Count all potential objects from this document as failed
                 failed_uploads += processed_doc.chunk_count  # Estimate based on chunk count
-                failed_upload_document_signatures.append(get_file_signature(processed_doc.file_path))
+                failed_upload_files.append(Path(processed_doc.file_path))
+        
+        # Save tracker after all uploads are complete
+        if tracker is not None and successfully_uploaded_files:
+            tracker.save()
+            print(f"   📋 Saved tracker with {len(successfully_uploaded_files)} successfully processed files")
         
         upload_time = (datetime.now() - start_time).total_seconds()
         
         # Create upload metadata
         upload_metadata = {
             "documents_processed": len(processed_documents),
-            "documents_successfully_uploaded": len(successfully_uploaded_document_signatures),
-            "documents_failed_upload": len(failed_upload_document_signatures),
+            "documents_successfully_uploaded": len(successfully_uploaded_files),
+            "documents_failed_upload": len(failed_upload_files),
             "individual_document_processing": True,
             "average_objects_per_document": total_search_objects / len(processed_documents) if processed_documents else 0,
-            "processing_mode": "individual_document_upload"
+            "processing_mode": "individual_document_upload_with_immediate_tracking"
         }
         
         return DocumentUploadResult(
@@ -403,9 +409,7 @@ class DocumentUploadPhase:
             failed_uploads=failed_uploads,
             upload_time=upload_time,
             errors=errors,
-            upload_metadata=upload_metadata,
-            successfully_uploaded_document_tracking_signatures=successfully_uploaded_document_signatures,
-            failed_upload_document_tracking_signatures=failed_upload_document_signatures
+            upload_metadata=upload_metadata
         )
     
     def print_upload_summary(self, result: DocumentUploadResult):
@@ -415,19 +419,6 @@ class DocumentUploadPhase:
         print(f"   Successfully uploaded: {result.successfully_uploaded}")
         print(f"   Failed uploads: {result.failed_uploads}")
         print(f"   Upload time: {result.upload_time:.2f} seconds")
-        
-        # Show document-level success/failure tracking
-        if result.successfully_uploaded_document_tracking_signatures or result.failed_upload_document_tracking_signatures:
-            print(f"   Document-level tracking:")
-            if result.successfully_uploaded_document_tracking_signatures:
-                print(f"     Successfully uploaded documents: {len(result.successfully_uploaded_document_tracking_signatures)}")
-            if result.failed_upload_document_tracking_signatures:
-                print(f"     Failed upload documents: {len(result.failed_upload_document_tracking_signatures)}")
-                # Extract filenames from signatures for display
-                failed_file_names = [Path(sig['path']).name for sig in result.failed_upload_document_tracking_signatures[:3]]
-                print(f"     Failed document names: {failed_file_names}")
-                if len(result.failed_upload_document_tracking_signatures) > 3:
-                    print(f"       ... and {len(result.failed_upload_document_tracking_signatures) - 3} more")
         
         if result.upload_metadata:
             print(f"   Upload metadata:")
@@ -510,20 +501,6 @@ class DocumentProcessingPipeline:
         print(f"      Need processing: {len(unprocessed_files)}")
         
         return unprocessed_files, len(discovered_files), already_processed
-    
-    def mark_files_as_processed(self, processed_files: List[Path]):
-        """
-        Mark successfully processed files in the tracker.
-        
-        Args:
-            processed_files: List of file paths that were successfully processed
-        """
-        for file_path in processed_files:
-            self.tracker.mark_processed(file_path)
-        
-        # Save the tracker state
-        self.tracker.save()
-        print(f"   ✅ Marked {len(processed_files)} files as processed in tracker")
     
     def force_cleanup_files(self, discovered_files: List[Path], service_name: str, admin_key: str, index_name: str):
         """
@@ -656,49 +633,17 @@ class DocumentProcessingPipeline:
                 
                 upload_result = await self.upload_phase.upload_documents(
                     processing_result.processed_documents,
-                    service_name, admin_key, index_name
+                    service_name, admin_key, index_name,
+                    tracker=self.tracker  # Pass tracker for immediate file marking
                 )
                 self.upload_phase.print_upload_summary(upload_result)
-                
-                # Phase 4: Update Tracker (mark only successfully uploaded files)
-                if upload_result.successfully_uploaded_document_tracking_signatures:
-                    print(f"\n📋 Phase 4: Update Document Tracker")
-                    # Get the files that were successfully uploaded (not just processed) - extract from signatures
-                    successfully_uploaded_files = [Path(sig['path']) for sig in upload_result.successfully_uploaded_document_tracking_signatures]
-                    self.mark_files_as_processed(successfully_uploaded_files)
-                    
-                    # Handle failed uploads - ensure they are NOT marked as processed
-                    if upload_result.failed_upload_document_tracking_signatures:
-                        print(f"   ⚠️  Handling failed uploads:")
-                        failed_uploaded_files = [Path(sig['path']) for sig in upload_result.failed_upload_document_tracking_signatures]
-                        
-                        # Ensure failed documents are removed from tracker (in case they were somehow marked as processed)
-                        files_removed_from_tracker = 0
-                        for failed_file in failed_uploaded_files:
-                            if self.tracker.is_processed(failed_file):
-                                self.tracker.mark_unprocessed(failed_file)
-                                files_removed_from_tracker += 1
-                        
-                        if files_removed_from_tracker > 0:
-                            print(f"     🗑️  Removed {files_removed_from_tracker} failed upload files from tracker")
-                            self.tracker.save()  # Save tracker changes
-                        
-                        print(f"     📋 Failed documents will be reprocessed in next run: {len(failed_uploaded_files)}")
-                        # Extract filenames from signatures for display
-                        for failed_file_path in failed_uploaded_files[:3]:
-                            print(f"       - {failed_file_path.name}")
-                        if len(failed_uploaded_files) > 3:
-                            print(f"       ... and {len(failed_uploaded_files) - 3} more")
-                else:
-                    print(f"\n📋 Phase 4: Update Document Tracker")
-                    print(f"   ⚠️  No documents successfully uploaded - tracker not updated")
                 
                 # Show the complete pipeline connection
                 print(f"\n🔗 Complete Pipeline Flow:")
                 print(f"   📁 Phase 1 - Files discovered: {discovery_result.total_files}")
                 print(f"   ⚙️  Phase 2 - Files processed: {processing_result.successfully_processed}")
                 print(f"   📤 Phase 3 - Search objects uploaded: {upload_result.successfully_uploaded}")
-                print(f"   📋 Phase 4 - Files marked as processed: {len(upload_result.successfully_uploaded_document_tracking_signatures) if upload_result.successfully_uploaded_document_tracking_signatures else 0}")
+                print(f"   📋 Tracker - Files marked as processed: {upload_result.upload_metadata.get('documents_successfully_uploaded', 0)}")
                 print(f"   ✅ End-to-end success rate: {(upload_result.successfully_uploaded / discovery_result.total_files * 100):.1f}%" if discovery_result.total_files > 0 else "   ✅ No files to process")
                 
             else:
@@ -709,9 +654,7 @@ class DocumentProcessingPipeline:
                     failed_uploads=0,
                     upload_time=0.0,
                     errors=["No processed documents to upload"],
-                    upload_metadata=None,
-                    successfully_uploaded_document_tracking_signatures=[],
-                    failed_upload_document_tracking_signatures=[]
+                    upload_metadata=None
                 )
             
         else:
@@ -732,9 +675,7 @@ class DocumentProcessingPipeline:
                 failed_uploads=0,
                 upload_time=0.0,
                 errors=["No documents to upload"],
-                upload_metadata=None,
-                successfully_uploaded_document_tracking_signatures=[],
-                failed_upload_document_tracking_signatures=[]
+                upload_metadata=None
             )
         
         print("\n✅ Complete Pipeline Finished")

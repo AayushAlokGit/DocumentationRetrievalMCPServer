@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Dict
 
 
-def get_file_signature(file_path: Path) -> Dict[str, any]:
+def get_file_signature(file_path) -> Dict[str, any]:
     """
     Generate a unique signature for a file based on path, size, and modification time.
     
@@ -20,11 +20,15 @@ def get_file_signature(file_path: Path) -> Dict[str, any]:
     Returns the values directly for better visibility instead of a hash.
     
     Args:
-        file_path: Path to the file
+        file_path: Path to the file (can be string or Path object)
         
     Returns:
         Dict[str, any]: Dictionary containing path, size, and modification time
     """
+    # Convert to Path object if it's a string
+    if isinstance(file_path, str):
+        file_path = Path(file_path)
+    
     stat = file_path.stat()
     return {
         "path": str(file_path),
