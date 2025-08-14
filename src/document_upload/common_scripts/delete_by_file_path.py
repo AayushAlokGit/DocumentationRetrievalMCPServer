@@ -65,7 +65,7 @@ def delete_documents_by_file_path(file_path_pattern: str, confirm: bool = True) 
         # Get all documents to search through them
         results = search_service.search_client.search(
             search_text="*",
-            select="id,title,file_path,work_item_id",
+            select="id,title,file_path,context_id",
             top=1000  # Get up to 1000 documents
         )
         
@@ -94,7 +94,7 @@ def delete_documents_by_file_path(file_path_pattern: str, confirm: bool = True) 
                     "id": result.get("id"),
                     "title": result.get("title", "Untitled"),
                     "file_path": file_path,
-                    "work_item_id": result.get("work_item_id", "")
+                    "context_id": result.get("context_id", "")
                 })
         
         if not documents_to_delete:
@@ -104,7 +104,7 @@ def delete_documents_by_file_path(file_path_pattern: str, confirm: bool = True) 
         # Show what will be deleted
         print(f"\n[PREVIEW] Found {len(documents_to_delete)} documents to delete:")
         for i, file_info in enumerate(matched_files[:10], 1):  # Show first 10
-            print(f"   {i}. {file_info['title']} (Work Item: {file_info['work_item_id']})")
+            print(f"   {i}. {file_info['title']} (Context ID: {file_info['context_id']})")
             print(f"      File: {file_info['file_path']}")
             print(f"      ID: {file_info['id']}")
         
@@ -126,9 +126,16 @@ def delete_documents_by_file_path(file_path_pattern: str, confirm: bool = True) 
                 print("[CANCELLED] Operation cancelled by user")
                 return False
         
-        # Perform the deletion using the existing method
+        # Perform the deletion - try filter method first for exact matches, then fallback to pattern matching
         print(f"\n[DELETE] Deleting documents matching file path pattern '{file_path_pattern}'...")
-        deleted_count = search_service.delete_documents_by_filename(file_path_pattern)
+        
+        # First, try exact filename match using the more efficient filter method
+        deleted_count = search_service.delete_documents_by_filter({"file_name": file_path_pattern})
+        
+        # If no exact matches found, try the pattern matching approach
+        if deleted_count == 0:
+            print(f"[INFO] No exact filename matches found, trying pattern matching...")
+            deleted_count = search_service.delete_documents_by_filename(file_path_pattern)
         
         if deleted_count > 0:
             print(f"[SUCCESS] Successfully deleted {deleted_count} documents matching pattern '{file_path_pattern}'")

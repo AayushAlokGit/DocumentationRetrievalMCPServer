@@ -30,7 +30,7 @@ from typing import List, Optional
 project_root = Path(__file__).parent.parent.parent.parent
 sys.path.insert(0, str(project_root / "src"))
 sys.path.insert(0, str(project_root / "src" / "common"))
-sys.path.insert(0, str(project_root / "src" / "document upload"))
+sys.path.insert(0, str(project_root / "src" / "document_upload"))
 
 from dotenv import load_dotenv
 from document_processing_pipeline import DocumentProcessingPipeline, DocumentDiscoveryPhase
@@ -281,7 +281,7 @@ async def upload_work_items(work_item_id: Optional[str] = None,
         print(f"\n🚀 Running Complete 3-Phase Pipeline...")
         
         # Run complete pipeline for the determined discovery root
-        discovery_result, processing_result, upload_result = pipeline.run_complete_pipeline(
+        discovery_result, processing_result, upload_result = await pipeline.run_complete_pipeline(
             root_directory=discovery_root,
             service_name=search_service_name,
             admin_key=search_admin_key,

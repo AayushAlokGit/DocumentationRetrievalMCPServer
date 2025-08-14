@@ -92,7 +92,7 @@ def delete_documents_by_work_item(work_item_id: str, confirm: bool = True) -> bo
         
         # Perform the deletion
         print(f"\n[DELETE] Deleting documents for work item '{work_item_id}'...")
-        deleted_count = search_service.delete_documents_by_work_item(work_item_id)
+        deleted_count = search_service.delete_documents_by_filter({"context_id": work_item_id})
         
         if deleted_count > 0:
             print(f"[SUCCESS] Successfully deleted {deleted_count} documents for work item '{work_item_id}'")
