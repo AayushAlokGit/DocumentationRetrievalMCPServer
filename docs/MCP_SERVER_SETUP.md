@@ -200,14 +200,27 @@ GitHub Copilot Chat in VS Code will automatically detect and use your MCP tools 
 
 ```
 List all my available work items
+→ Uses get_work_item_list tool
 ```
 
 ```
 Search for work items related to authentication
+→ Uses search_work_items with "authentication" query
 ```
 
 ```
 Show me documentation about API integration from my work items
+→ Uses search_work_items with hybrid search for "API integration"
+```
+
+```
+Find the setup instructions in PersonalDocumentationAssistantMCPServer
+→ Uses search_by_work_item for targeted search
+```
+
+```
+Show me all chunks from the README.md file
+→ Uses search_file_chunks for complete file content
 ```
 
 #### Method 2: Direct Tool Reference
@@ -229,12 +242,14 @@ Once integrated with VS Code, GitHub Copilot can use these **8 specialized tools
 ### Core Search Tools (3)
 
 - **`search_work_items`**: Multi-modal search across all work item documentation
+
   - Supports text, vector, and hybrid search modes
   - Optional work item filtering and result count control
   - Max results: 20 (default: 5)
   - Best for: General searches across entire documentation base
 
 - **`search_by_work_item`**: Targeted search within specific work item
+
   - Focuses search on single work item's documents
   - Max results: 10 (default: 5)
   - Ideal for deep-dive investigations
@@ -249,11 +264,13 @@ Once integrated with VS Code, GitHub Copilot can use these **8 specialized tools
 ### Chunk Navigation Tools (3)
 
 - **`search_by_chunk`**: Precise chunk identification and retrieval
+
   - Search using enhanced chunk index field
   - Find specific document sections by chunk pattern
   - Best for: Locating exact document parts
 
 - **`search_file_chunks`**: File-specific chunk retrieval
+
   - Get all chunks from a specific file with optional content filtering
   - Max results: 20 (default: 10)
   - Best for: Reading entire files or file sections
@@ -266,6 +283,7 @@ Once integrated with VS Code, GitHub Copilot can use these **8 specialized tools
 ### Information Tools (2)
 
 - **`get_work_item_list`**: List all available work item IDs
+
   - Discover what work items are indexed
   - No parameters required
 
@@ -314,7 +332,7 @@ Once integrated with VS Code, GitHub Copilot can use these **8 specialized tools
 "Show me all sections of the README.md file"
 → Uses search_file_chunks to get all chunks from README.md
 
-"Get the first 3 sections of the setup documentation"  
+"Get the first 3 sections of the setup documentation"
 → Uses search_chunk_range with start_chunk=0, end_chunk=2
 
 "Find the introduction section of AppDescription.md"
