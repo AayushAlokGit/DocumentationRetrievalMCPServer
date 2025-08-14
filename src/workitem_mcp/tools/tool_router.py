@@ -10,7 +10,14 @@ import logging
 from typing import Dict, Any
 import mcp.types as types
 
-from .search_tools import handle_search_work_items, handle_search_by_work_item, handle_semantic_search
+from .search_tools import (
+    handle_search_work_items, 
+    handle_search_by_work_item, 
+    handle_semantic_search,
+    handle_search_by_chunk,
+    handle_search_file_chunks,
+    handle_search_chunk_range
+)
 from .info_tools import handle_get_work_item_list, handle_get_work_item_summary
 
 logger = logging.getLogger("work-items-mcp")
@@ -27,6 +34,9 @@ class ToolRouter:
             "search_work_items": handle_search_work_items,
             "search_by_work_item": handle_search_by_work_item,
             "semantic_search": handle_semantic_search,
+            "search_by_chunk": handle_search_by_chunk,
+            "search_file_chunks": handle_search_file_chunks,
+            "search_chunk_range": handle_search_chunk_range,
             "get_work_item_list": handle_get_work_item_list,
             "get_work_item_summary": handle_get_work_item_summary,
         }

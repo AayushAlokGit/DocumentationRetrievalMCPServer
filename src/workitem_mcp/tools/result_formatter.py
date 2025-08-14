@@ -52,10 +52,18 @@ def format_search_results(results: List[Dict], title: str, query: str) -> str:
             score = result['@search.score']
             formatted += f"Relevance Score: {score:.2f}\n"
         
-        # Chunk information if available
+        # Chunk information if available (enhanced display)
         chunk_index = result.get('chunk_index')
         if chunk_index is not None:
-            formatted += f"Chunk: {chunk_index}\n"
+            formatted += f"Chunk Index: {chunk_index}\n"
+            # Extract chunk number and file for easier reference
+            if '_chunk_' in str(chunk_index):
+                try:
+                    file_part, chunk_part = str(chunk_index).split('_chunk_')
+                    chunk_num = int(chunk_part)
+                    formatted += f"   → File: {file_part}, Chunk #: {chunk_num}\n"
+                except (ValueError, IndexError):
+                    pass
         
         # Timestamp information
         last_modified = result.get('last_modified')
@@ -76,10 +84,13 @@ def format_search_results(results: List[Dict], title: str, query: str) -> str:
         
         formatted += f"\n"
     
-    # Add usage suggestions
+    # Add usage suggestions with new chunk-based tools
     formatted += f"Tips:\n"
     formatted += f"   • Use search_by_work_item to search within specific work items\n"
     formatted += f"   • Try different search types: text, vector, or hybrid\n"
     formatted += f"   • Use semantic_search for concept-based searches\n"
+    formatted += f"   • Use search_file_chunks to get all chunks from a specific file\n"
+    formatted += f"   • Use search_by_chunk to find specific chunks by their index\n"
+    formatted += f"   • Use search_chunk_range to get a sequence of chunks from a file\n"
     
     return formatted

@@ -88,6 +88,88 @@ def get_search_tools() -> list[types.Tool]:
                 },
                 "required": ["concept"]
             }
+        ),
+        types.Tool(
+            name="search_by_chunk",
+            description="Search using the enhanced chunk index field for precise chunk identification",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "chunk_pattern": {
+                        "type": "string",
+                        "description": "Chunk pattern to search for (e.g., 'AppDescription.md_chunk_0' for specific chunk, or 'AppDescription.md' for all chunks from that file)"
+                    },
+                    "query": {
+                        "type": "string",
+                        "description": "Optional content query to search within matching chunks"
+                    },
+                    "max_results": {
+                        "type": "integer",
+                        "description": "Maximum number of results to return (default: 5)",
+                        "default": 5,
+                        "minimum": 1,
+                        "maximum": 15
+                    }
+                },
+                "required": ["chunk_pattern"]
+            }
+        ),
+        types.Tool(
+            name="search_file_chunks",
+            description="Search for all chunks from a specific file, optionally with content filtering",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "file_name": {
+                        "type": "string",
+                        "description": "Name of the file to get chunks from (e.g., 'AppDescription.md')"
+                    },
+                    "query": {
+                        "type": "string",
+                        "description": "Optional content query to search within the file's chunks"
+                    },
+                    "max_results": {
+                        "type": "integer",
+                        "description": "Maximum number of results to return (default: 10)",
+                        "default": 10,
+                        "minimum": 1,
+                        "maximum": 20
+                    }
+                },
+                "required": ["file_name"]
+            }
+        ),
+        types.Tool(
+            name="search_chunk_range",
+            description="Search for a specific range of chunks from a file (useful for getting document sections)",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "file_name": {
+                        "type": "string",
+                        "description": "Name of the file to get chunks from (e.g., 'AppDescription.md')"
+                    },
+                    "start_chunk": {
+                        "type": "integer",
+                        "description": "Starting chunk number (default: 0)",
+                        "default": 0,
+                        "minimum": 0
+                    },
+                    "end_chunk": {
+                        "type": "integer",
+                        "description": "Ending chunk number (optional, if not specified gets all chunks from start_chunk onwards)",
+                        "minimum": 0
+                    },
+                    "max_results": {
+                        "type": "integer",
+                        "description": "Maximum number of results to return (default: 10)",
+                        "default": 10,
+                        "minimum": 1,
+                        "maximum": 20
+                    }
+                },
+                "required": ["file_name"]
+            }
         )
     ]
 
