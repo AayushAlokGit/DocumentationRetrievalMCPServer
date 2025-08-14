@@ -17,6 +17,7 @@ import json
 import hashlib
 from datetime import datetime
 from pathlib import Path
+import sys
 from typing import List, Dict, Optional, Any, Tuple
 from dotenv import load_dotenv
 
@@ -41,11 +42,96 @@ from azure.search.documents.models import VectorizedQuery
 from azure.core.credentials import AzureKeyCredential
 from azure.core.exceptions import ResourceNotFoundError
 
+# ONE simple line to fix all imports - find project root and add src
+project_root = Path(__file__).parent.parent.parent
+sys.path.insert(0, str(project_root / 'src'))
+
 # Import embedding service
 from common.embedding_service import get_embedding_generator
 
 # Load environment variables
 load_dotenv()
+
+
+class FilterBuilder:
+    """
+    Filter builder for Azure Cognitive Search OData expressions
+    
+    Supported OData Expression Features:
+    ===================================
+    
+    Data Type Support:
+    - String values: field_name eq 'string_value'
+    - Numeric values (int/float): field_name eq 42 or field_name eq 3.14
+    - List values: field_name eq 'value1' or field_name eq 'value2' (wrapped in parentheses)
+    
+    Logical Operators:
+    - Equality (eq): All field types support equality comparison
+    - AND logic: Multiple field conditions joined with 'and'
+    - OR logic: List values automatically generate OR expressions within parentheses
+    
+    Expression Examples:
+    ===================
+    Single field:
+        {"context_id": "WORK-123"} → "context_id eq 'WORK-123'"
+        
+    Multiple fields (AND):
+        {"context_id": "WORK-123", "file_type": "md"} → "context_id eq 'WORK-123' and file_type eq 'md'"
+        
+    Numeric fields:
+        {"chunk_index": 5} → "chunk_index eq 5"
+        
+    List values (OR within field):
+        {"context_id": ["WORK-123", "WORK-456"]} → "(context_id eq 'WORK-123' or context_id eq 'WORK-456')"
+        
+    Mixed example:
+        {"context_id": ["WORK-123", "WORK-456"], "file_type": "md"} → 
+        "(context_id eq 'WORK-123' or context_id eq 'WORK-456') and file_type eq 'md'"
+    
+    Current Limitations:
+    ===================
+    - Only equality (eq) operator supported (no gt, lt, ge, le, ne)
+    - No date/time operations or functions
+    - No string functions (startswith, endswith, contains)
+    - No complex nested expressions or custom parentheses grouping
+    - No NOT logic support
+    
+    TODO: Future Extensions
+    ======================
+    - Add comparison operators: gt, lt, ge, le, ne
+    - Add string functions: startswith(), endswith(), contains()
+    - Add date functions and comparisons
+    - Add support for complex nested expressions
+    - Add NOT operator support
+    - Add custom grouping with parentheses
+    """
+
+    @staticmethod
+    def build_filter(filters: Dict[str, Any]) -> Optional[str]:
+        """
+        Convert filter dictionary to OData expression
+
+        Args:
+            filters: Dictionary of field_name: value pairs
+
+        Returns:
+            OData filter string or None
+        """
+        if not filters:
+            return None
+
+        expressions = []
+        for field_name, field_value in filters.items():
+            if isinstance(field_value, str):
+                expressions.append(f"{field_name} eq '{field_value}'")
+            elif isinstance(field_value, (int, float)):
+                expressions.append(f"{field_name} eq {field_value}")
+            elif isinstance(field_value, list):
+                # Handle multiple values with OR
+                value_exprs = [f"{field_name} eq '{v}'" for v in field_value]
+                expressions.append(f"({' or '.join(value_exprs)})")
+
+        return " and ".join(expressions) if expressions else None
 
 
 class AzureCognitiveSearch:
@@ -320,117 +406,62 @@ class AzureCognitiveSearch:
     
     def get_index_stats(self) -> Dict[str, Any]:
         """
-        Get statistics about the search index
+        Get comprehensive statistics about the search index
         
         Returns:
-            Dict containing index statistics
+            Dict containing detailed index statistics including document counts,
+            context information, file types, categories, and other metadata
         """
         try:
-            # Get document count
+            # Get total document count
             results = self.search_client.search("*", select="id", top=0, include_total_count=True)
             document_count = results.get_count()
             
-            # Get work items
-            work_items = self.get_work_items()
+            # Get statistics for all facetable fields in the new schema
+            contexts = self.get_unique_field_values("context_id")
+            file_types = self.get_unique_field_values("file_type")
+            categories = self.get_unique_field_values("category")
             
-            return {
+            # Get context names for better readability
+            context_names = self.get_unique_field_values("context_name")
+            
+            # Build comprehensive stats
+            stats = {
                 'index_name': self.index_name,
-                'document_count': document_count,
-                'work_item_count': len(work_items),
-                'work_items': work_items,
                 'service_name': self.service_name,
-                'endpoint': self.endpoint
+                'endpoint': self.endpoint,
+                'document_count': document_count,
+                'context_count': len(contexts),
+                'contexts': sorted(contexts) if contexts else [],
+                'context_names': sorted(context_names) if context_names else [],
+                'file_types': sorted(file_types) if file_types else [],
+                'file_type_count': len(file_types),
+                'categories': sorted(categories) if categories else [],
+                'category_count': len(categories),
+                'schema_version': 'flexible_context_v1',
+                'features': {
+                    'vector_search': True,
+                    'semantic_search': True,
+                    'hybrid_search': True,
+                    'context_filtering': True,
+                    'file_metadata': True,
+                    'chunk_indexing': True,
+                    'timestamp_tracking': True
+                }
             }
+            
+            return stats
+            
         except Exception as e:
             print(f"[ERROR] Error getting index stats: {e}")
-            return {}
+            return {
+                'index_name': self.index_name,
+                'error': str(e),
+                'document_count': 0,
+                'context_count': 0
+            }
     
     # ===== DOCUMENT OPERATIONS =====
-    
-    def upload_document(self, document: Dict[str, Any]) -> bool:
-        """
-        Upload a single processed document with chunks to the search index
-        
-        Args:
-            document: Dictionary containing document data with chunks and embeddings
-            
-        Returns:
-            bool: True if successful, False otherwise
-        """
-        try:
-            # Prepare document chunks for upload
-            search_documents = []
-            
-            for i, (chunk, embedding) in enumerate(zip(document['chunks'], document['embeddings'])):
-                file_name = Path(document['file_path']).stem
-                # Create a unique document ID using file path hash
-                file_hash = hashlib.md5(document['file_path'].encode()).hexdigest()[:8]
-                doc_id = f"{file_hash}_{i}"
-                
-                # Validate embedding
-                if not self.embedding_generator.validate_embedding(embedding):
-                    print(f"[ERROR] Invalid embedding for chunk {i}, skipping...")
-                    continue
-                
-                # Create search document - matching create_index.py schema
-                tags = document['metadata'].get('tags', [])
-                # Ensure tags is a list of strings for the Collection field
-                if isinstance(tags, str):
-                    tags = [tags] if tags else []
-                elif not isinstance(tags, list):
-                    tags = [str(tags)] if tags else []
-                
-                file_path = document['file_path']
-                file_name = Path(file_path).name
-                file_stem = Path(file_path).stem
-                file_type = Path(file_path).suffix.lstrip('.')
-                
-                search_doc = {
-                    'id': doc_id,
-                    'content': chunk,
-                    'content_vector': embedding,
-                    # Core file information
-                    'file_path': file_path,
-                    'file_name': file_name,
-                    'file_type': file_type,
-                    # Document metadata
-                    'title': document['metadata'].get('title', file_stem),
-                    'tags': tags,
-                    'category': document['metadata'].get('category', 'document'),
-                    # Context/grouping (flexible)
-                    'context_id': document['metadata'].get('work_item_id', document['metadata'].get('context_id', 'Unknown')),
-                    'context_name': document['metadata'].get('work_item_name', document['metadata'].get('context_name', 'Unknown')),
-                    # Timestamps
-                    'last_modified': document['metadata'].get('last_modified', datetime.utcnow().isoformat() + 'Z'),
-                    # Chunk information
-                    'chunk_index': i,
-                    # Optional: Custom metadata as JSON string
-                    'metadata_json': json.dumps(document['metadata'])
-                }
-                
-                search_documents.append(search_doc)
-            
-            if not search_documents:
-                print("[ERROR] No valid documents to upload")
-                return False
-            
-            # Upload to search index
-            upload_result = self.search_client.upload_documents(documents=search_documents)
-            
-            # Check results
-            success_count = 0
-            for result in upload_result:
-                if result.succeeded:
-                    success_count += 1
-                else:
-                    print(f"[ERROR] Failed to upload chunk {result.key}: {result.error_message}")
-            
-            print(f"[SUCCESS] Uploaded {success_count}/{len(search_documents)} chunks successfully")
-            return success_count > 0
-            
-        except Exception as e:
-            print(f"[ERROR] Upload failed: {e}")
-            return False
     
     def upload_search_objects_batch(self, search_objects: List[Dict[str, Any]]) -> Tuple[int, int]:
         """
@@ -462,7 +493,7 @@ class AzureCognitiveSearch:
                 print(f"[ERROR] Upload failed: {e}")
         
         return successful, failed
-   
+
     def delete_document(self, document_id: str) -> bool:
         """
         Delete a specific document by ID
@@ -487,40 +518,46 @@ class AzureCognitiveSearch:
             print(f"[ERROR] Delete failed for {document_id}: {e}")
             return False
     
-    def delete_documents_by_work_item(self, work_item_id: str) -> int:
+    def delete_documents_by_filter(self, filters: Dict[str, Any]) -> int:
         """
-        Delete all documents for a specific work item
+        Delete documents matching filter criteria
         
         Args:
-            work_item_id: The work item ID
+            filters: Dictionary of field names and values to filter by
             
         Returns:
-            int: Number of documents deleted
+            Number of documents deleted
         """
         try:
-            # Find all documents for the work item - use context_id field
+            # Build filter expression using FilterBuilder
+            filter_expr = FilterBuilder.build_filter(filters)
+            if not filter_expr:
+                print("[ERROR] No valid filter provided")
+                return 0
+            
+            # Find all documents matching the filter
             results = self.search_client.search(
                 search_text="*",
-                filter=f"context_id eq '{work_item_id}'",
+                filter=filter_expr,
                 select="id"
             )
             
             documents_to_delete = [{"id": result["id"]} for result in results]
             
             if not documents_to_delete:
-                print(f"No documents found for work item: {work_item_id}")
+                print(f"[INFO] No documents found matching filter: {filter_expr}")
                 return 0
             
             # Delete the documents
             delete_results = self.search_client.delete_documents(documents=documents_to_delete)
             
             successful_deletes = sum(1 for result in delete_results if result.succeeded)
-            print(f"[SUCCESS] Deleted {successful_deletes}/{len(documents_to_delete)} documents for work item {work_item_id}")
+            print(f"[SUCCESS] Deleted {successful_deletes}/{len(documents_to_delete)} documents matching filter: {filter_expr}")
             
             return successful_deletes
             
         except Exception as e:
-            print(f"[ERROR] Bulk delete failed for work item {work_item_id}: {e}")
+            print(f"[ERROR] Failed to delete documents: {e}")
             return 0
     
     def delete_documents_by_filename(self, filename: str) -> int:
@@ -539,7 +576,7 @@ class AzureCognitiveSearch:
             # Get all documents to search through them
             results = self.search_client.search(
                 search_text="*",
-                select="id,file_path,work_item_id"
+                select="id,file_path,context_id"
             )
             
             documents_to_delete = []
@@ -564,7 +601,7 @@ class AzureCognitiveSearch:
                     matched_files.append({
                         "id": result["id"],
                         "file_path": file_path,
-                        "work_item_id": result.get("work_item_id", "")
+                        "context_id": result.get("context_id", "")
                     })
             
             if not documents_to_delete:
@@ -574,7 +611,7 @@ class AzureCognitiveSearch:
             # Show what will be deleted
             print(f"[INFO] Found {len(documents_to_delete)} documents matching '{filename}':")
             for file_info in matched_files:
-                print(f"   - {file_info['file_path']} (Work Item: {file_info['work_item_id']})")
+                print(f"   - {file_info['file_path']} (Context ID: {file_info['context_id']})")
             
             # Delete the documents
             delete_results = self.search_client.delete_documents(documents=documents_to_delete)
@@ -624,21 +661,21 @@ class AzureCognitiveSearch:
     
     # ===== SEARCH OPERATIONS =====
     
-    def text_search(self, query: str, work_item_id: Optional[str] = None, top: int = 5) -> List[Dict]:
+    def text_search(self, query: str, filters: Optional[Dict[str, Any]] = None, top: int = 5) -> List[Dict]:
         """
         Perform text-based search
         
         Args:
             query: Search query string
-            work_item_id: Optional work item filter (mapped to context_id)
+            filters: Optional dictionary of field filters (e.g., {"context_id": "WORK-123"})
             top: Maximum number of results
             
         Returns:
             List of search result dictionaries
         """
         try:
-            # Build filter if work item specified - use context_id field
-            filter_expr = f"context_id eq '{work_item_id}'" if work_item_id else None
+            # Build filter expression using FilterBuilder
+            filter_expr = FilterBuilder.build_filter(filters)
             
             results = self.search_client.search(
                 search_text=query,
@@ -654,13 +691,13 @@ class AzureCognitiveSearch:
             print(f"[ERROR] Text search failed: {e}")
             return []
     
-    async def vector_search(self, query: str, work_item_id: Optional[str] = None, top: int = 5) -> List[Dict]:
+    async def vector_search(self, query: str, filters: Optional[Dict[str, Any]] = None, top: int = 5) -> List[Dict]:
         """
         Perform vector-based semantic search
         
         Args:
             query: Search query string
-            work_item_id: Optional work item filter
+            filters: Optional dictionary of field filters (e.g., {"context_id": "WORK-123"})
             top: Maximum number of results
             
         Returns:
@@ -673,8 +710,8 @@ class AzureCognitiveSearch:
                 print("[ERROR] Failed to generate query embedding")
                 return []
             
-            # Build filter if work item specified - use context_id field
-            filter_expr = f"context_id eq '{work_item_id}'" if work_item_id else None
+            # Build filter expression using FilterBuilder
+            filter_expr = FilterBuilder.build_filter(filters)
             
             # Create vector query
             vector_query = VectorizedQuery(vector=query_embedding, k_nearest_neighbors=top, fields="content_vector")
@@ -693,13 +730,13 @@ class AzureCognitiveSearch:
             print(f"[ERROR] Vector search failed: {e}")
             return []
     
-    async def hybrid_search(self, query: str, work_item_id: Optional[str] = None, top: int = 5) -> List[Dict]:
+    async def hybrid_search(self, query: str, filters: Optional[Dict[str, Any]] = None, top: int = 5) -> List[Dict]:
         """
         Perform hybrid search combining text and vector search
         
         Args:
             query: Search query string
-            work_item_id: Optional work item filter
+            filters: Optional dictionary of field filters (e.g., {"context_id": "WORK-123"})
             top: Maximum number of results
             
         Returns:
@@ -710,10 +747,10 @@ class AzureCognitiveSearch:
             query_embedding = await self.embedding_generator.generate_embedding(query)
             if not query_embedding:
                 print("[ERROR] Failed to generate query embedding, falling back to text search")
-                return self.text_search(query, work_item_id, top)
+                return self.text_search(query, filters, top)
             
-            # Build filter if work item specified - use context_id field
-            filter_expr = f"context_id eq '{work_item_id}'" if work_item_id else None
+            # Build filter expression using FilterBuilder
+            filter_expr = FilterBuilder.build_filter(filters)
             
             # Create vector query
             vector_query = VectorizedQuery(vector=query_embedding, k_nearest_neighbors=top, fields="content_vector")
@@ -732,21 +769,21 @@ class AzureCognitiveSearch:
             print(f"[ERROR] Hybrid search failed: {e}")
             return []
     
-    def semantic_search(self, query: str, work_item_id: Optional[str] = None, top: int = 5) -> List[Dict]:
+    def semantic_search(self, query: str, filters: Optional[Dict[str, Any]] = None, top: int = 5) -> List[Dict]:
         """
         Perform semantic search using Azure's semantic capabilities
         
         Args:
             query: Search query string
-            work_item_id: Optional work item filter
+            filters: Optional dictionary of field filters (e.g., {"context_id": "WORK-123"})
             top: Maximum number of results
             
         Returns:
             List of search result dictionaries
         """
         try:
-            # Build filter if work item specified - use context_id field
-            filter_expr = f"context_id eq '{work_item_id}'" if work_item_id else None
+            # Build filter expression using FilterBuilder
+            filter_expr = FilterBuilder.build_filter(filters)
             
             results = self.search_client.search(
                 search_text=query,
@@ -765,30 +802,33 @@ class AzureCognitiveSearch:
     
     # ===== UTILITY METHODS =====
     
-    def get_work_items(self) -> List[str]:
+    def get_unique_field_values(self, field_name: str) -> List[str]:
         """
-        Get list of all unique work item IDs in the index
+        Get unique values for any facetable field
         
+        Args:
+            field_name: Name of the field to get unique values for
+            
         Returns:
-            List of work item IDs (using context_id field)
+            List of unique values for the field
         """
         try:
             results = self.search_client.search(
                 search_text="*",
-                facets=["context_id"],
+                facets=[field_name],
                 top=0
             )
             
-            work_items = []
+            unique_values = []
             if hasattr(results, 'get_facets') and results.get_facets():
                 facets = results.get_facets()
-                if 'context_id' in facets:
-                    work_items = [facet['value'] for facet in facets['context_id']]
+                if field_name in facets:
+                    unique_values = [facet['value'] for facet in facets[field_name]]
             
-            return sorted(work_items)
+            return sorted(unique_values)
             
         except Exception as e:
-            print(f"[ERROR] Error getting work items: {e}")
+            print(f"[ERROR] Failed to get unique values for field '{field_name}': {e}")
             return []
     
     def get_document_count(self) -> int:
@@ -804,29 +844,6 @@ class AzureCognitiveSearch:
         except Exception as e:
             print(f"[ERROR] Error getting document count: {e}")
             return 0
-    
-    def search_by_file_path(self, file_path: str) -> List[Dict]:
-        """
-        Find documents by file path
-        
-        Args:
-            file_path: File path to search for
-            
-        Returns:
-            List of matching documents
-        """
-        try:
-            results = self.search_client.search(
-                search_text="*",
-                filter=f"file_path eq '{file_path}'",
-                select="*"
-            )
-            
-            return [dict(result) for result in results]
-            
-        except Exception as e:
-            print(f"[ERROR] Error searching by file path: {e}")
-            return []
     
     def test_connection(self) -> bool:
         """
@@ -862,7 +879,7 @@ class AzureCognitiveSearch:
             print(f"\n[DOCUMENT] Result {i}:")
             print(f"   ID: {result.get('id', 'N/A')}")
             print(f"   Title: {result.get('title', 'Untitled')}")
-            print(f"   Work Item: {result.get('work_item_id', 'N/A')}")
+            print(f"   Context ID: {result.get('context_id', 'N/A')}")
             print(f"   File: {result.get('file_path', 'N/A')}")
             
             if '@search.score' in result:
@@ -904,11 +921,14 @@ if __name__ == "__main__":
         if search_service.test_connection():
             print("[SUCCESS] Connection successful")
             
-            # Get stats
+            # Get comprehensive stats
             stats = search_service.get_index_stats()
             print(f"[SUMMARY] Index Stats:")
             print(f"   Documents: {stats.get('document_count', 0)}")
-            print(f"   Work Items: {stats.get('work_item_count', 0)}")
+            print(f"   Contexts: {stats.get('context_count', 0)}")
+            print(f"   File Types: {stats.get('file_type_count', 0)}")
+            print(f"   Categories: {stats.get('category_count', 0)}")
+            print(f"   Schema: {stats.get('schema_version', 'unknown')}")
             
         else:
             print("[ERROR] Connection failed")
