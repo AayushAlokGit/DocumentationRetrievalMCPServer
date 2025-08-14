@@ -7,6 +7,7 @@ This module now uses the centralized AzureCognitiveSearch class for all operatio
 
 import os
 import asyncio
+from typing import Dict
 from dotenv import load_dotenv
 import sys
 from pathlib import Path
@@ -38,24 +39,20 @@ class DocumentSearcher:
     
     # ===== SEARCH METHODS =====
     
-    def text_search(self, query: str, work_item_id: str = None, top_k: int = 5):
+    def text_search(self, query: str, filters: Dict[str, any] = None, top_k: int = 5):
         """Perform text search using Azure Cognitive Search"""
-        filters = {"context_id": work_item_id} if work_item_id else None
         return self.search_service.text_search(query, filters, top_k)
-    
-    async def vector_search(self, query: str, work_item_id: str = None, top_k: int = 5):
+
+    async def vector_search(self, query: str, filters: Dict[str, any] = None, top_k: int = 5):
         """Perform vector search using Azure Cognitive Search"""
-        filters = {"context_id": work_item_id} if work_item_id else None
         return await self.search_service.vector_search(query, filters, top_k)
-    
-    async def hybrid_search(self, query: str, work_item_id: str = None, top_k: int = 5):
+
+    async def hybrid_search(self, query: str, filters: Dict[str, any] = None, top_k: int = 5):
         """Perform hybrid search using Azure Cognitive Search"""
-        filters = {"context_id": work_item_id} if work_item_id else None
         return await self.search_service.hybrid_search(query, filters, top_k)
-    
-    def semantic_search(self, query: str, work_item_id: str = None, top_k: int = 5):
+
+    def semantic_search(self, query: str, filters: Dict[str, any] = None, top_k: int = 5):
         """Perform semantic search using Azure Cognitive Search"""
-        filters = {"context_id": work_item_id} if work_item_id else None
         return self.search_service.semantic_search(query, filters, top_k)
     
     # ===== UTILITY METHODS =====

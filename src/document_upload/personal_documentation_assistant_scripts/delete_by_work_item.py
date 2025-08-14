@@ -62,8 +62,8 @@ def delete_documents_by_work_item(work_item_id: str, confirm: bool = True) -> bo
         print(f"\n[SEARCH] Finding documents for work item '{work_item_id}'...")
         results = search_service.search_client.search(
             search_text="*",
-            filter=f"work_item_id eq '{work_item_id}'",
-            select="id,title,file_path,work_item_id",
+            filter=f"context_id eq '{work_item_id}'",
+            select="id,title,file_path,context_id",
             top=1000  # Get up to 1000 documents
         )
         
