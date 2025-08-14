@@ -24,6 +24,7 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from discovery_strategies import DocumentDiscoveryStrategy, DocumentDiscoveryResult
 from processing_strategies import DocumentProcessingStrategy, ProcessedDocument, DocumentProcessingResult
+from file_tracker import get_file_signature
 
 # Import Azure search service for upload phase
 from common.azure_cognitive_search import get_azure_search_service
@@ -38,6 +39,8 @@ class DocumentUploadResult:
     upload_time: float
     errors: List[str]
     upload_metadata: Optional[Dict[str, Any]] = None
+    successfully_uploaded_document_tracking_signatures: Optional[List[Dict[str, Any]]] = None
+    failed_upload_document_tracking_signatures: Optional[List[Dict[str, Any]]] = None
 
 
 class DocumentDiscoveryPhase:
@@ -214,6 +217,28 @@ class DocumentProcessingPhase:
         Yields:
             Dict: Search index object for Azure Cognitive Search
         """
+        # IMPORTANT: Using yield here implements a generator pattern for memory efficiency
+        # 
+        # Why yield is crucial for this pipeline:
+        # 1. MEMORY EFFICIENCY: Instead of creating all search objects in memory at once
+        #    (which could be 100+ documents × 3-5 objects each = 300-500+ objects),
+        #    yield returns objects one at a time, keeping memory usage minimal
+        #
+        # 2. STREAMING PROCESSING: The upload phase can process and upload objects
+        #    immediately as they're generated, rather than waiting for all objects
+        #    to be created first. This enables true streaming document processing.
+        #
+        # 3. SCALABILITY: For large document collections, this prevents memory overflow
+        #    and allows the pipeline to handle thousands of documents efficiently
+        #
+        # 4. EARLY TERMINATION: If an error occurs during upload, processing can
+        #    stop immediately without wasting resources on remaining objects
+        #
+        # Example flow:
+        # for search_object in create_search_index_objects(docs):  # One at a time
+        #     upload_to_azure(search_object)  # Process immediately
+        #     # Only 1 object in memory at any time vs 300+ without yield
+        
         return self.strategy.create_search_index_objects(processed_documents)
     
     def print_processing_summary(self, result: DocumentProcessingResult):
@@ -280,10 +305,10 @@ class DocumentUploadPhase:
         """
         Upload processed documents to Azure Cognitive Search.
         
-        This method:
-        1. Creates search index objects with embeddings for each document chunk
-        2. Uploads the objects to Azure Cognitive Search in batches
-        3. Tracks upload success/failure statistics
+        This method processes each document individually:
+        1. Creates search index objects with embeddings for each document
+        2. Uploads the objects to Azure Cognitive Search immediately
+        3. Tracks upload success/failure per document
         
         Args:
             processed_documents: List of processed documents from Phase 2
@@ -299,6 +324,8 @@ class DocumentUploadPhase:
         successfully_uploaded = 0
         failed_uploads = 0
         errors = []
+        successfully_uploaded_document_signatures = []
+        failed_upload_document_signatures = []
         
         print(f"   📤 Uploading {len(processed_documents)} processed documents to Azure Search...")
         
@@ -306,51 +333,68 @@ class DocumentUploadPhase:
         if self.azure_search_service is None:
             self.azure_search_service = get_azure_search_service(service_name, admin_key, index_name)
         
-        # Create search index objects for all processed documents
-        print(f"   🔄 Creating search index objects with embeddings...")
-        
-        # Collect all search objects from the async generator
-        search_objects = []
-        async for search_object in self.processing_strategy.create_search_index_objects(processed_documents):
-            search_objects.append(search_object)
-        
-        total_search_objects = len(search_objects)
-        
-        print(f"   📊 Generated {total_search_objects} search objects for upload")
-        
-        # Upload in batches for better performance and error handling
-        batch_size = 50  # Azure search recommended batch size
-        batches = [search_objects[i:i + batch_size] for i in range(0, len(search_objects), batch_size)]
-        
-        for batch_idx, batch in enumerate(batches, 1):
+        # Process each document individually
+        for doc_idx, processed_doc in enumerate(processed_documents, 1):
+            document_upload_success = False
             try:
-                print(f"      Batch {batch_idx}/{len(batches)}: Uploading {len(batch)} objects...", end=" ")
+                print(f"   📄 Document {doc_idx}/{len(processed_documents)}: {processed_doc.file_name}")
                 
-                # Upload batch to Azure search using new format
-                successful, failed = self.azure_search_service.upload_search_objects_batch(batch)
+                # Create search index objects for this document
+                print(f"      🔄 Creating search objects with embeddings...")
                 
-                successfully_uploaded += successful
-                failed_uploads += failed
+                # Collect search objects for this document
+                doc_search_objects = []
+                async for search_object in self.processing_strategy.create_search_index_objects([processed_doc]):
+                    doc_search_objects.append(search_object)
                 
-                if failed > 0:
-                    errors.append(f"Batch {batch_idx}: {failed} failed uploads")
-                    print(f"⚠️  ({successful} succeeded, {failed} failed)")
+                doc_total_objects = len(doc_search_objects)
+                total_search_objects += doc_total_objects
+                
+                print(f"      📊 Generated {doc_total_objects} search objects")
+                
+                if doc_search_objects:
+                    # Upload this document's search objects to Azure Search
+                    print(f"      📤 Uploading {doc_total_objects} objects to Azure Search...", end=" ")
+                    
+                    successful, failed = self.azure_search_service.upload_search_objects_batch(doc_search_objects)
+                    
+                    successfully_uploaded += successful
+                    failed_uploads += failed
+                    
+                    if failed > 0:
+                        error_msg = f"Document {doc_idx} ({processed_doc.file_name}): {failed}/{doc_total_objects} objects failed to upload"
+                        errors.append(error_msg)
+                        print(f"⚠️  ({successful} succeeded, {failed} failed)")
+                        # Mark as failed if any objects failed to upload - store signature instead of document
+                        failed_upload_document_signatures.append(get_file_signature(processed_doc.file_path))
+                    else:
+                        print("✅")
+                        # Mark as successful only if all objects uploaded successfully - store signature instead of document
+                        document_upload_success = True
+                        successfully_uploaded_document_signatures.append(get_file_signature(processed_doc.file_path))
                 else:
-                    print("✅")
+                    error_msg = f"Document {doc_idx} ({processed_doc.file_name}): No search objects generated"
+                    errors.append(error_msg)
+                    print(f"      ❌ No search objects generated")
                     
             except Exception as e:
-                failed_uploads += len(batch)
-                errors.append(f"Batch {batch_idx} error: {str(e)}")
-                print(f"❌ Error: {str(e)}")
+                error_msg = f"Document {doc_idx} ({processed_doc.file_name}): Upload error - {str(e)}"
+                errors.append(error_msg)
+                print(f"      ❌ Error: {str(e)}")
+                # Count all potential objects from this document as failed
+                failed_uploads += processed_doc.chunk_count  # Estimate based on chunk count
+                failed_upload_document_signatures.append(get_file_signature(processed_doc.file_path))
         
         upload_time = (datetime.now() - start_time).total_seconds()
         
         # Create upload metadata
         upload_metadata = {
-            "total_batches": len(batches),
-            "batch_size": batch_size,
             "documents_processed": len(processed_documents),
-            "average_chunks_per_document": total_search_objects / len(processed_documents) if processed_documents else 0
+            "documents_successfully_uploaded": len(successfully_uploaded_document_signatures),
+            "documents_failed_upload": len(failed_upload_document_signatures),
+            "individual_document_processing": True,
+            "average_objects_per_document": total_search_objects / len(processed_documents) if processed_documents else 0,
+            "processing_mode": "individual_document_upload"
         }
         
         return DocumentUploadResult(
@@ -359,7 +403,9 @@ class DocumentUploadPhase:
             failed_uploads=failed_uploads,
             upload_time=upload_time,
             errors=errors,
-            upload_metadata=upload_metadata
+            upload_metadata=upload_metadata,
+            successfully_uploaded_document_tracking_signatures=successfully_uploaded_document_signatures,
+            failed_upload_document_tracking_signatures=failed_upload_document_signatures
         )
     
     def print_upload_summary(self, result: DocumentUploadResult):
@@ -369,6 +415,19 @@ class DocumentUploadPhase:
         print(f"   Successfully uploaded: {result.successfully_uploaded}")
         print(f"   Failed uploads: {result.failed_uploads}")
         print(f"   Upload time: {result.upload_time:.2f} seconds")
+        
+        # Show document-level success/failure tracking
+        if result.successfully_uploaded_document_tracking_signatures or result.failed_upload_document_tracking_signatures:
+            print(f"   Document-level tracking:")
+            if result.successfully_uploaded_document_tracking_signatures:
+                print(f"     Successfully uploaded documents: {len(result.successfully_uploaded_document_tracking_signatures)}")
+            if result.failed_upload_document_tracking_signatures:
+                print(f"     Failed upload documents: {len(result.failed_upload_document_tracking_signatures)}")
+                # Extract filenames from signatures for display
+                failed_file_names = [Path(sig['path']).name for sig in result.failed_upload_document_tracking_signatures[:3]]
+                print(f"     Failed document names: {failed_file_names}")
+                if len(result.failed_upload_document_tracking_signatures) > 3:
+                    print(f"       ... and {len(result.failed_upload_document_tracking_signatures) - 3} more")
         
         if result.upload_metadata:
             print(f"   Upload metadata:")
@@ -510,9 +569,9 @@ class DocumentProcessingPipeline:
             
             for file_path in discovered_files:
                 try:
-                    # Use the filename to delete documents (the search service has this method)
+                    # Use the filename to delete documents using the filter method
                     file_name = file_path.name
-                    deleted_count = self.upload_phase.azure_search_service.delete_documents_by_filename(file_name)
+                    deleted_count = self.upload_phase.azure_search_service.delete_documents_by_filter({"file_name": file_name})
                     total_deleted_count += deleted_count
                     
                     if deleted_count > 0:
@@ -601,19 +660,45 @@ class DocumentProcessingPipeline:
                 )
                 self.upload_phase.print_upload_summary(upload_result)
                 
-                # Phase 4: Update Tracker (mark successfully processed files)
-                if upload_result.successfully_uploaded > 0:
+                # Phase 4: Update Tracker (mark only successfully uploaded files)
+                if upload_result.successfully_uploaded_document_tracking_signatures:
                     print(f"\n📋 Phase 4: Update Document Tracker")
-                    # Get the files that were successfully processed
-                    successfully_processed_files = [doc.file_path for doc in processing_result.processed_documents]
-                    self.mark_files_as_processed(successfully_processed_files)
+                    # Get the files that were successfully uploaded (not just processed) - extract from signatures
+                    successfully_uploaded_files = [Path(sig['path']) for sig in upload_result.successfully_uploaded_document_tracking_signatures]
+                    self.mark_files_as_processed(successfully_uploaded_files)
+                    
+                    # Handle failed uploads - ensure they are NOT marked as processed
+                    if upload_result.failed_upload_document_tracking_signatures:
+                        print(f"   ⚠️  Handling failed uploads:")
+                        failed_uploaded_files = [Path(sig['path']) for sig in upload_result.failed_upload_document_tracking_signatures]
+                        
+                        # Ensure failed documents are removed from tracker (in case they were somehow marked as processed)
+                        files_removed_from_tracker = 0
+                        for failed_file in failed_uploaded_files:
+                            if self.tracker.is_processed(failed_file):
+                                self.tracker.mark_unprocessed(failed_file)
+                                files_removed_from_tracker += 1
+                        
+                        if files_removed_from_tracker > 0:
+                            print(f"     🗑️  Removed {files_removed_from_tracker} failed upload files from tracker")
+                            self.tracker.save()  # Save tracker changes
+                        
+                        print(f"     📋 Failed documents will be reprocessed in next run: {len(failed_uploaded_files)}")
+                        # Extract filenames from signatures for display
+                        for failed_file_path in failed_uploaded_files[:3]:
+                            print(f"       - {failed_file_path.name}")
+                        if len(failed_uploaded_files) > 3:
+                            print(f"       ... and {len(failed_uploaded_files) - 3} more")
+                else:
+                    print(f"\n📋 Phase 4: Update Document Tracker")
+                    print(f"   ⚠️  No documents successfully uploaded - tracker not updated")
                 
                 # Show the complete pipeline connection
                 print(f"\n🔗 Complete Pipeline Flow:")
                 print(f"   📁 Phase 1 - Files discovered: {discovery_result.total_files}")
                 print(f"   ⚙️  Phase 2 - Files processed: {processing_result.successfully_processed}")
                 print(f"   📤 Phase 3 - Search objects uploaded: {upload_result.successfully_uploaded}")
-                print(f"   📋 Phase 4 - Files marked as processed: {len(successfully_processed_files) if upload_result.successfully_uploaded > 0 else 0}")
+                print(f"   📋 Phase 4 - Files marked as processed: {len(upload_result.successfully_uploaded_document_tracking_signatures) if upload_result.successfully_uploaded_document_tracking_signatures else 0}")
                 print(f"   ✅ End-to-end success rate: {(upload_result.successfully_uploaded / discovery_result.total_files * 100):.1f}%" if discovery_result.total_files > 0 else "   ✅ No files to process")
                 
             else:
@@ -624,7 +709,9 @@ class DocumentProcessingPipeline:
                     failed_uploads=0,
                     upload_time=0.0,
                     errors=["No processed documents to upload"],
-                    upload_metadata=None
+                    upload_metadata=None,
+                    successfully_uploaded_document_tracking_signatures=[],
+                    failed_upload_document_tracking_signatures=[]
                 )
             
         else:
@@ -645,7 +732,9 @@ class DocumentProcessingPipeline:
                 failed_uploads=0,
                 upload_time=0.0,
                 errors=["No documents to upload"],
-                upload_metadata=None
+                upload_metadata=None,
+                successfully_uploaded_document_tracking_signatures=[],
+                failed_upload_document_tracking_signatures=[]
             )
         
         print("\n✅ Complete Pipeline Finished")
