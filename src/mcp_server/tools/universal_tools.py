@@ -56,17 +56,79 @@ async def handle_search_documents(search_service, arguments: dict) -> list[types
         formatted_results = []
         for i, result in enumerate(results[:max_results], 1):
             result_text = f"## Result {i}\n"
+            
+            # Core document identification
             result_text += f"**Context:** {result.get('context_name', 'Unknown')}\n"
             result_text += f"**File:** {result.get('file_name', 'Unknown')}\n"
             result_text += f"**Title:** {result.get('title', 'No title')}\n"
             result_text += f"**Chunk:** {result.get('chunk_index', 'N/A')}\n"
             
+            # Additional valuable metadata for LLM
+            file_type = result.get('file_type', '').lstrip('.')  # Remove leading dot if present
+            if file_type:
+                result_text += f"**File Type:** {file_type.upper()}\n"
+            
+            file_path = result.get('file_path', '')
+            if file_path:
+                result_text += f"**Path:** {file_path}\n"
+            
+            category = result.get('category', '')
+            if category:
+                result_text += f"**Category:** {category}\n"
+            
+            tags = result.get('tags', '')
+            if tags:
+                # Tags are stored as comma-separated string, format them nicely
+                tag_list = [tag.strip() for tag in tags.split(',') if tag.strip()]
+                if tag_list:
+                    result_text += f"**Tags:** {', '.join(tag_list)}\n"
+            
+            last_modified = result.get('last_modified', '')
+            if last_modified:
+                # Format the timestamp more readably
+                try:
+                    from datetime import datetime
+                    if isinstance(last_modified, str):
+                        # Parse ISO format timestamp
+                        dt = datetime.fromisoformat(last_modified.replace('Z', '+00:00'))
+                        formatted_date = dt.strftime('%Y-%m-%d %H:%M UTC')
+                        result_text += f"**Last Modified:** {formatted_date}\n"
+                    else:
+                        result_text += f"**Last Modified:** {last_modified}\n"
+                except (ValueError, ImportError):
+                    result_text += f"**Last Modified:** {last_modified}\n"
+            
+            # Document ID for reference (useful for debugging/tracking)
+            doc_id = result.get('id', '')
+            if doc_id:
+                result_text += f"**Document ID:** {doc_id}\n"
+            
+            # Additional metadata if available
+            metadata_json = result.get('metadata_json', '')
+            if metadata_json:
+                try:
+                    import json
+                    metadata = json.loads(metadata_json)
+                    if metadata:
+                        result_text += f"**Additional Metadata:** {len(metadata)} fields available\n"
+                        # Show a few key metadata fields if they exist
+                        interesting_keys = ['work_item_id', 'project', 'author', 'version', 'status']
+                        shown_metadata = []
+                        for key in interesting_keys:
+                            if key in metadata and metadata[key]:
+                                shown_metadata.append(f"{key}: {metadata[key]}")
+                        if shown_metadata:
+                            result_text += f"**Key Metadata:** {', '.join(shown_metadata)}\n"
+                except (json.JSONDecodeError, ImportError):
+                    pass
+            
             if include_content and 'content' in result:
                 content = result['content'].strip()
                 if len(content) > 400:
                     content = content[:400] + "..."
-                result_text += f"**Content:**\n```\n{content}\n```\n"
+                result_text += f"\n**Content:**\n```\n{content}\n```\n"
             
+            # Relevance score (keeping this at the end as it's technical)
             score = result.get('@search.score', 'N/A')
             if isinstance(score, (int, float)):
                 result_text += f"**Relevance Score:** {score:.4f}\n"
@@ -270,11 +332,31 @@ async def _explore_files(search_service, arguments: dict) -> list[types.TextCont
         search_text="*",
         filter=FilterBuilder.build_filter(filters) if filters else None,
         facets=["file_name,count:1000"],
+        select="file_name,file_type,file_path,category,tags,last_modified",
         top=0
     )
     
     facet_data = results.get_facets()
     files = facet_data.get("file_name", [])
+
+    # Get additional metadata for each file by querying one search index chunk per file
+    file_metadata = {}
+    for file_info in files[:max_items]:
+        file_name = file_info['value']
+        # Get one document for this file to extract metadata
+        file_query_filters = dict(filters)  # Copy existing filters
+        file_query_filters["file_name"] = file_name
+        
+        file_results = search_service.search_client.search(
+            search_text="*",
+            filter=FilterBuilder.build_filter(file_query_filters),
+            select="file_name,file_type,file_path,category,tags,last_modified",
+            top=1
+        )
+        
+        file_docs = list(file_results)
+        if file_docs:
+            file_metadata[file_name] = file_docs[0]
     
     context_desc = f" in **{context_name}**" if context_name else ""
     response = f"# File Structure\n\n**Files Found:** {len(files)}{context_desc}\n\n"
@@ -282,9 +364,49 @@ async def _explore_files(search_service, arguments: dict) -> list[types.TextCont
     for i, file_info in enumerate(files[:max_items], 1):
         file_name = file_info['value']
         chunk_count = file_info['count']
-            
+        metadata = file_metadata.get(file_name, {})
+        
         response += f"**{i}. {file_name}**\n"
-        response += f"   - *{chunk_count} chunks*\n\n"
+        response += f"   - *{chunk_count} chunks*\n"
+        
+        # Add file type if available
+        file_type = metadata.get('file_type', '')
+        if file_type:
+            response += f"   - *Type: {file_type}*\n"
+        
+        # Add file path if available
+        file_path = metadata.get('file_path', '')
+        if file_path:
+            response += f"   - *Path: {file_path}*\n"
+        
+        # Add category if available
+        category = metadata.get('category', '')
+        if category:
+            response += f"   - *Category: {category}*\n"
+        
+        # Add tags if available
+        tags = metadata.get('tags', '')
+        if tags and tags.strip():
+            if isinstance(tags, list):
+                tags_str = ', '.join(tags)
+            else:
+                tags_str = str(tags).replace(';', ', ').replace('|', ', ')
+            response += f"   - *Tags: {tags_str}*\n"
+        
+        # Add last modified date
+        last_modified = metadata.get('last_modified', '')
+        if last_modified:
+            try:
+                from datetime import datetime
+                if isinstance(last_modified, str):
+                    dt = datetime.fromisoformat(last_modified.replace('Z', '+00:00'))
+                    response += f"   - *Modified: {dt.strftime('%Y-%m-%d %H:%M:%S UTC')}*\n"
+                else:
+                    response += f"   - *Modified: {last_modified}*\n"
+            except:
+                response += f"   - *Modified: {last_modified}*\n"
+        
+        response += "\n"
     
     if len(files) > max_items:
         response += f"*... and {len(files) - max_items} more files available*\n"
@@ -304,11 +426,11 @@ async def _explore_chunks(search_service, arguments: dict) -> list[types.TextCon
     if file_name:
         filters["file_name"] = file_name
     
-    # Use Azure Search with proper sorting
+    # Use Azure Search with proper sorting and additional metadata fields
     results = search_service.search_client.search(
         search_text="*",
         filter=FilterBuilder.build_filter(filters) if filters else None,
-        select="file_name,chunk_index,context_name,title,content",
+        select="id,file_name,file_path,file_type,chunk_index,context_name,title,content,category,tags,last_modified,metadata_json",
         top=max_items
     )
     
@@ -325,8 +447,57 @@ async def _explore_chunks(search_service, arguments: dict) -> list[types.TextCon
     for i, chunk in enumerate(chunks, 1):
         response += f"## Chunk {i}\n"
         response += f"**File:** {chunk.get('file_name', 'Unknown')}\n"
-        response += f"**ID:** {chunk.get('chunk_index', 'N/A')}\n"
+        response += f"**File Type:** {chunk.get('file_type', 'N/A')}\n"
+        response += f"**File Path:** {chunk.get('file_path', 'N/A')}\n"
+        response += f"**Context:** {chunk.get('context_name', 'N/A')}\n"
+        response += f"**Chunk ID:** {chunk.get('chunk_index', 'N/A')}\n"
+        response += f"**Document ID:** {chunk.get('id', 'N/A')}\n"
         response += f"**Title:** {chunk.get('title', 'No title')}\n"
+        
+        # Display category if available
+        category = chunk.get('category', '')
+        if category:
+            response += f"**Category:** {category}\n"
+        
+        # Display tags if available
+        tags = chunk.get('tags', '')
+        if tags and tags.strip():
+            if isinstance(tags, list):
+                tags_str = ', '.join(tags)
+            else:
+                tags_str = str(tags).replace(';', ', ').replace('|', ', ')
+            response += f"**Tags:** {tags_str}\n"
+        
+        # Display last modified date
+        last_modified = chunk.get('last_modified', '')
+        if last_modified:
+            try:
+                from datetime import datetime
+                if isinstance(last_modified, str):
+                    # Parse ISO format datetime
+                    dt = datetime.fromisoformat(last_modified.replace('Z', '+00:00'))
+                    response += f"**Last Modified:** {dt.strftime('%Y-%m-%d %H:%M:%S UTC')}\n"
+                else:
+                    response += f"**Last Modified:** {last_modified}\n"
+            except:
+                response += f"**Last Modified:** {last_modified}\n"
+        
+        # Display parsed metadata if available
+        metadata_json = chunk.get('metadata_json', '')
+        if metadata_json and metadata_json.strip():
+            try:
+                import json
+                metadata = json.loads(metadata_json)
+                if isinstance(metadata, dict) and metadata:
+                    key_fields = ['author', 'subject', 'keywords', 'description', 'created_date', 'word_count', 'page_count']
+                    metadata_info = []
+                    for field in key_fields:
+                        if field in metadata and metadata[field]:
+                            metadata_info.append(f"{field.replace('_', ' ').title()}: {metadata[field]}")
+                    if metadata_info:
+                        response += f"**Metadata:** {', '.join(metadata_info)}\n"
+            except:
+                pass
         
         content = chunk.get('content', '').strip()
         if len(content) > 150:
