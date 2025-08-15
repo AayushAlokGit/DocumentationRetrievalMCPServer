@@ -55,24 +55,27 @@ async def handle_search_documents(search_service, arguments: dict) -> list[types
         
         formatted_results = []
         for i, result in enumerate(results[:max_results], 1):
-            result_text = f"[RESULT {i}]\n"
-            result_text += f"Context: {result.get('context_name', 'Unknown')}\n"
-            result_text += f"File: {result.get('file_name', 'Unknown')}\n"
-            result_text += f"Title: {result.get('title', 'No title')}\n"
-            result_text += f"Chunk: {result.get('chunk_index', 'N/A')}\n"
+            result_text = f"## Result {i}\n"
+            result_text += f"**Context:** {result.get('context_name', 'Unknown')}\n"
+            result_text += f"**File:** {result.get('file_name', 'Unknown')}\n"
+            result_text += f"**Title:** {result.get('title', 'No title')}\n"
+            result_text += f"**Chunk:** {result.get('chunk_index', 'N/A')}\n"
             
             if include_content and 'content' in result:
-                content = result['content']
-                if len(content) > 500:
-                    content = content[:500] + "..."
-                result_text += f"Content: {content}\n"
+                content = result['content'].strip()
+                if len(content) > 400:
+                    content = content[:400] + "..."
+                result_text += f"**Content:**\n```\n{content}\n```\n"
             
             score = result.get('@search.score', 'N/A')
-            result_text += f"Score: {score}\n"
-            result_text += "---\n"
+            if isinstance(score, (int, float)):
+                result_text += f"**Relevance Score:** {score:.4f}\n"
+            else:
+                result_text += f"**Relevance Score:** {score}\n"
+            result_text += "\n---\n"
             formatted_results.append(result_text)
         
-        response = f"[SEARCH] Found {len(results)} documents (search_type: {search_type})\n\n" + "\n".join(formatted_results)
+        response = f"# Search Results\n\n**Query:** \"{query}\"\n**Search Type:** {search_type.upper()}\n**Results Found:** {len(results)}\n\n" + "\n".join(formatted_results)
         
         return [types.TextContent(type="text", text=response)]
         
@@ -107,22 +110,23 @@ async def handle_get_document_contexts(search_service, arguments: dict) -> list[
         if not contexts:
             return [types.TextContent(
                 type="text",
-                text="[CONTEXTS] No contexts found in the index"
+                text="# Document Contexts\n\n**No contexts found in the index**\n\nThis might indicate:\n- Empty search index\n- Connection issues\n- No documents uploaded yet"
             )]
         
         # Format response
-        response = f"[CONTEXTS] Found {len(contexts)} contexts\n\n"
+        response = f"# Document Contexts\n\n**Total Contexts Found:** {len(contexts)}\n\n"
         
         for i, context in enumerate(contexts[:max_contexts], 1):
             context_name = context["value"]
             doc_count = context["count"] if include_stats else "N/A"
-            response += f"{i}. {context_name}"
+            
+            response += f"**{i}. {context_name}**"
             if include_stats:
-                response += f" ({doc_count} documents)"
+                response += f" - *{doc_count} documents*"
             response += "\n"
         
         if len(contexts) > max_contexts:
-            response += f"\n... and {len(contexts) - max_contexts} more contexts"
+            response += f"\n*... and {len(contexts) - max_contexts} more contexts available*"
         
         return [types.TextContent(type="text", text=response)]
         
@@ -196,41 +200,43 @@ async def handle_get_index_summary(search_service, arguments: dict) -> list[type
         facet_data = results.get_facets() if include_facets else {}
         
         # Build response
-        response = f"[INDEX SUMMARY]\n"
-        response += f"Total Documents: {total_count}\n\n"
+        response = f"# Search Index Summary\n\n"
+        response += f"**Total Documents:** {total_count:,}\n\n"
         
         if include_facets:
             # Context distribution
             contexts = facet_data.get("context_name", [])
-            response += f"Contexts ({len(contexts)}): "
+            response += f"## Contexts Distribution\n"
+            response += f"**Found {len(contexts)} contexts:**\n"
             context_names = [c["value"] for c in contexts[:5]]
-            response += ", ".join(context_names)
+            for i, ctx in enumerate(contexts[:5], 1):
+                response += f"  {i}. **{ctx['value']}** - *{ctx['count']:,} documents*\n"
             if len(contexts) > 5:
-                response += f", ... and {len(contexts) - 5} more"
-            response += "\n\n"
+                response += f"  ... *and {len(contexts) - 5} more contexts*\n"
+            response += "\n"
             
             # File type distribution
             file_types = facet_data.get("file_type", [])
-            response += f"File Types ({len(file_types)}): "
+            response += f"## File Types Distribution\n"
             for ft in file_types[:10]:
-                response += f"{ft['value']} ({ft['count']}), "
-            response = response.rstrip(", ") + "\n\n"
+                response += f"- **{ft['value']}**: {ft['count']:,} files\n"
+            response += "\n"
             
             # Category distribution
             categories = facet_data.get("category", [])
             if categories:
-                response += f"Categories ({len(categories)}): "
+                response += f"## Categories\n"
                 for cat in categories[:10]:
-                    response += f"{cat['value']} ({cat['count']}), "
-                response = response.rstrip(", ") + "\n\n"
+                    response += f"- **{cat['value']}**: {cat['count']:,} documents\n"
+                response += "\n"
             
             # Popular tags
             tags = facet_data.get("tags", [])
             if tags:
-                response += f"Popular Tags ({len(tags)}): "
+                response += f"## Popular Tags\n"
                 for tag in tags[:15]:
-                    response += f"{tag['value']} ({tag['count']}), "
-                response = response.rstrip(", ") + "\n"
+                    response += f"- `{tag['value']}` ({tag['count']:,}) "
+                response += "\n"
         
         return [types.TextContent(type="text", text=response)]
         
@@ -270,13 +276,18 @@ async def _explore_files(search_service, arguments: dict) -> list[types.TextCont
     facet_data = results.get_facets()
     files = facet_data.get("file_name", [])
     
-    context_desc = f" in context '{context_name}'" if context_name else ""
-    response = f"[STRUCTURE] Found {len(files)} files{context_desc}\n\n"
+    context_desc = f" in **{context_name}**" if context_name else ""
+    response = f"# File Structure\n\n**Files Found:** {len(files)}{context_desc}\n\n"
+    
     for i, file_info in enumerate(files[:max_items], 1):
-        response += f"{i}. {file_info['value']} ({file_info['count']} chunks)\n"
+        file_name = file_info['value']
+        chunk_count = file_info['count']
+            
+        response += f"**{i}. {file_name}**\n"
+        response += f"   - *{chunk_count} chunks*\n\n"
     
     if len(files) > max_items:
-        response += f"\n... and {len(files) - max_items} more files"
+        response += f"*... and {len(files) - max_items} more files available*\n"
     
     return [types.TextContent(type="text", text=response)]
 
@@ -306,17 +317,21 @@ async def _explore_chunks(search_service, arguments: dict) -> list[types.TextCon
     # Sort chunks by file name and chunk index for consistent ordering
     chunks = sorted(chunks, key=lambda x: (x.get('file_name', ''), x.get('chunk_index', '')))
     
-    file_desc = f" from file '{file_name}'" if file_name else ""
-    context_desc = f" in context '{context_name}'" if context_name else ""
+    file_desc = f" from **{file_name}**" if file_name else ""
+    context_desc = f" in **{context_name}**" if context_name else ""
     
-    response = f"[STRUCTURE] Found {len(chunks)} chunks{file_desc}{context_desc}\n\n"
+    response = f"# Document Chunks\n\n**Chunks Found:** {len(chunks)}{file_desc}{context_desc}\n\n"
+    
     for i, chunk in enumerate(chunks, 1):
-        response += f"{i}. {chunk.get('file_name', 'Unknown')} - Chunk {chunk.get('chunk_index', 'N/A')}\n"
-        response += f"   Title: {chunk.get('title', 'No title')}\n"
-        content = chunk.get('content', '')
-        if len(content) > 100:
-            content = content[:100] + "..."
-        response += f"   Content: {content}\n\n"
+        response += f"## Chunk {i}\n"
+        response += f"**File:** {chunk.get('file_name', 'Unknown')}\n"
+        response += f"**ID:** {chunk.get('chunk_index', 'N/A')}\n"
+        response += f"**Title:** {chunk.get('title', 'No title')}\n"
+        
+        content = chunk.get('content', '').strip()
+        if len(content) > 150:
+            content = content[:150] + "..."
+        response += f"**Preview:**\n```\n{content}\n```\n\n"
         
         if i >= max_items:
             break
@@ -344,12 +359,16 @@ async def _explore_categories(search_service, arguments: dict) -> list[types.Tex
     facet_data = results.get_facets()
     categories = facet_data.get("category", [])
     
-    context_desc = f" in context '{context_name}'" if context_name else ""
-    response = f"[STRUCTURE] Found {len(categories)} categories{context_desc}\n\n"
+    context_desc = f" in **{context_name}**" if context_name else ""
+    response = f"# Document Categories\n\n**Categories Found:** {len(categories)}{context_desc}\n\n"
+    
     for i, cat_info in enumerate(categories[:max_items], 1):
-        response += f"{i}. {cat_info['value']} ({cat_info['count']} documents)\n"
+        category_name = cat_info['value']
+        doc_count = cat_info['count']
+        response += f"**{i}. {category_name}**\n"
+        response += f"   - *{doc_count:,} documents*\n\n"
     
     if len(categories) > max_items:
-        response += f"\n... and {len(categories) - max_items} more categories"
+        response += f"*... and {len(categories) - max_items} more categories available*\n"
     
     return [types.TextContent(type="text", text=response)]

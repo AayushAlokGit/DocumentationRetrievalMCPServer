@@ -1,6 +1,6 @@
 {
   "servers": {
-    "work-items-documentation": {
+    "documentation-retrieval-mcp": {
       "type": "stdio",
       "command": "${workspaceFolder}\\venv\\Scripts\\python.exe",
       "args": ["run_mcp_server.py"],
