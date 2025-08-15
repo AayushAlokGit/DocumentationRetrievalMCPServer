@@ -12,7 +12,7 @@ import mcp.types as types
 
 from common.azure_cognitive_search import FilterBuilder
 
-logger = logging.getLogger("documentation-retrieval-mcp")
+logger = logging.getLogger("work-items-mcp")
 
 
 async def handle_search_documents(search_service, arguments: dict) -> list[types.TextContent]:

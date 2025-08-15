@@ -4,9 +4,15 @@ Universal Document Search MCP Tools
 
 New universal tool schemas for document search across all document types.
 These replace the old work-item specific tools with universal capabilities.
+
+This module contains:
+1. Universal tools - work across any document context
+2. Work item tools - imported from dedicated work item tools module
+3. Legacy compatibility - for backward compatibility
 """
 
 import mcp.types as types
+from .work_item_tools import get_work_item_tool_schemas
 
 
 def get_universal_search_tools() -> list[types.Tool]:
@@ -94,16 +100,10 @@ def get_context_discovery_tools() -> list[types.Tool]:
     return [
         types.Tool(
             name="get_document_contexts",
-            description="Get all available document contexts (work items, projects, etc.) with statistics",
+            description="Get all available document contexts with statistics",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "context_type": {
-                        "type": "string",
-                        "enum": ["work_item", "project", "contract", "all"],
-                        "description": "Filter by context type (default: all)",
-                        "default": "all"
-                    },
                     "include_stats": {
                         "type": "boolean",
                         "description": "Include document counts per context (default: true)",
@@ -138,14 +138,6 @@ def get_context_discovery_tools() -> list[types.Tool]:
                     "file_name": {
                         "type": "string", 
                         "description": "Optional file name to filter exploration"
-                    },
-                    "chunk_range": {
-                        "type": "object",
-                        "properties": {
-                            "start": {"type": "integer", "minimum": 0},
-                            "end": {"type": "integer", "minimum": 0}
-                        },
-                        "description": "Optional chunk range for chunk exploration"
                     },
                     "max_items": {
                         "type": "integer",
@@ -188,107 +180,17 @@ def get_analytics_tools() -> list[types.Tool]:
     ]
 
 
-def get_legacy_tool_schemas() -> list[types.Tool]:
-    """Get legacy tool schemas for backward compatibility"""
-    return [
-        types.Tool(
-            name="search_work_items",
-            description="[LEGACY] Search work item documentation - use search_documents instead",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "query": {"type": "string", "description": "Search query"},
-                    "search_type": {"type": "string", "enum": ["text", "vector", "hybrid"], "default": "hybrid"},
-                    "work_item_id": {"type": "string", "description": "Optional work item ID"},
-                    "max_results": {"type": "integer", "default": 5, "minimum": 1, "maximum": 20}
-                },
-                "required": ["query"]
-            }
-        ),
-        types.Tool(
-            name="search_by_work_item", 
-            description="[LEGACY] Search within specific work item - use search_documents with context_id filter instead",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "work_item_id": {"type": "string", "description": "Work item ID"},
-                    "query": {"type": "string", "description": "Search query"},
-                    "max_results": {"type": "integer", "default": 5, "minimum": 1, "maximum": 10}
-                },
-                "required": ["work_item_id", "query"]
-            }
-        ),
-        types.Tool(
-            name="semantic_search",
-            description="[LEGACY] Semantic search - use search_documents with search_type='vector' instead", 
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "concept": {"type": "string", "description": "Concept to search for"},
-                    "max_results": {"type": "integer", "default": 5, "minimum": 1, "maximum": 15}
-                },
-                "required": ["concept"]
-            }
-        ),
-        types.Tool(
-            name="search_by_chunk",
-            description="[LEGACY] Search by chunk pattern - use search_documents with chunk_pattern filter instead",
-            inputSchema={
-                "type": "object", 
-                "properties": {
-                    "chunk_pattern": {"type": "string", "description": "Chunk pattern"},
-                    "query": {"type": "string", "description": "Optional search query"},
-                    "max_results": {"type": "integer", "default": 5, "minimum": 1, "maximum": 15}
-                },
-                "required": ["chunk_pattern"]
-            }
-        ),
-        types.Tool(
-            name="search_file_chunks",
-            description="[LEGACY] Search file chunks - use explore_document_structure instead",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "file_name": {"type": "string", "description": "File name"},
-                    "query": {"type": "string", "description": "Optional search query"},
-                    "max_results": {"type": "integer", "default": 10, "minimum": 1, "maximum": 20}
-                },
-                "required": ["file_name"]
-            }
-        ),
-        types.Tool(
-            name="search_chunk_range", 
-            description="[LEGACY] Search chunk range - use explore_document_structure instead",
-            inputSchema={
-                "type": "object",
-                "properties": {
-                    "file_name": {"type": "string", "description": "File name"},
-                    "start_chunk": {"type": "integer", "default": 0, "minimum": 0},
-                    "end_chunk": {"type": "integer", "minimum": 0},
-                    "max_results": {"type": "integer", "default": 10, "minimum": 1, "maximum": 20}
-                },
-                "required": ["file_name"]
-            }
-        ),
-        types.Tool(
-            name="get_work_item_list",
-            description="[LEGACY] Get work item list - use get_document_contexts instead", 
-            inputSchema={"type": "object", "properties": {}}
-        ),
-        types.Tool(
-            name="get_work_item_summary",
-            description="[LEGACY] Get work item summary - use get_index_summary instead",
-            inputSchema={"type": "object", "properties": {}}
-        )
-    ]
+def get_work_item_specific_tools() -> list[types.Tool]:
+    """Get work item specific tool definitions"""
+    return get_work_item_tool_schemas()
 
 
 def get_all_tools() -> list[types.Tool]:
-    """Get all available tool definitions (universal + legacy for compatibility)"""
+    """Get all available tool definitions (universal + work item specific)"""
     tools = []
     tools.extend(get_universal_search_tools())
     tools.extend(get_context_discovery_tools()) 
     tools.extend(get_analytics_tools())
-    # Include legacy tools for backward compatibility
-    tools.extend(get_legacy_tool_schemas())
+    # Include work item specific tools
+    # tools.extend(get_work_item_specific_tools())
     return tools

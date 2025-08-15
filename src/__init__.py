@@ -1,8 +1,8 @@
 """
-Work Item Documentation Retriever
-=================================
+Documentation Retrieval MCP Server
+==================================
 
-A system for managing and searching work item documentation using Azure Cognitive Search
+A system for managing and searching documentation using Azure Cognitive Search
 and OpenAI embeddings, with MCP (Model Context Protocol) server capabilities.
 """
 

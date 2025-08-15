@@ -19,7 +19,7 @@ from .universal_tools import (
 
 from .work_item_tools import WORK_ITEM_TOOL_HANDLERS
 
-logger = logging.getLogger("documentation-retrieval-mcp")
+logger = logging.getLogger("work-items-mcp")
 
 
 class ToolRouter:
