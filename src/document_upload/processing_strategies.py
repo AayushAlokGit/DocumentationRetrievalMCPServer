@@ -583,7 +583,7 @@ class PersonalDocumentationAssistantProcessingStrategy(DocumentProcessingStrateg
         """
         Extract tags/keywords using Personal Documentation Assistant strategy.
         
-        Current implementation: Basic tags with work item ID and file type only.
+        Current implementation: Basic tags with work item ID, file type, and filename.
         
         Future enhancement: Pass document through LLM to extract intelligent keywords
         and add them to the tags list for better searchability and categorization.
@@ -597,6 +597,10 @@ class PersonalDocumentationAssistantProcessingStrategy(DocumentProcessingStrateg
         # Add file type as tag
         tags.add(file_type)
         
+        # Add filename (stem without extension) as tag for better searchability
+        filename_tag = file_path.stem.lower().replace('_', '-').replace(' ', '-')
+        tags.add(filename_tag)
+        
         # TODO: Future enhancement - LLM-based keyword extraction
         # Plan: Pass document content through LLM (OpenAI/Azure OpenAI) to extract
         # intelligent keywords, technical terms, and domain-specific concepts
@@ -604,7 +608,7 @@ class PersonalDocumentationAssistantProcessingStrategy(DocumentProcessingStrateg
         # llm_keywords = self._extract_llm_keywords(content, file_type)
         # tags.update(llm_keywords)
         
-        # Return sorted tags (currently just work_item_id and file_type)
+        # Return sorted tags (currently work_item_id, file_type, and filename)
         return sorted(list(tags))
     
     def _extract_file_system_metadata(self, file_path: Path) -> Dict:
@@ -620,10 +624,13 @@ class PersonalDocumentationAssistantProcessingStrategy(DocumentProcessingStrateg
        
     def _get_error_metadata(self, file_path: Path, error_message: str) -> Dict:
         """Return minimal metadata when extraction fails."""
+        # Create filename tag for consistency with successful processing
+        filename_tag = file_path.stem.lower().replace('_', '-').replace(' ', '-')
+        
         return {
             'file_type': 'unknown',
             'title': file_path.stem,
-            'tags': [file_path.parent.name, 'error'],
+            'tags': [file_path.parent.name, 'error', filename_tag],
             'work_item_id': file_path.parent.name,
             'last_modified': datetime.now().isoformat() + 'Z',
             'extraction_error': error_message
