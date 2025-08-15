@@ -340,6 +340,8 @@ async def _explore_files(search_service, arguments: dict) -> list[types.TextCont
     files = facet_data.get("file_name", [])
 
     # Get additional metadata for each file by querying one search index chunk per file
+    # NOTE: In the document processing pipeline, each file is split into chunks,
+    # but the metadata for each file chunk is the same
     file_metadata = {}
     for file_info in files[:max_items]:
         file_name = file_info['value']
