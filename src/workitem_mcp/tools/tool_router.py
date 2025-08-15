@@ -1,48 +1,49 @@
 """
-Tool Router for MCP Server
-==========================
+Universal Tool Router for MCP Server
+====================================
 
-Central router that dispatches tool calls to appropriate handlers.
-This provides a clean interface between the main server and tool implementations.
+Central router for the new universal document search tools with legacy compatibility.
+Routes tool calls to universal handlers and provides backward compatibility.
 """
 
 import logging
 from typing import Dict, Any
 import mcp.types as types
 
-from .search_tools import (
-    handle_search_work_items, 
-    handle_search_by_work_item, 
-    handle_semantic_search,
-    handle_search_by_chunk,
-    handle_search_file_chunks,
-    handle_search_chunk_range
+from .universal_tools import (
+    handle_search_documents,
+    handle_get_document_contexts, 
+    handle_explore_document_structure,
+    handle_get_index_summary
 )
-from .info_tools import handle_get_work_item_list, handle_get_work_item_summary
+
+from .legacy_compatibility import LEGACY_TOOL_HANDLERS
 
 logger = logging.getLogger("work-items-mcp")
 
 
 class ToolRouter:
-    """Routes MCP tool calls to appropriate handlers"""
+    """Routes MCP tool calls to universal handlers with legacy support"""
     
-    def __init__(self, searcher):
-        self.searcher = searcher
+    def __init__(self, search_service):
+        self.search_service = search_service
         
-        # Map tool names to their handlers
+        # Map tool names to their universal handlers
+        self.universal_handlers = {
+            "search_documents": handle_search_documents,
+            "get_document_contexts": handle_get_document_contexts,
+            "explore_document_structure": handle_explore_document_structure,
+            "get_index_summary": handle_get_index_summary,
+        }
+        
+        # Combine universal and legacy handlers
         self.tool_handlers = {
-            "search_work_items": handle_search_work_items,
-            "search_by_work_item": handle_search_by_work_item,
-            "semantic_search": handle_semantic_search,
-            "search_by_chunk": handle_search_by_chunk,
-            "search_file_chunks": handle_search_file_chunks,
-            "search_chunk_range": handle_search_chunk_range,
-            "get_work_item_list": handle_get_work_item_list,
-            "get_work_item_summary": handle_get_work_item_summary,
+            **self.universal_handlers,
+            **LEGACY_TOOL_HANDLERS
         }
     
     async def handle_tool_call(self, name: str, arguments: dict) -> list[types.TextContent]:
-        """Route tool call to appropriate handler"""
+        """Route tool call to appropriate universal or legacy handler"""
         try:
             if name not in self.tool_handlers:
                 return [types.TextContent(
@@ -52,14 +53,19 @@ class ToolRouter:
             
             handler = self.tool_handlers[name]
             
-            # Initialize searcher if not already done
-            if self.searcher is None:
-                from search_documents import DocumentSearcher
-                self.searcher = DocumentSearcher()
-                logger.info("[SUCCESS] DocumentSearcher initialized")
+            # Initialize search service if not already done
+            if self.search_service is None:
+                from common.azure_cognitive_search import get_azure_search_service
+                self.search_service = get_azure_search_service()
+                logger.info("[SUCCESS] Azure Search Service initialized")
             
-            # Call the appropriate handler
-            return await handler(self.searcher, arguments)
+            # Log whether using universal or legacy handler
+            if name in self.universal_handlers:
+                logger.info(f"[ROUTER] Routing {name} to universal handler")
+            else:
+                logger.info(f"[ROUTER] Routing {name} to legacy compatibility handler")
+            
+            return await handler(self.search_service, arguments)
             
         except Exception as e:
             logger.error(f"Error handling tool call {name}: {e}")
@@ -69,5 +75,13 @@ class ToolRouter:
             )]
     
     def get_available_tools(self) -> list[str]:
-        """Get list of available tool names"""
+        """Get list of available tool names (universal + legacy)"""
         return list(self.tool_handlers.keys())
+    
+    def get_universal_tools(self) -> list[str]:
+        """Get list of new universal tool names"""
+        return list(self.universal_handlers.keys())
+    
+    def get_legacy_tools(self) -> list[str]:
+        """Get list of legacy tool names"""
+        return list(LEGACY_TOOL_HANDLERS.keys())

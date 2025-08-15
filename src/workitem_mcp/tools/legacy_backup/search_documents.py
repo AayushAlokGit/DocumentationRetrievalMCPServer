@@ -37,6 +37,11 @@ class DocumentSearcher:
         self.admin_key = self.search_service.admin_key
         self.index_name = self.search_service.index_name
     
+    @property
+    def search_client(self):
+        """Access to the underlying Azure Search client for direct operations"""
+        return self.search_service.search_client
+    
     # ===== SEARCH METHODS =====
     
     def text_search(self, query: str, filters: Dict[str, any] = None, top_k: int = 5):
@@ -59,7 +64,7 @@ class DocumentSearcher:
     
     def get_work_items(self):
         """Get list of all work item IDs in the index"""
-        return self.search_service.get_unique_field_values("context_id")
+        return self.search_service.get_unique_field_values("context_name")
     
     def get_document_count(self):
         """Get total number of documents in the index"""

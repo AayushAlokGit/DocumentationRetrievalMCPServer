@@ -1,20 +1,20 @@
 """
-Tool Schema Definitions for MCP Server
-======================================
+Universal Document Search MCP Tools
+===================================
 
-JSON Schema definitions for all MCP tools exposed by the server.
-This centralizes tool definitions for easier maintenance and consistency.
+New universal tool schemas for document search across all document types.
+These replace the old work-item specific tools with universal capabilities.
 """
 
 import mcp.types as types
 
 
-def get_search_tools() -> list[types.Tool]:
-    """Get all search-related tool definitions"""
+def get_universal_search_tools() -> list[types.Tool]:
+    """Get universal search tool definitions"""
     return [
         types.Tool(
-            name="search_work_items",
-            description="Search work item documentation using text, vector, or hybrid search",
+            name="search_documents",
+            description="Universal document search with multiple search types and comprehensive filtering",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -24,183 +24,271 @@ def get_search_tools() -> list[types.Tool]:
                     },
                     "search_type": {
                         "type": "string",
-                        "enum": ["text", "vector", "hybrid"],
+                        "enum": ["text", "vector", "semantic", "hybrid"],
                         "description": "Type of search to perform (default: hybrid)",
                         "default": "hybrid"
                     },
-                    "work_item_id": {
-                        "type": "string",
-                        "description": "Optional work item ID to filter results to specific work item"
+                    "filters": {
+                        "type": "object",
+                        "description": "Document filters",
+                        "properties": {
+                            "context_name": {
+                                "oneOf": [
+                                    {"type": "string"},
+                                    {"type": "array", "items": {"type": "string"}}
+                                ],
+                                "description": "Filter by context name(s) - work items, projects, etc."
+                            },
+                            "file_type": {
+                                "oneOf": [
+                                    {"type": "string"},
+                                    {"type": "array", "items": {"type": "string"}}
+                                ],
+                                "description": "Filter by file type(s) - md, pdf, docx, etc."
+                            },
+                            "category": {
+                                "oneOf": [
+                                    {"type": "string"},
+                                    {"type": "array", "items": {"type": "string"}}
+                                ],
+                                "description": "Filter by document category"
+                            },
+                            "file_name": {
+                                "type": "string",
+                                "description": "Filter by specific file name"
+                            },
+                            "chunk_pattern": {
+                                "type": "string",
+                                "description": "Filter by chunk pattern (e.g., 'file.md_chunk_0')"
+                            },
+                            "tags": {
+                                "oneOf": [
+                                    {"type": "string"},
+                                    {"type": "array", "items": {"type": "string"}}
+                                ],
+                                "description": "Filter by document tags"
+                            }
+                        }
                     },
                     "max_results": {
                         "type": "integer",
                         "description": "Maximum number of results to return (default: 5)",
                         "default": 5,
                         "minimum": 1,
-                        "maximum": 20
+                        "maximum": 50
+                    },
+                    "include_content": {
+                        "type": "boolean",
+                        "description": "Include full content in results (default: true)",
+                        "default": True
                     }
+                },
+                "required": ["query"]
+            }
+        )
+    ]
+
+
+def get_context_discovery_tools() -> list[types.Tool]:
+    """Get context and structure discovery tools"""
+    return [
+        types.Tool(
+            name="get_document_contexts",
+            description="Get all available document contexts (work items, projects, etc.) with statistics",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "context_type": {
+                        "type": "string",
+                        "enum": ["work_item", "project", "contract", "all"],
+                        "description": "Filter by context type (default: all)",
+                        "default": "all"
+                    },
+                    "include_stats": {
+                        "type": "boolean",
+                        "description": "Include document counts per context (default: true)",
+                        "default": True
+                    },
+                    "max_contexts": {
+                        "type": "integer",
+                        "description": "Maximum number of contexts to return (default: 100)",
+                        "default": 100,
+                        "minimum": 1,
+                        "maximum": 1000
+                    }
+                }
+            }
+        ),
+        types.Tool(
+            name="explore_document_structure",
+            description="Explore document structure and navigate through contexts, files, and chunks",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "structure_type": {
+                        "type": "string",
+                        "enum": ["contexts", "files", "chunks", "categories"],
+                        "description": "Type of structure to explore",
+                        "default": "contexts"
+                    },
+                    "context_name": {
+                        "type": "string",
+                        "description": "Optional context name to filter exploration"
+                    },
+                    "file_name": {
+                        "type": "string", 
+                        "description": "Optional file name to filter exploration"
+                    },
+                    "chunk_range": {
+                        "type": "object",
+                        "properties": {
+                            "start": {"type": "integer", "minimum": 0},
+                            "end": {"type": "integer", "minimum": 0}
+                        },
+                        "description": "Optional chunk range for chunk exploration"
+                    },
+                    "max_items": {
+                        "type": "integer",
+                        "description": "Maximum number of items to return (default: 50)",
+                        "default": 50,
+                        "minimum": 1,
+                        "maximum": 200
+                    }
+                },
+                "required": ["structure_type"]
+            }
+        )
+    ]
+
+
+def get_analytics_tools() -> list[types.Tool]:
+    """Get document analytics and summary tools"""
+    return [
+        types.Tool(
+            name="get_index_summary",
+            description="Get comprehensive index statistics and document distribution",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "include_facets": {
+                        "type": "boolean",
+                        "description": "Include facet distributions (default: true)",
+                        "default": True
+                    },
+                    "facet_limit": {
+                        "type": "integer",
+                        "description": "Maximum facet values per field (default: 50)",
+                        "default": 50,
+                        "minimum": 1,
+                        "maximum": 200
+                    }
+                }
+            }
+        )
+    ]
+
+
+def get_legacy_tool_schemas() -> list[types.Tool]:
+    """Get legacy tool schemas for backward compatibility"""
+    return [
+        types.Tool(
+            name="search_work_items",
+            description="[LEGACY] Search work item documentation - use search_documents instead",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Search query"},
+                    "search_type": {"type": "string", "enum": ["text", "vector", "hybrid"], "default": "hybrid"},
+                    "work_item_id": {"type": "string", "description": "Optional work item ID"},
+                    "max_results": {"type": "integer", "default": 5, "minimum": 1, "maximum": 20}
                 },
                 "required": ["query"]
             }
         ),
         types.Tool(
-            name="search_by_work_item",
-            description="Search within a specific work item's documentation",
+            name="search_by_work_item", 
+            description="[LEGACY] Search within specific work item - use search_documents with context_id filter instead",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "work_item_id": {
-                        "type": "string",
-                        "description": "Work item ID to search within"
-                    },
-                    "query": {
-                        "type": "string",
-                        "description": "Search query for the work item"
-                    },
-                    "max_results": {
-                        "type": "integer",
-                        "description": "Maximum number of results to return (default: 5)",
-                        "default": 5,
-                        "minimum": 1,
-                        "maximum": 10
-                    }
+                    "work_item_id": {"type": "string", "description": "Work item ID"},
+                    "query": {"type": "string", "description": "Search query"},
+                    "max_results": {"type": "integer", "default": 5, "minimum": 1, "maximum": 10}
                 },
                 "required": ["work_item_id", "query"]
             }
         ),
         types.Tool(
             name="semantic_search",
-            description="Perform semantic/vector search to find conceptually similar content",
+            description="[LEGACY] Semantic search - use search_documents with search_type='vector' instead", 
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "concept": {
-                        "type": "string",
-                        "description": "Concept, idea, or question to search for semantically"
-                    },
-                    "max_results": {
-                        "type": "integer",
-                        "description": "Maximum number of results to return (default: 5)",
-                        "default": 5,
-                        "minimum": 1,
-                        "maximum": 15
-                    }
+                    "concept": {"type": "string", "description": "Concept to search for"},
+                    "max_results": {"type": "integer", "default": 5, "minimum": 1, "maximum": 15}
                 },
                 "required": ["concept"]
             }
         ),
         types.Tool(
             name="search_by_chunk",
-            description="Search using the enhanced chunk index field for precise chunk identification",
+            description="[LEGACY] Search by chunk pattern - use search_documents with chunk_pattern filter instead",
             inputSchema={
-                "type": "object",
+                "type": "object", 
                 "properties": {
-                    "chunk_pattern": {
-                        "type": "string",
-                        "description": "Chunk pattern to search for (e.g., 'AppDescription.md_chunk_0' for specific chunk, or 'AppDescription.md' for all chunks from that file)"
-                    },
-                    "query": {
-                        "type": "string",
-                        "description": "Optional content query to search within matching chunks"
-                    },
-                    "max_results": {
-                        "type": "integer",
-                        "description": "Maximum number of results to return (default: 5)",
-                        "default": 5,
-                        "minimum": 1,
-                        "maximum": 15
-                    }
+                    "chunk_pattern": {"type": "string", "description": "Chunk pattern"},
+                    "query": {"type": "string", "description": "Optional search query"},
+                    "max_results": {"type": "integer", "default": 5, "minimum": 1, "maximum": 15}
                 },
                 "required": ["chunk_pattern"]
             }
         ),
         types.Tool(
             name="search_file_chunks",
-            description="Search for all chunks from a specific file, optionally with content filtering",
+            description="[LEGACY] Search file chunks - use explore_document_structure instead",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "file_name": {
-                        "type": "string",
-                        "description": "Name of the file to get chunks from (e.g., 'AppDescription.md')"
-                    },
-                    "query": {
-                        "type": "string",
-                        "description": "Optional content query to search within the file's chunks"
-                    },
-                    "max_results": {
-                        "type": "integer",
-                        "description": "Maximum number of results to return (default: 10)",
-                        "default": 10,
-                        "minimum": 1,
-                        "maximum": 20
-                    }
+                    "file_name": {"type": "string", "description": "File name"},
+                    "query": {"type": "string", "description": "Optional search query"},
+                    "max_results": {"type": "integer", "default": 10, "minimum": 1, "maximum": 20}
                 },
                 "required": ["file_name"]
             }
         ),
         types.Tool(
-            name="search_chunk_range",
-            description="Search for a specific range of chunks from a file (useful for getting document sections)",
+            name="search_chunk_range", 
+            description="[LEGACY] Search chunk range - use explore_document_structure instead",
             inputSchema={
                 "type": "object",
                 "properties": {
-                    "file_name": {
-                        "type": "string",
-                        "description": "Name of the file to get chunks from (e.g., 'AppDescription.md')"
-                    },
-                    "start_chunk": {
-                        "type": "integer",
-                        "description": "Starting chunk number (default: 0)",
-                        "default": 0,
-                        "minimum": 0
-                    },
-                    "end_chunk": {
-                        "type": "integer",
-                        "description": "Ending chunk number (optional, if not specified gets all chunks from start_chunk onwards)",
-                        "minimum": 0
-                    },
-                    "max_results": {
-                        "type": "integer",
-                        "description": "Maximum number of results to return (default: 10)",
-                        "default": 10,
-                        "minimum": 1,
-                        "maximum": 20
-                    }
+                    "file_name": {"type": "string", "description": "File name"},
+                    "start_chunk": {"type": "integer", "default": 0, "minimum": 0},
+                    "end_chunk": {"type": "integer", "minimum": 0},
+                    "max_results": {"type": "integer", "default": 10, "minimum": 1, "maximum": 20}
                 },
                 "required": ["file_name"]
             }
-        )
-    ]
-
-
-def get_info_tools() -> list[types.Tool]:
-    """Get all information retrieval tool definitions"""
-    return [
+        ),
         types.Tool(
             name="get_work_item_list",
-            description="Get a list of all available work item IDs in the documentation index",
-            inputSchema={
-                "type": "object",
-                "properties": {},
-                "additionalProperties": False
-            }
+            description="[LEGACY] Get work item list - use get_document_contexts instead", 
+            inputSchema={"type": "object", "properties": {}}
         ),
         types.Tool(
             name="get_work_item_summary",
-            description="Get summary information about work items including document counts",
-            inputSchema={
-                "type": "object",
-                "properties": {},
-                "additionalProperties": False
-            }
+            description="[LEGACY] Get work item summary - use get_index_summary instead",
+            inputSchema={"type": "object", "properties": {}}
         )
     ]
 
 
 def get_all_tools() -> list[types.Tool]:
-    """Get all tool definitions"""
+    """Get all available tool definitions (universal + legacy for compatibility)"""
     tools = []
-    tools.extend(get_search_tools())
-    tools.extend(get_info_tools())
+    tools.extend(get_universal_search_tools())
+    tools.extend(get_context_discovery_tools()) 
+    tools.extend(get_analytics_tools())
+    # Include legacy tools for backward compatibility
+    tools.extend(get_legacy_tool_schemas())
     return tools

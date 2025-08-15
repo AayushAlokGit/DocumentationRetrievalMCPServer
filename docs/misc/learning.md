@@ -134,6 +134,68 @@ file_signature = f"{file_path}|{file_size}|{modification_time}"
 
 ---
 
+### 7. Azure Search Collection Field Type Gotchas
+
+**Learning**: Collection field types require exact data format matches; type mismatches cause silent upload failures.
+
+**Context**: During MCP tool refinement, discovered that `tags` field defined as `Collection(String)` was causing document upload failures, while `content_vector` as `Collection(Single)` worked perfectly.
+
+**Root Cause Analysis**:
+
+```python
+# content_vector field - WORKS ✅
+Schema: Collection(SearchFieldDataType.Single)  # Expects: [1.0, 2.0, 3.0]
+Data:   [0.123, 0.456, 0.789, ...]             # Sends: actual float array
+Result: Perfect match - uploads succeed
+
+# tags field - FAILED ❌
+Schema: Collection(SearchFieldDataType.String)  # Expects: ["tag1", "tag2"]
+Data:   "tag1, tag2"                           # Sends: comma-separated string
+Result: Type mismatch - uploads fail silently
+```
+
+**Technical Discovery**:
+
+1. **Embedding Service** naturally returns `List[float]` matching Collection(Single)
+2. **Processing Strategy** converts tag arrays to comma-separated strings for readability
+3. **Azure Search** validates Collection fields strictly - no automatic type coercion
+4. **Upload Failure** occurs without clear error messages
+
+**Solution Implemented**:
+
+```python
+# Updated schema to match actual data format
+SearchableField(
+    name="tags",
+    type=SearchFieldDataType.String,  # Changed from Collection(String)
+    # Note: Tags stored as comma-separated string (e.g., "tag1, tag2")
+    # rather than array. Tried Collection(String) but document upload failed.
+    searchable=True,
+    filterable=True,
+    facetable=True
+)
+
+# Updated filtering to work with string format
+if filters.get("tags"):
+    # Use string search instead of collection functions
+    expressions.append(f"search.ismatch('{tag}', 'tags')")
+```
+
+**Impact**:
+
+- Document uploads now work reliably
+- Search functionality preserved using string-based matching
+- Schema accurately reflects actual data format
+
+**Actionable Insights**:
+
+1. **Always validate** that Collection field data matches expected array format
+2. **Test upload immediately** when defining Collection fields
+3. **String fields with comma-separation** can be more practical than Collections for tags
+4. **Azure Search type validation** is strict - design data format to match schema exactly
+
+---
+
 ## Phase 3: MCP Integration Learning
 
 ### 7. Tool Schema Design for AI Integration

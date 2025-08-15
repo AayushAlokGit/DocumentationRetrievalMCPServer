@@ -24,7 +24,6 @@ import mcp.server.stdio
 import mcp.types as types
 
 # Import our search functionality
-from workitem_mcp.search_documents import DocumentSearcher
 from common.azure_cognitive_search import get_azure_search_service
 from common.embedding_service import get_embedding_generator
 
@@ -40,18 +39,18 @@ logger = logging.getLogger("work-items-mcp")
 app = Server("work-items-documentation")
 
 # Global instances
-searcher: Optional[DocumentSearcher] = None
+search_service = None
 embedding_generator = None
 tool_router: Optional[ToolRouter] = None
 
 
 async def initialize_services():
     """Initialize search and embedding services"""
-    global searcher, embedding_generator, tool_router
+    global search_service, embedding_generator, tool_router
     
-    if searcher is None:
+    if search_service is None:
         logger.info("[INFO] Initializing search services...")
-        searcher = DocumentSearcher()
+        search_service = get_azure_search_service()
         
     if embedding_generator is None:
         logger.info("[INFO] Initializing embedding services...")
@@ -59,9 +58,9 @@ async def initialize_services():
     
     if tool_router is None:
         logger.info("[INFO] Initializing tool router...")
-        tool_router = ToolRouter(searcher)
+        tool_router = ToolRouter(search_service)
         
-    return searcher, embedding_generator, tool_router
+    return search_service, embedding_generator, tool_router
 
 
 @app.list_tools()
@@ -84,15 +83,15 @@ async def handle_call_tool(name: str, arguments: dict) -> list[types.TextContent
 
 async def main():
     """Main entry point for the MCP server"""
-    logger.info("[START] Starting Work Item Documentation MCP Server")
+    logger.info("[START] Starting Universal Document Search MCP Server")
     
     try:
         # Test connections on startup
         logger.info("[CONNECT] Testing connections...")
         
         # Initialize and test search functionality
-        global searcher, embedding_generator
-        searcher = DocumentSearcher()
+        global search_service, embedding_generator
+        search_service = get_azure_search_service()
         embedding_generator = get_embedding_generator()
         
         # Test embedding service
@@ -103,9 +102,9 @@ async def main():
         
         # Test search service
         try:
-            doc_count = searcher.get_document_count()
-            work_items = searcher.get_work_items()
-            logger.info(f"[SUCCESS] Connected to search index: {doc_count} documents, {len(work_items)} work items")
+            doc_count = search_service.get_document_count()
+            contexts = search_service.get_unique_field_values("context_name")
+            logger.info(f"[SUCCESS] Connected to search index: {doc_count} documents, {len(contexts)} contexts")
         except Exception as e:
             logger.error(f"[ERROR] Search service connection failed: {e}")
         
@@ -117,7 +116,7 @@ async def main():
                 read_stream,
                 write_stream,
                 InitializationOptions(
-                    server_name="work-items-documentation",
+                    server_name="universal-document-search",
                     server_version="1.0.0",
                     capabilities=app.get_capabilities(
                         notification_options=NotificationOptions(),

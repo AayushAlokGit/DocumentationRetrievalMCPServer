@@ -42,7 +42,7 @@ load_dotenv()
 # Azure Cognitive Search Index Fields - based on create_index.py schema
 AZURE_SEARCH_INDEX_FIELDS = {
     'id', 'content', 'content_vector', 'file_path', 'file_name', 'file_type', 
-    'title', 'tags', 'category', 'context_id', 'context_name', 'last_modified', 
+    'title', 'tags', 'category', 'context_name', 'last_modified', 
     'chunk_index', 'metadata_json'
 }
 
@@ -222,7 +222,6 @@ class ProcessedDocument:
     # Metadata
     tags: List[str]
     category: Optional[str]
-    context_id: Optional[str]
     context_name: Optional[str]
     
     # Timestamps
@@ -321,7 +320,7 @@ class DocumentProcessingStrategy(ABC):
         chunks = self.chunk_document_content(content) if hasattr(self, 'chunk_document_content') else _simple_chunk_text(content)
         
         # Map metadata to search index fields
-        context_id, context_name = self.extract_context_info(metadata)
+        context_name = self.extract_context_info(metadata)
         
         # Prepare additional metadata as JSON
         additional_metadata = self.prepare_additional_metadata(metadata)
@@ -336,7 +335,6 @@ class DocumentProcessingStrategy(ABC):
             content_chunks=chunks,
             tags=metadata.get('tags', []),
             category=metadata.get('category', metadata.get('document_category')),
-            context_id=context_id,
             context_name=context_name,
             last_modified=metadata.get('last_modified', datetime.now().isoformat() + 'Z'),
             chunk_count=len(chunks),
@@ -361,15 +359,15 @@ class DocumentProcessingStrategy(ABC):
         pass
     
     @abstractmethod
-    def extract_context_info(self, metadata: Dict) -> tuple[Optional[str], Optional[str]]:
+    def extract_context_info(self, metadata: Dict) -> Optional[str]:
         """
-        Extract context ID and name from metadata based on the strategy.
+        Extract context name from metadata based on the strategy.
         
         Args:
             metadata: Document metadata
             
         Returns:
-            Tuple of (context_id, context_name)
+            Optional[str]: Context name (work items, projects, etc.)
         """
         pass
     
@@ -439,8 +437,8 @@ class PersonalDocumentationAssistantProcessingStrategy(DocumentProcessingStrateg
                     successfully_processed += 1
                     
                     # Track work items
-                    if processed_doc.context_id:
-                        work_items_found.add(processed_doc.context_id)
+                    if processed_doc.context_name:
+                        work_items_found.add(processed_doc.context_name)
                     
                     print(f"✅ ({processed_doc.chunk_count} chunks)")
                 else:
@@ -460,7 +458,7 @@ class PersonalDocumentationAssistantProcessingStrategy(DocumentProcessingStrateg
             "work_items_count": len(work_items_found),
             "work_items_found": list(work_items_found),
             "documents_per_work_item": {
-                work_item: len([doc for doc in processed_documents if doc.context_id == work_item])
+                work_item: len([doc for doc in processed_documents if doc.context_name == work_item])
                 for work_item in work_items_found
             }
         }
@@ -476,11 +474,10 @@ class PersonalDocumentationAssistantProcessingStrategy(DocumentProcessingStrateg
             strategy_metadata=strategy_metadata
         )
     
-    def extract_context_info(self, metadata: Dict) -> tuple[Optional[str], Optional[str]]:
+    def extract_context_info(self, metadata: Dict) -> Optional[str]:
         """Extract work item information as context."""
-        context_id = metadata.get('work_item_id')
         context_name = metadata.get('work_item_id')  # Could be enhanced with actual work item names
-        return context_id, context_name
+        return context_name
     
     def extract_metadata(self, content: str, file_path: Path) -> Dict:
         """
@@ -716,7 +713,6 @@ class PersonalDocumentationAssistantProcessingStrategy(DocumentProcessingStrateg
                 "title": processed_doc.title,
                 "tags": tags_str,  # Convert to string format
                 "category": processed_doc.category,
-                "context_id": processed_doc.context_id,  # Work item ID
                 "context_name": processed_doc.context_name,
                 "last_modified": processed_doc.last_modified,
                 "chunk_index": enhanced_chunk_index,

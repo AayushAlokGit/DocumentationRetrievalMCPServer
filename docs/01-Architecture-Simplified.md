@@ -216,7 +216,7 @@ python src/document_upload/common_scripts/verify_document_upload_setup.py
 
 - **Upload Retry Mechanism**: Exponential backoff for failed uploads
 - **Chat Completion**: Direct question answering within VS Code
-- **Advanced Filtering**: Date ranges, content types, custom metadata
+- **Advanced Filtering**: Content types, custom metadata
 
 ### Medium Term
 

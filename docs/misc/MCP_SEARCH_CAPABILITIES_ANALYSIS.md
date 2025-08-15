@@ -1022,7 +1022,7 @@ SemanticConfiguration(
 **Advanced Query Features**:
 
 - **Query Expansion**: Automatic synonym and related term inclusion
-- **Faceted Search**: Filter by document type, date ranges, tags
+- **Faceted Search**: Filter by document type, tags
 - **Search Suggestions**: Auto-complete and query recommendations
 - **Result Clustering**: Group related results by topic
 

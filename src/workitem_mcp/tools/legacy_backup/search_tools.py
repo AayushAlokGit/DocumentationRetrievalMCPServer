@@ -25,7 +25,7 @@ async def handle_search_work_items(searcher, arguments: dict) -> list[types.Text
     
     try:
         # Use new filter-based approach with legacy bridging
-        filters = {"context_id": work_item_id} if work_item_id else None
+        filters = {"context_name": work_item_id} if work_item_id else None
         
         # Perform the appropriate search
         if search_type == "text":
@@ -70,7 +70,7 @@ async def handle_search_by_work_item(searcher, arguments: dict) -> list[types.Te
     
     try:
         # Use hybrid search with work item filter - new filter approach
-        filters = {"context_id": work_item_id}
+        filters = {"context_name": work_item_id}
         results = await searcher.hybrid_search(query, filters, max_results)
         
         if not results:

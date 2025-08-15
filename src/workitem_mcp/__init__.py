@@ -7,10 +7,8 @@ Provides tools for searching and retrieving work item documentation.
 """
 
 from .server import app, main
-from .search_documents import DocumentSearcher
 
 __all__ = [
     'app',
-    'main', 
-    'DocumentSearcher'
+    'main'
 ]

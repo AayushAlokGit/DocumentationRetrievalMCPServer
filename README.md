@@ -43,10 +43,12 @@ This project provides **intelligent document search and retrieval** for your Wor
 ### VS Code Integration
 
 - **🤖 MCP Protocol**: Native integration with VS Code Copilot and AI assistants
-- **🛠️ Tool Ecosystem**: 5 specialized search and information tools
+- **🛠️ Universal Tools**: 4 powerful universal tools + 8 legacy compatibility tools
+- **🌐 Cross-Document Search**: Universal search across work items, projects, contracts, and all document types
 - **💬 Natural Language**: Query using plain English questions and concepts
 - **📋 Structured Results**: Formatted output with source references and metadata
 - **🔧 Easy Setup**: Simple configuration through VS Code settings
+- **🔄 Backward Compatibility**: Seamless transition from old work-item specific tools
 
 ## 📁 Project Structure
 
@@ -204,11 +206,20 @@ This project has **two separate setup processes** for each component:
 
 **Available MCP Tools (use in VS Code Copilot):**
 
-- `search_work_items` - Search across all work item documentation with text/vector/hybrid search
-- `search_by_work_item` - Search within a specific work item's documents
-- `semantic_search` - Find conceptually similar content using vector embeddings
-- `get_work_item_list` - List all available work item IDs in the index
-- `get_work_item_summary` - Get summary statistics about work items and document counts
+**Universal Tools (Recommended):**
+
+- `search_documents` - Universal search across all document types with advanced filtering
+- `get_document_contexts` - Discover available contexts (work items, projects, etc.) with statistics
+- `explore_document_structure` - Navigate through document hierarchy and structure
+- `get_index_summary` - Get comprehensive index statistics and analytics
+
+**Legacy Tools (Backward Compatible):**
+
+- `search_work_items` - Search work item documentation (maps to search_documents)
+- `search_by_work_item` - Search within specific work item (maps to search_documents with filter)
+- `semantic_search` - Vector-based conceptual search (maps to search_documents with vector mode)
+- `get_work_item_list` - List work item IDs (maps to get_document_contexts)
+- `get_work_item_summary` - Work item statistics (maps to get_index_summary)
 
 ### Example Queries (in VS Code with MCP Server 🔌)
 
@@ -331,30 +342,46 @@ The system consists of two main parts working together:
 
 ## 🔍 MCP Tools
 
-Once integrated with VS Code, you can use these **5 specialized tools** through natural language queries:
+Once integrated with VS Code, you can use these **universal document search tools** through natural language queries:
 
-### Search Tools
+### 🌟 Universal Search Tools (New)
 
-- **`search_work_items`**: Multi-modal search across all work item documentation
+- **`search_documents`**: Universal document search across all document types
 
-  - Supports text, vector (semantic), and hybrid search modes
-  - Optional work item filtering and result count control
-  - Best for: General searches across entire documentation base
+  - **Features**: Text, vector, semantic, and hybrid search modes
+  - **Filtering**: Context ID, file type, category, file name, chunk pattern, tags
+  - **Scope**: Works across work items, projects, contracts, and all document types
+  - **Best for**: Any document search need with advanced filtering
 
-- **`search_by_work_item`**: Targeted search within specific work item
+- **`get_document_contexts`**: Discover available document contexts with statistics
 
-  - Focuses search on single work item's documents
-  - Ideal for deep-dive investigations
-  - Best for: "Find X in work item Y" type queries
+  - **Features**: Context type filtering (work_item, project, contract, all)
+  - **Output**: Document counts per context, hierarchical view
+  - **Best for**: Understanding your document landscape
 
-- **`semantic_search`**: Pure vector-based conceptual search
-  - Uses AI embeddings to find conceptually similar content
-  - Great for finding related topics with different wording
-  - Best for: Discovering related concepts and ideas
+- **`explore_document_structure`**: Navigate through document hierarchy
 
-### Information Tools
+  - **Features**: Explore contexts, files, chunks, and categories
+  - **Navigation**: Ordered chunk retrieval, structure visualization
+  - **Best for**: Understanding document organization and navigation
 
-- **`get_work_item_list`**: List all indexed work item IDs
+- **`get_index_summary`**: Comprehensive index statistics and analytics
+  - **Features**: Total counts, facet distributions, popular tags
+  - **Analytics**: Context distribution, file types, categories
+  - **Best for**: Getting overview of your entire document collection
+
+### 🔄 Legacy Compatibility Tools (Maintained)
+
+All previous work-item specific tools remain available for backward compatibility:
+
+- **`search_work_items`**: Maps to `search_documents` with work item context
+- **`search_by_work_item`**: Maps to `search_documents` with specific context filter
+- **`semantic_search`**: Maps to `search_documents` with vector search
+- **`search_by_chunk`**: Maps to `search_documents` with chunk pattern filter
+- **`search_file_chunks`**: Maps to `explore_document_structure` for file chunks
+- **`search_chunk_range`**: Maps to `explore_document_structure` with chunk range
+- **`get_work_item_list`**: Maps to `get_document_contexts` for work items
+- **`get_work_item_summary`**: Maps to `get_index_summary`
 
   - Returns complete inventory of available work items
   - Useful for discovery and system overview
