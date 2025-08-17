@@ -4,21 +4,21 @@ A powerful AI-enhanced document retrieval system using Azure Cognitive Search wi
 
 ## 🎯 Project Overview
 
-This project provides **intelligent document search and retrieval** for your Work Items documentation through two integrated components:
+This project provides **intelligent document search and retrieval** for your documentation through two integrated components:
 
 ### 📄 Document Processing & Upload System
 
-- **Purpose**: Processes and indexes your work item documentation into Azure Cognitive Search
+- **Purpose**: Processes and indexes your documentation into Azure Cognitive Search
 - **Features**: Smart chunking, vector embeddings, idempotent processing, batch uploads
 - **Usage**: Run periodically to maintain your searchable document index
-- **Key Scripts**: `upload_work_items.py`, `document_upload.py`, `create_index.py`
+- **Key Scripts**: `upload_with_pipeline.py`, `create_index.py`, `verify_document_upload_setup.py`
 
 ### 🔌 MCP Server for VS Code Integration
 
 - **Purpose**: Provides AI-powered search directly within VS Code through the Model Context Protocol
-- **Features**: Semantic search, work item filtering, context-aware results, tool integration
+- **Features**: Universal search, context filtering, semantic understanding, tool integration
 - **Usage**: Runs as background service, integrates with VS Code Copilot for intelligent queries
-- **Key Components**: `run_mcp_server.py`, search tools, result formatting
+- **Key Components**: `run_mcp_server.py`, universal search tools, result formatting
 
 **Complete Workflow**: Upload documents → Start MCP server → Query through VS Code Copilot
 
@@ -29,13 +29,13 @@ This project provides **intelligent document search and retrieval** for your Wor
 - **🧠 Vector Embeddings**: Uses Azure OpenAI text-embedding-ada-002 for semantic understanding
 - **📊 Smart Chunking**: Intelligent text segmentation for optimal search performance
 - **🔄 Idempotent Processing**: File signature tracking prevents duplicate processing
-- **📁 Work Item Structure**: Seamless integration with Work Items directory organization
-- **🏷️ Metadata Support**: Full frontmatter parsing for titles, tags, and work item IDs
+- **📁 Flexible Structure**: Seamless integration with any documentation organization
+- **🏷️ Metadata Support**: Full frontmatter parsing for titles, tags, and context information
 
 ### Search Capabilities
 
 - **🔍 Hybrid Search**: Combines keyword and semantic vector search
-- **🎯 Work Item Filtering**: Search within specific work items or across all documentation
+- **🎯 Context Filtering**: Search within specific contexts or across all documentation
 - **💡 Semantic Understanding**: Find conceptually related content even with different wording
 - **📈 Relevance Scoring**: Advanced ranking algorithms for best results
 - **⚡ Fast Retrieval**: Optimized indexing for quick response times
@@ -43,19 +43,19 @@ This project provides **intelligent document search and retrieval** for your Wor
 ### VS Code Integration
 
 - **🤖 MCP Protocol**: Native integration with VS Code Copilot and AI assistants
-- **🛠️ Universal Tools**: 4 powerful universal tools + 8 legacy compatibility tools
-- **🌐 Cross-Document Search**: Universal search across work items, projects, contracts, and all document types
+- **🛠️ Universal Tools**: 4 powerful universal tools for comprehensive document access
+- **🌐 Cross-Document Search**: Universal search across projects, research, APIs, and all document types
 - **💬 Natural Language**: Query using plain English questions and concepts
 - **📋 Structured Results**: Formatted output with source references and metadata
 - **🔧 Easy Setup**: Simple configuration through VS Code settings
-- **🔄 Backward Compatibility**: Seamless transition from old work-item specific tools
 
 ## 📁 Project Structure
 
 ```
-PersonalDocumentationAssistantMCPServer/
+DocumentationRetrievalMCPServer/
 ├── run_mcp_server.py                  # 🔌 MCP Server entry point
-├── upload_documents.py               # 📄 Document upload CLI
+├── requirements.txt                   # Python dependencies
+├── .env.example                       # Environment configuration template
 ├──
 ├── src/                               # Core application code
 │   ├── common/                        # 🔌📄 Shared services
@@ -63,33 +63,35 @@ PersonalDocumentationAssistantMCPServer/
 │   │   ├── embedding_service.py      # Embedding generation
 │   │   └── openai_service.py         # OpenAI integration
 │   ├──
-│   ├── workitem_mcp/                  # � MCP Server components
+│   ├── mcp_server/                    # 🔌 MCP Server components
 │   │   ├── server.py                 # MCP Server implementation
-│   │   ├── search_documents.py       # Search functionality
-│   │   └── tools/                    # MCP tools and routing
+│   │   └── tools/                    # Universal MCP tools
 │   │       ├── tool_router.py        # Tool dispatch routing
-│   │       ├── search_tools.py       # Search tool implementations
-│   │       ├── info_tools.py         # Information tools
-│   │       ├── result_formatter.py   # Result formatting
-│   │       └── tool_schemas.py       # Tool schema definitions
+│   │       ├── universal_tools.py    # Universal tool implementations
+│   │       ├── tool_schemas.py       # Tool schema definitions
+│   │       └── work_item_tools.py    # Legacy compatibility tools
 │   ├──
-│   ├── upload/                        # 📄 Document upload system
-│   │   ├── document_upload.py        # Document processing pipeline
-│   │   ├── document_utils.py         # Document utilities
+│   ├── document_upload/               # 📄 Document upload system
+│   │   ├── document_processing_pipeline.py # Document processing pipeline
+│   │   ├── discovery_strategies.py   # Document discovery strategies
+│   │   ├── processing_strategies.py  # Document processing strategies
 │   │   ├── file_tracker.py           # File processing tracking
-│   │   └── scripts/                  # Upload utilities
-│   │       ├── create_index.py       # Index creation
-│   │       ├── upload_work_items.py  # Batch upload
-│   │       ├── upload_single_file.py # Single file upload
-│   │       ├── delete_by_work_item.py # Delete by work item ID
-│   │       ├── delete_by_file_path.py # Delete by file path
-│   │       └── verify_document_upload_setup.py # System verification
+│   │   ├── common_scripts/           # Core upload utilities
+│   │   │   ├── create_index.py       # Index creation
+│   │   │   ├── upload_single_file.py # Single file upload
+│   │   │   ├── delete_by_file_path.py # Delete by file path
+│   │   │   └── verify_document_upload_setup.py # System verification
+│   │   └── personal_documentation_assistant_scripts/ # Main upload scripts
+│   │       ├── upload_with_pipeline.py # Main upload script
+│   │       ├── upload_with_custom_metadata.py # Custom metadata upload
+│   │       └── delete_by_context_and_filename.py # Context-based deletion
 │   └──
 │   └── tests/                         # Test files
 ├──
-├── docs/                              # Documentation
-├── requirements.txt                   # Python dependencies
-└── .env                              # Environment variables (create from .env.example)
+└── docs/                              # Documentation
+    ├── 01-Architecture-Simplified.md # System architecture overview
+    ├── DOCUMENT_UPLOAD_SETUP.md      # Document upload setup guide
+    └── MCP_SERVER_SETUP.md           # MCP server setup guide
 ```
 
 **Legend**: 🔌 = MCP Server components | 📄 = Document Upload components
@@ -117,7 +119,7 @@ This project has **two separate setup processes** for each component:
 - Python 3.8+
 - Azure Cognitive Search service (Basic tier+)
 - Azure OpenAI service with text-embedding-ada-002
-- Work Items directory with Markdown files
+- Documentation directory with files organized by context
 - VS Code (for MCP integration)
 
 ### Installation
@@ -144,13 +146,13 @@ This project has **two separate setup processes** for each component:
 1. **Set up the search index:**
 
    ```bash
-   python src/upload/scripts/create_index.py
+   python src/document_upload/common_scripts/create_index.py
    ```
 
 2. **Upload your documents:**
 
    ```bash
-   python src/upload/scripts/upload_work_items.py
+   python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py
    ```
 
 ### Part 2: MCP Server for VS Code
@@ -160,12 +162,11 @@ This project has **two separate setup processes** for each component:
 3. **Start MCP server:**
 
    ```bash
-   python mcp_server.py
-   # or use: start_mcp_server.bat (Windows)
+   python run_mcp_server.py
    ```
 
 4. **Configure VS Code MCP integration:**
-   See [VSCODE_MCP_SETUP.md](VSCODE_MCP_SETUP.md) for detailed instructions.
+   See [MCP_SERVER_SETUP.md](docs/MCP_SERVER_SETUP.md) for detailed instructions.
 
 ### Command Reference
 
@@ -173,24 +174,24 @@ This project has **two separate setup processes** for each component:
 
 **System Setup & Verification:**
 
-- `python src/upload/scripts/verify_document_upload_setup.py` - Verify complete system setup
-- `python src/upload/scripts/create_index.py` - Create Azure Search index with vector capabilities
+- `python src/document_upload/common_scripts/verify_document_upload_setup.py` - Verify complete system setup
+- `python src/document_upload/common_scripts/create_index.py` - Create Azure Search index with vector capabilities
 
 **Document Processing:**
 
-- `python src/upload/scripts/upload_work_items.py` - Process and index all Work Items documents
-- `python src/upload/scripts/upload_work_items.py --work-item <ID>` - Upload specific work item by ID
-- `python src/upload/scripts/upload_work_items.py --dry-run` - Preview what will be processed without uploading
-- `python src/upload/scripts/upload_work_items.py --force --work-item <ID>` - Force reprocessing of specific work item (deletes existing + re-uploads)
-- `python src/upload/scripts/upload_work_items.py --reset` - Delete all documents and reset tracker for fresh start
-- `python src/upload/scripts/upload_single_file.py <file_path>` - Upload a single markdown file
+- `python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py` - Process and index all documentation
+- `python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py --context <NAME>` - Upload specific context by name
+- `python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py --dry-run` - Preview what will be processed without uploading
+- `python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py --force --context <NAME>` - Force reprocessing of specific context (deletes existing + re-uploads)
+- `python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py --reset` - Delete all documents and reset tracker for fresh start
+- `python src/document_upload/common_scripts/upload_single_file.py <file_path>` - Upload a single file
 
 **Document Management:**
 
-- `python src/upload/scripts/delete_by_work_item.py <work_item_id>` - Delete all documents for a specific work item
-- `python src/upload/scripts/delete_by_work_item.py <work_item_id> --no-confirm` - Delete without confirmation
-- `python src/upload/scripts/delete_by_file_path.py <file_pattern>` - Delete documents matching file path pattern
-- `python src/upload/scripts/delete_by_file_path.py <file_pattern> --no-confirm` - Delete without confirmation
+- `python src/document_upload/personal_documentation_assistant_scripts/delete_by_context_and_filename.py <context_name>` - Delete all documents for a specific context
+- `python src/document_upload/personal_documentation_assistant_scripts/delete_by_context_and_filename.py <context_name> --no-confirm` - Delete without confirmation
+- `python src/document_upload/common_scripts/delete_by_file_path.py <file_pattern>` - Delete documents matching file path pattern
+- `python src/document_upload/common_scripts/delete_by_file_path.py <file_pattern> --no-confirm` - Delete without confirmation
 
 **Testing:**
 
@@ -202,42 +203,34 @@ This project has **two separate setup processes** for each component:
 **Server Management:**
 
 - `python run_mcp_server.py` - Start the MCP server for VS Code integration
-- Configure VS Code MCP integration using VS Code settings JSON
+- Configure VS Code MCP integration using `.vscode/mcp.json` file
 
 **Available MCP Tools (use in VS Code Copilot):**
 
-**Universal Tools (Recommended):**
+**Universal Tools:**
 
 - `search_documents` - Universal search across all document types with advanced filtering
-- `get_document_contexts` - Discover available contexts (work items, projects, etc.) with statistics
+- `get_document_contexts` - Discover available contexts (projects, research, etc.) with statistics
 - `explore_document_structure` - Navigate through document hierarchy and structure
 - `get_index_summary` - Get comprehensive index statistics and analytics
-
-**Legacy Tools (Backward Compatible):**
-
-- `search_work_items` - Search work item documentation (maps to search_documents)
-- `search_by_work_item` - Search within specific work item (maps to search_documents with filter)
-- `semantic_search` - Vector-based conceptual search (maps to search_documents with vector mode)
-- `get_work_item_list` - List work item IDs (maps to get_document_contexts)
-- `get_work_item_summary` - Work item statistics (maps to get_index_summary)
 
 ### Example Queries (in VS Code with MCP Server 🔌)
 
 **Natural Language Search:**
 
 ```
-"What work items dealt with authentication issues?"
-"Show me all bug fixes related to performance problems"
+"What documentation deals with authentication issues?"
+"Show me all content related to performance optimization"
 "Find documents about API integration patterns"
-"List work items that mention database optimization"
+"List contexts that mention database optimization"
 ```
 
-**Specific Work Item Queries:**
+**Specific Context Queries:**
 
 ```
-"Search for error handling in work item Bug-12345"
-"What documentation exists for PersonalDocumentationAssistantMCPServer?"
-"Show me the implementation details in work item WI-67890"
+"Search for error handling in Project-A documentation"
+"What documentation exists for the main research project?"
+"Show me the implementation details in context ABC-123"
 ```
 
 **Conceptual/Semantic Search:**
@@ -252,9 +245,9 @@ This project has **two separate setup processes** for each component:
 **Information Retrieval:**
 
 ```
-"List all available work items"
+"List all available documentation contexts"
 "Give me a summary of the documentation index"
-"How many documents are available for each work item?"
+"How many documents are available for each context?"
 ```
 
 ## 🔧 Configuration
@@ -270,10 +263,10 @@ EMBEDDING_DEPLOYMENT=text-embedding-ada-002
 # Required: Azure Cognitive Search Configuration
 AZURE_SEARCH_SERVICE=your-search-service-name
 AZURE_SEARCH_KEY=your-search-admin-key
-AZURE_SEARCH_INDEX=work-items-index
+AZURE_SEARCH_INDEX=documentation-index
 
-# Required: Local Work Items Path
-PERSONAL_DOCUMENTATION_ROOT_DIRECTORY=C:\Users\YourName\Desktop\Work Items
+# Required: Local Documentation Path
+PERSONAL_DOCUMENTATION_ROOT_DIRECTORY=C:\Users\YourName\Desktop\Documentation
 
 # Optional: Advanced Configuration
 OPENAI_API_VERSION=2024-02-01
@@ -286,7 +279,7 @@ CHUNK_OVERLAP=200
 
 1. **Azure OpenAI**: Ensure your deployment name matches `EMBEDDING_DEPLOYMENT`
 2. **Search Service**: Use the admin key (not query key) for document uploads
-3. **Work Items Path**: Use absolute path with proper Windows path format
+3. **Documentation Path**: Use absolute path with proper Windows path format
 4. **Index Name**: Will be created automatically if it doesn't exist
 
 ## 🧪 Testing
@@ -295,21 +288,21 @@ CHUNK_OVERLAP=200
 
 ```bash
 # Verify document upload setup is correct
-python verify_document_upload_setup.py
+python src/document_upload/common_scripts/verify_document_upload_setup.py
 
 # Test document processing
-python tests/test_end_to_end.py
-python tests/test_simple_e2e.py
+python src/tests/test_end_to_end.py
+python src/tests/test_simple_e2e.py
 ```
 
 ### Test MCP Server Integration (🔌)
 
 ```bash
 # Test MCP server functionality
-python mcp_server.py
+python run_mcp_server.py
 
 # Test in VS Code after MCP configuration
-# Use VS Code agent to ask: "List all work items"
+# Use VS Code agent to ask: "List all documentation contexts"
 ```
 
 ## 📊 Architecture
@@ -318,8 +311,8 @@ The system consists of two main parts working together:
 
 ### Part 1: Document Processing Pipeline (📄)
 
-1. **Document Discovery**: Scans Work Items directory structure
-2. **Content Processing**: Extracts content and metadata from Markdown files
+1. **Document Discovery**: Scans documentation directory structure
+2. **Content Processing**: Extracts content and metadata from various file types
 3. **Text Chunking**: Splits documents into searchable chunks
 4. **Embedding Generation**: Creates vector embeddings using Azure OpenAI
 5. **Index Storage**: Stores documents and vectors in Azure Cognitive Search
@@ -342,71 +335,53 @@ The system consists of two main parts working together:
 
 ## 🔍 MCP Tools
 
-Once integrated with VS Code, you can use these **universal document search tools** through natural language queries:
+Once integrated with VS Code, you can use these **4 universal document search tools** through natural language queries:
 
-### 🌟 Universal Search Tools (New)
+### 🌟 Universal Search Tools
 
 - **`search_documents`**: Universal document search across all document types
 
   - **Features**: Text, vector, semantic, and hybrid search modes
-  - **Filtering**: Context ID, file type, category, file name, chunk pattern, tags
-  - **Scope**: Works across work items, projects, contracts, and all document types
+  - **Filtering**: Context name, file type, category, file name, chunk pattern, tags
+  - **Scope**: Works across projects, research, APIs, contracts, and all document types
   - **Best for**: Any document search need with advanced filtering
 
 - **`get_document_contexts`**: Discover available document contexts with statistics
 
-  - **Features**: Context type filtering (work_item, project, contract, all)
+  - **Features**: Context filtering and statistics
   - **Output**: Document counts per context, hierarchical view
-  - **Best for**: Understanding your document landscape
+  - **Best for**: Understanding your document landscape and organization
 
 - **`explore_document_structure`**: Navigate through document hierarchy
 
   - **Features**: Explore contexts, files, chunks, and categories
-  - **Navigation**: Ordered chunk retrieval, structure visualization
-  - **Best for**: Understanding document organization and navigation
+  - **Navigation**: Structure visualization and organized browsing
+  - **Best for**: Understanding document organization and finding specific files
 
 - **`get_index_summary`**: Comprehensive index statistics and analytics
   - **Features**: Total counts, facet distributions, popular tags
   - **Analytics**: Context distribution, file types, categories
   - **Best for**: Getting overview of your entire document collection
 
-### 🔄 Legacy Compatibility Tools (Maintained)
-
-All previous work-item specific tools remain available for backward compatibility:
-
-- **`search_work_items`**: Maps to `search_documents` with work item context
-- **`search_by_work_item`**: Maps to `search_documents` with specific context filter
-- **`semantic_search`**: Maps to `search_documents` with vector search
-- **`search_by_chunk`**: Maps to `search_documents` with chunk pattern filter
-- **`search_file_chunks`**: Maps to `explore_document_structure` for file chunks
-- **`search_chunk_range`**: Maps to `explore_document_structure` with chunk range
-- **`get_work_item_list`**: Maps to `get_document_contexts` for work items
-- **`get_work_item_summary`**: Maps to `get_index_summary`
-
-  - Returns complete inventory of available work items
-  - Useful for discovery and system overview
-  - Best for: "What work items are available?" queries
-
-- **`get_work_item_summary`**: Statistics and index overview
-  - Document counts per work item
-  - System health and indexing status
-  - Best for: Understanding documentation coverage
-
 ### Usage in VS Code
 
 Simply ask questions naturally - the MCP server automatically selects the appropriate tool:
 
-- "What's in work item ABC-123?" → Uses `search_by_work_item`
-- "Find anything about authentication" → Uses `search_work_items`
-- "List all work items" → Uses `get_work_item_list`
+- "What's in my Project-A documentation?" → Uses `search_documents` with context filter
+- "Find anything about authentication" → Uses `search_documents`
+- "List all documentation contexts" → Uses `get_document_contexts`
+- "Show me my documentation structure" → Uses `explore_document_structure`
 
 ## 📚 Document Support
 
 - **Markdown Files**: Full support with frontmatter parsing
+- **Text Files**: Plain text document support
+- **Word Documents**: DOCX file processing
 - **Frontmatter Fields**:
   - `title`: Document title
-  - `work_item_id`: Associated work item ID
+  - `context_name`: Associated context identifier
   - `tags`: Comma-separated tags
+  - `category`: Document category
   - `last_modified`: Last modification date
 
 ## 🛡️ Error Handling
@@ -417,7 +392,7 @@ The system includes comprehensive error handling:
 - Document processing errors
 - Search query failures
 - Automatic retry mechanisms
-- Work item ID validation
+- Context validation
 - Document lifecycle management
 
 ## 📈 Performance
@@ -442,9 +417,9 @@ The system includes comprehensive error handling:
 
 - **"Failed to connect to Azure OpenAI"**: Check your Azure OpenAI endpoint and key
 - **"Search service connection failed"**: Verify Azure Search service name and key
-- **"No work items found"**: Ensure PERSONAL_DOCUMENTATION_ROOT_DIRECTORY points to correct directory
+- **"No documentation found"**: Ensure PERSONAL_DOCUMENTATION_ROOT_DIRECTORY points to correct directory
 - **"MCP server not connecting"**: Check VS Code MCP configuration paths
-- **"Force reprocessing not working"**: Use `--force --work-item <ID>` for targeted reprocessing
+- **"Force reprocessing not working"**: Use `--force --context <NAME>` for targeted reprocessing
 - **"Documents not deleted"**: Use delete utility scripts for manual cleanup
 
 ### Document Management
@@ -452,19 +427,19 @@ The system includes comprehensive error handling:
 Use the utility scripts for document lifecycle management:
 
 ```bash
-# Check what documents exist for a work item
-python src/upload/scripts/delete_by_work_item.py <work_item_id> --dry-run
+# Check what documents exist for a context
+python src/document_upload/personal_documentation_assistant_scripts/delete_by_context_and_filename.py <context_name> --dry-run
 
-# Clean up specific work item documents
-python src/upload/scripts/delete_by_work_item.py <work_item_id>
+# Clean up specific context documents
+python src/document_upload/personal_documentation_assistant_scripts/delete_by_context_and_filename.py <context_name>
 
 # Remove documents by file pattern
-python src/upload/scripts/delete_by_file_path.py "filename.md"
+python src/document_upload/common_scripts/delete_by_file_path.py "filename.md"
 ```
 
 ### Get Help
 
-1. Run `python src/upload/scripts/verify_document_upload_setup.py` to diagnose issues
+1. Run `python src/document_upload/common_scripts/verify_document_upload_setup.py` to diagnose issues
 2. Check the troubleshooting section in setup guides
 3. Review log files for detailed error messages
 4. Use force reprocessing for clean document state
@@ -475,4 +450,4 @@ This project is for internal use and documentation purposes.
 
 ---
 
-**Made with ❤️ for efficient Work Item documentation retrieval**
+**Made with ❤️ for efficient documentation retrieval**

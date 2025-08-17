@@ -4,7 +4,7 @@ Complete setup guide for the **MCP Server for VS Code Integration** component.
 
 ## 🎯 What This Component Does
 
-The MCP Server provides intelligent search capabilities directly within VS Code through the Model Context Protocol. It exposes tools that allow VS Code's AI assistant to search and retrieve information from your indexed work item documentation.
+The MCP Server provides intelligent search capabilities directly within VS Code through the Model Context Protocol. It exposes tools that allow VS Code's AI assistant to search and retrieve information from your indexed documentation.
 
 ## ⚠️ Prerequisites
 
@@ -26,21 +26,21 @@ import sys; sys.path.append('src')
 from common.azure_cognitive_search import get_azure_search_service
 search_svc = get_azure_search_service()
 doc_count = search_svc.get_document_count()
-work_items = search_svc.get_unique_field_values('context_id')
+contexts = search_svc.get_unique_field_values('context_name')
 if doc_count > 0:
-    print(f'✅ Ready! Found {doc_count} indexed documents across {len(work_items)} work items')
-    print(f'📋 Sample work items: {list(work_items)[:5]}...')
+    print(f'✅ Ready! Found {doc_count} indexed documents across {len(contexts)} contexts')
+    print(f'📋 Sample contexts: {list(contexts)[:5]}...')
 else:
     print('❌ No documents found. Complete Document Upload Setup first.')
 "
 ```
 
-**Expected Output**: `✅ Ready! Found [N] indexed documents across [M] work items`
+**Expected Output**: `✅ Ready! Found [N] indexed documents across [M] contexts`
 
 If you see 0 documents, run the upload command:
 
 ```bash
-python src\document_upload\personal_documentation_assistant_scripts\upload_work_items.py
+python src\document_upload\personal_documentation_assistant_scripts\upload_with_pipeline.py
 ```
 
 ## 🚀 MCP Server Setup
@@ -61,12 +61,12 @@ python run_mcp_server.py
 Expected output:
 
 ```
-🚀 Starting Work Item Documentation MCP Server
+🚀 Starting Personal Documentation Assistant MCP Server
 🔌 Testing connections...
 ✅ Embedding service connection successful
-✅ Connected to search index: 375 documents, 22 work items
+✅ Connected to search index: 375 documents, 22 contexts
 🎯 MCP Server ready for connections
-🛠️  Available tools: 8 (search_work_items, search_by_work_item, semantic_search, search_by_chunk, search_file_chunks, search_chunk_range, get_work_item_list, get_work_item_summary)
+🛠️  Available tools: 4 (search_documents, get_document_contexts, explore_document_structure, get_index_summary)
 ```
 
 If successful, press `Ctrl+C` to stop the test server.
@@ -82,7 +82,7 @@ For this specific project, create a `.vscode` folder at the project root and add
 1. **Create the .vscode directory** in your project root:
 
    ```
-   PersonalDocumentationAssistantMCPServer/
+   DocumentationRetrievalMCPServer/
    ├── .vscode/
    │   └── mcp.json
    ├── src/
@@ -95,15 +95,15 @@ For this specific project, create a `.vscode` folder at the project root and add
 ```json
 {
   "servers": {
-    "work-items-documentation": {
+    "documentation-assistant": {
       "type": "stdio",
-      "command": "C:\\Users\\aayushalok\\OneDrive - Microsoft\\Desktop\\Personal Projects\\PersonalDocumentationAssistantMCPServer\\venv\\Scripts\\python.exe",
+      "command": "C:\\Users\\aayushalok\\OneDrive - Microsoft\\Desktop\\Personal Projects\\DocumentationRetrievalMCPServer\\venv\\Scripts\\python.exe",
       "args": [
-        "C:\\Users\\aayushalok\\OneDrive - Microsoft\\Desktop\\Personal Projects\\PersonalDocumentationAssistantMCPServer\\run_mcp_server.py"
+        "C:\\Users\\aayushalok\\OneDrive - Microsoft\\Desktop\\Personal Projects\\DocumentationRetrievalMCPServer\\run_mcp_server.py"
       ],
-      "cwd": "C:\\Users\\aayushalok\\OneDrive - Microsoft\\Desktop\\Personal Projects\\PersonalDocumentationAssistantMCPServer",
+      "cwd": "C:\\Users\\aayushalok\\OneDrive - Microsoft\\Desktop\\Personal Projects\\DocumentationRetrievalMCPServer",
       "env": {
-        "PYTHONPATH": "C:\\Users\\aayushalok\\OneDrive - Microsoft\\Desktop\\Personal Projects\\PersonalDocumentationAssistantMCPServer\\src"
+        "PYTHONPATH": "C:\\Users\\aayushalok\\OneDrive - Microsoft\\Desktop\\Personal Projects\\DocumentationRetrievalMCPServer\\src"
       }
     }
   }
@@ -124,7 +124,7 @@ Create a `.vscode/mcp.json` file in your project root:
 ```json
 {
   "servers": {
-    "work-items-documentation": {
+    "documentation-assistant": {
       "type": "stdio",
       "command": "python",
       "args": ["run_mcp_server.py"],
@@ -156,13 +156,13 @@ From VS Code Command Palette (`Ctrl+Shift+P`) and add:
 ```json
 {
   "servers": {
-    "work-items-documentation": {
+    "documentation-assistant": {
       "type": "stdio",
       "command": "C:\\path\\to\\your\\venv\\Scripts\\python.exe",
       "args": ["run_mcp_server.py"],
-      "cwd": "C:\\Users\\aayushalok\\OneDrive - Microsoft\\Desktop\\Personal Projects\\PersonalDocumentationAssistantMCPServer",
+      "cwd": "C:\\Users\\aayushalok\\OneDrive - Microsoft\\Desktop\\Personal Projects\\DocumentationRetrievalMCPServer",
       "env": {
-        "PYTHONPATH": "C:\\Users\\aayushalok\\OneDrive - Microsoft\\Desktop\\Personal Projects\\PersonalDocumentationAssistantMCPServer\\src"
+        "PYTHONPATH": "C:\\Users\\aayushalok\\OneDrive - Microsoft\\Desktop\\Personal Projects\\DocumentationRetrievalMCPServer\\src"
       }
     }
   }
@@ -179,14 +179,14 @@ After setting up the MCP configuration:
 2. **Check MCP Server Status**:
 
    - Run `MCP: List Servers` from Command Palette (`Ctrl+Shift+P`)
-   - Your "work-items-documentation" server should appear in the list
+   - Your "documentation-assistant" server should appear in the list
    - Check that the status shows as "Running" or "Connected"
 
 3. **View Available Tools**:
    - Open Chat view (`Ctrl+Alt+I`)
    - Switch to **Agent** mode from the dropdown
    - Click the **Tools** button to see available MCP tools
-   - You should see **8 tools**: `search_work_items`, `search_by_work_item`, `semantic_search`, `search_by_chunk`, `search_file_chunks`, `search_chunk_range`, `get_work_item_list`, `get_work_item_summary`
+   - You should see **4 tools**: `search_documents`, `get_document_contexts`, `explore_document_structure`, `get_index_summary`
 
 ### Step 4: Test GitHub Copilot Integration
 
@@ -199,28 +199,28 @@ GitHub Copilot Chat in VS Code will automatically detect and use your MCP tools 
 3. Try these test queries:
 
 ```
-List all my available work items
-→ Uses get_work_item_list tool
+List all my available documentation contexts
+→ Uses get_document_contexts tool
 ```
 
 ```
-Search for work items related to authentication
-→ Uses search_work_items with "authentication" query
+Search for documents related to authentication
+→ Uses search_documents with "authentication" query
 ```
 
 ```
-Show me documentation about API integration from my work items
-→ Uses search_work_items with hybrid search for "API integration"
+Show me documentation about API integration from my documents
+→ Uses search_documents with hybrid search for "API integration"
 ```
 
 ```
-Find the setup instructions in PersonalDocumentationAssistantMCPServer
-→ Uses search_by_work_item for targeted search
+Give me an overview of my documentation index
+→ Uses get_index_summary for comprehensive statistics
 ```
 
 ```
-Show me all chunks from the README.md file
-→ Uses search_file_chunks for complete file content
+Show me the structure of my documentation
+→ Uses explore_document_structure for navigation assistance
 ```
 
 #### Method 2: Direct Tool Reference
@@ -228,131 +228,110 @@ Show me all chunks from the README.md file
 You can directly reference MCP tools in any chat mode:
 
 ```
-#search_work_items search for "testing" in my documentation
+#search_documents search for "testing" in my documentation
 ```
 
 ```
-#get_work_item_summary show me an overview of my work items
+#get_index_summary show me an overview of my documentation
 ```
 
 ## 🔧 Available MCP Tools
 
-Once integrated with VS Code, GitHub Copilot can use these **8 specialized tools** in Agent mode:
+Once integrated with VS Code, GitHub Copilot can use these **4 universal tools** in Agent mode:
 
-### Core Search Tools (3)
+### Universal Search Tool (1)
 
-- **`search_work_items`**: Multi-modal search across all work item documentation
+- **`search_documents`**: Multi-modal universal search across all documentation
 
-  - Supports text, vector, and hybrid search modes
-  - Optional work item filtering and result count control
-  - Max results: 20 (default: 5)
-  - Best for: General searches across entire documentation base
+  - Supports text, vector, semantic, and hybrid search modes
+  - Context filtering and flexible result count control
+  - Max results: 50 (default: 5)
+  - Best for: All types of searches across your entire documentation base
+  - Advanced filters: context, category, file type, tags
 
-- **`search_by_work_item`**: Targeted search within specific work item
+### Documentation Discovery Tools (3)
 
-  - Focuses search on single work item's documents
-  - Max results: 10 (default: 5)
-  - Ideal for deep-dive investigations
-  - Best for: "Find X in work item Y" type queries
+- **`get_document_contexts`**: List all available documentation contexts
 
-- **`semantic_search`**: Pure vector-based conceptual search
-  - Uses AI embeddings to find conceptually similar content
-  - Max results: 15 (default: 5)
-  - Great for finding related topics with different wording
-  - Best for: Discovering related concepts and ideas
+  - Discover what contexts/projects are indexed
+  - Includes statistics per context
+  - Max contexts: 1000 (default: 100)
+  - Best for: Understanding your documentation organization
 
-### Chunk Navigation Tools (3)
+- **`explore_document_structure`**: Navigate documentation hierarchy
 
-- **`search_by_chunk`**: Precise chunk identification and retrieval
+  - Explore contexts, files, chunks, and categories
+  - Structured navigation assistance
+  - Max items: 200 (default: 50)
+  - Best for: Understanding document structure and finding specific files
 
-  - Search using enhanced chunk index field
-  - Find specific document sections by chunk pattern
-  - Best for: Locating exact document parts
-
-- **`search_file_chunks`**: File-specific chunk retrieval
-
-  - Get all chunks from a specific file with optional content filtering
-  - Max results: 20 (default: 10)
-  - Best for: Reading entire files or file sections
-
-- **`search_chunk_range`**: Sequential chunk reading
-  - Retrieve specific ranges of chunks from files
-  - Max results: 20 (default: 10)
-  - Best for: Reading document sections in sequence
-
-### Information Tools (2)
-
-- **`get_work_item_list`**: List all available work item IDs
-
-  - Discover what work items are indexed
-  - No parameters required
-
-- **`get_work_item_summary`**: Get comprehensive statistics and overview
-  - Shows total work items, documents, and index information
-  - Provides complete work item list
-  - No parameters required
+- **`get_index_summary`**: Comprehensive documentation statistics
+  - Complete overview of indexed documentation
+  - Document counts, contexts, categories, file types
+  - Facet distributions and search capabilities
+  - Best for: System overview and health monitoring
 
 ## 📝 Example Usage with GitHub Copilot
 
 ### Basic Queries
 
 ```
-"List all available work items"
-→ Uses get_work_item_list tool
+"List all available documentation contexts"
+→ Uses get_document_contexts tool
 
-"What work items dealt with authentication?"
-→ Uses search_work_items tool with query "authentication"
+"What documentation deals with authentication?"
+→ Uses search_documents tool with query "authentication"
 
-"Show me information about PersonalDocumentationAssistantMCPServer"
-→ Uses search_by_work_item tool with work_item_id "PersonalDocumentationAssistantMCPServer"
+"Show me information about my documentation structure"
+→ Uses explore_document_structure tool
 
 "Give me a summary of my documentation"
-→ Uses get_work_item_summary tool
+→ Uses get_index_summary tool
 ```
 
 ### Advanced Search Queries
 
 ```
-"Find work items similar to database connectivity issues"
-→ Uses semantic_search tool for conceptual similarity
+"Find documents similar to database connectivity issues"
+→ Uses search_documents with semantic search mode
 
-"Search for API integration examples in work items"
-→ Uses search_work_items with hybrid search (default)
+"Search for API integration examples in my documentation"
+→ Uses search_documents with hybrid search (default)
 
-"What testing approaches were used across work items?"
-→ Uses search_work_items with broad query scope
+"What testing approaches are documented across contexts?"
+→ Uses search_documents with broad query scope
 
-"Show me error handling patterns from completed work"
-→ Uses semantic_search for concept-based discovery
+"Show me error handling patterns from my documentation"
+→ Uses search_documents with semantic search for concept discovery
 ```
 
 ### Document Navigation Queries
 
 ```
-"Show me all sections of the README.md file"
-→ Uses search_file_chunks to get all chunks from README.md
+"Show me all contexts in my documentation"
+→ Uses get_document_contexts for complete overview
 
-"Get the first 3 sections of the setup documentation"
-→ Uses search_chunk_range with start_chunk=0, end_chunk=2
+"What file types do I have in my documentation?"
+→ Uses get_index_summary to show file type distribution
 
-"Find the introduction section of AppDescription.md"
-→ Uses search_by_chunk with chunk_pattern="AppDescription.md_chunk_0"
+"Find documents related to setup and configuration"
+→ Uses search_documents with category filtering
 
-"Show me chunks 5-10 from the architecture document"
-→ Uses search_chunk_range for specific section reading
+"Show me documentation from a specific project context"
+→ Uses search_documents with context filtering
 ```
 
-### Work Item Scoped Queries
+### Context-Specific Queries
 
 ```
-"What documentation exists for PersonalDocumentationAssistantMCPServer?"
-→ Uses search_by_work_item for targeted search
+"What documentation exists for Project-A?"
+→ Uses search_documents with context filter
 
-"Find all testing-related content in Task 5215074"
-→ Uses search_by_work_item with specific work item and query
+"Find all API-related content in my documentation"
+→ Uses search_documents with category or tag filtering
 
-"Show me setup instructions from Bug 5238380"
-→ Uses search_by_work_item for scoped investigation
+"Show me setup instructions from any context"
+→ Uses search_documents for cross-context search
 ```
 
 ## 🧪 Testing GitHub Copilot Integration
@@ -372,7 +351,7 @@ From Command Palette - your server should show as "Running"
 In GitHub Copilot Chat (Agent mode):
 
 1. Click the **Tools** button
-2. Search for "work" - you should see your work item tools listed
+2. Search for "document" - you should see your documentation tools listed
 3. Enable the tools you want to use
 
 ### Test 3: Basic Functionality Test
@@ -380,53 +359,54 @@ In GitHub Copilot Chat (Agent mode):
 In GitHub Copilot Chat:
 
 ```
-"Please use the get_work_item_summary tool to show me information about my work item documentation."
+"Please use the get_index_summary tool to show me information about my documentation."
 ```
 
 Expected response should include:
 
-- Total number of work items (e.g., 22)
+- Total number of contexts (e.g., 22)
 - Total number of documents (e.g., 375)
-- Search index name: work-items-index
-- List of work item IDs (Bug numbers, Task numbers, project names)
+- Search index name: documentation-index
+- Document categories and file types
+- Context names and distribution
 
 ### Test 4: Search Test
 
 ```
-"Search my work items for documentation about 'testing' or 'quality assurance'"
+"Search my documentation for content about 'testing' or 'quality assurance'"
 ```
 
 Expected response should include:
 
-- Relevant document excerpts from actual work items
-- Work item IDs (like Task 5215074, PersonalDocumentationAssistantMCPServer)
-- File paths and chunk information
+- Relevant document excerpts from various contexts
+- Context names (like Project-A, Research-B)
+- File paths and metadata
 - Relevance scores
-- Usage tips for additional tools
+- Usage suggestions for additional searches
 
-### Test 5: Specific Work Item Test
-
-```
-"Show me all documentation for work item PersonalDocumentationAssistantMCPServer"
-```
-
-Expected response should include:
-
-- Documents specific to that work item
-- File structure and chunk navigation options
-- Suggestions for using chunk-based tools for detailed exploration
-
-### Test 6: Chunk Navigation Test
+### Test 5: Context Discovery Test
 
 ```
-"Show me the first section of the MCP_SEARCH_CAPABILITIES_ANALYSIS.md file"
+"Show me all available documentation contexts"
 ```
 
 Expected response should include:
 
-- Specific chunk content (chunk_0)
-- Chunk index information
-- Options for sequential reading
+- Complete list of contexts with statistics
+- Document counts per context
+- Suggestions for exploring specific contexts
+
+### Test 6: Structure Exploration Test
+
+```
+"Show me the structure of my documentation index"
+```
+
+Expected response should include:
+
+- File types and categories
+- Context organization
+- Navigation suggestions
 
 ## 🔄 Using the MCP Server with VS Code
 
@@ -445,7 +425,7 @@ For testing purposes, you can manually start the server:
 venv\Scripts\activate  # Windows
 
 # Test MCP server
-python mcp_server.py
+python run_mcp_server.py
 ```
 
 ### Monitoring and Debugging
@@ -487,11 +467,11 @@ Monitor MCP server status and logs:
   ```
 - Check that `PYTHONPATH` is set correctly in MCP configuration
 
-### "No work items found" in responses
+### "No documentation found" in responses
 
 - Verify Document Upload System is working:
   ```bash
-  python verify_document_upload_setup.py
+  python src\document_upload\common_scripts\verify_document_upload_setup.py
   ```
 - Check Azure Cognitive Search index contains documents
 - Ensure environment variables are properly configured
@@ -501,105 +481,105 @@ Monitor MCP server status and logs:
 ### Optimal Query Types
 
 - **Text search**: Exact keywords, specific terms, precise matches
-- **Vector search**: Conceptual queries, natural language, "find similar"
-- **Hybrid search**: Best of both worlds (default for most tools)
-- **Chunk navigation**: Document structure exploration, sequential reading
+- **Vector search**: Conceptual queries, natural language questions
+- **Semantic search**: "Find similar" and related concept discovery
+- **Hybrid search**: Comprehensive search combining all approaches (default)
 
 ### Response Management
 
-- Use `max_results` parameter to limit response size (varies by tool: 10-20 max)
+- Use `max_results` parameter to control response size (up to 50)
 - Be specific in queries for better relevance and focused results
-- Use work item filtering (`search_by_work_item`) for focused searches
-- Use chunk tools for detailed document exploration
-- Combine tools for comprehensive analysis (e.g., list → search → navigate chunks)
+- Use context filtering for targeted searches within specific projects
+- Use category and tag filters for organized searches
+- Combine tools for comprehensive analysis (contexts → search → structure)
 
 ### Tool Selection Strategy
 
-- **General discovery**: `search_work_items` with hybrid search
-- **Targeted investigation**: `search_by_work_item` for specific work items
-- **Concept exploration**: `semantic_search` for related ideas
-- **Document reading**: `search_file_chunks` → `search_chunk_range` for sequential content
-- **Precise location**: `search_by_chunk` for exact sections
+- **General discovery**: `search_documents` with hybrid search (default)
+- **Context exploration**: `get_document_contexts` for overview
+- **Targeted investigation**: `search_documents` with context filtering
+- **Structure understanding**: `explore_document_structure` for navigation
+- **System overview**: `get_index_summary` for comprehensive statistics
 
 ## ✅ Success Checklist
 
 - [ ] Document Upload System is working (prerequisite)
-- [ ] MCP server starts without errors (`python mcp_server.py`)
+- [ ] MCP server starts without errors (`python run_mcp_server.py`)
 - [ ] `.vscode/mcp.json` configuration file created
 - [ ] VS Code restarted after configuration
 - [ ] MCP server appears as "Running" in `MCP: List Servers`
-- [ ] Work item tools visible in GitHub Copilot Agent mode Tools list
+- [ ] Documentation tools visible in GitHub Copilot Agent mode Tools list
 - [ ] Test queries return expected results from your documentation
-- [ ] GitHub Copilot can successfully use all 8 work-items tools
-- [ ] Chunk navigation tools work for document exploration
-- [ ] Search filtering and scoping functions properly
+- [ ] GitHub Copilot can successfully use all 4 universal documentation tools
+- [ ] Context discovery and structure exploration work properly
+- [ ] Search filtering and advanced queries function properly
 
 ## 🔗 GitHub Copilot Integration Examples
 
 ### Code Context Queries
 
 ```
-"Based on my work item documentation, what patterns do we use for error handling?"
-→ Uses semantic_search to find error handling concepts across work items
+"Based on my documentation, what patterns do we use for error handling?"
+→ Uses search_documents to find error handling concepts across contexts
 
-"Find examples of database integration approaches from completed work items"
-→ Uses search_work_items with "database integration" query
+"Find examples of database integration approaches from documented projects"
+→ Uses search_documents with "database integration" query
 
-"What security considerations are mentioned across work items?"
-→ Uses search_work_items with "security" + semantic_search for comprehensive coverage
+"What security considerations are mentioned across my documentation?"
+→ Uses search_documents with "security" + semantic search for comprehensive coverage
 
-"Show me authentication implementation details from PersonalDocumentationAssistantMCPServer"
-→ Uses search_by_work_item for targeted search
+"Show me authentication implementation details from Project-A"
+→ Uses search_documents with context filtering for targeted search
 ```
 
 ### Project Planning Queries
 
 ```
-"What work items involved similar functionality to what I'm currently working on?"
-→ Uses semantic_search with current context description
+"What contexts contain similar functionality to what I'm currently working on?"
+→ Uses search_documents with semantic search using current context description
 
-"Show me lessons learned from previous bug fix work items"
-→ Uses search_work_items filtered to Bug work items
+"Show me lessons learned from previous project documentation"
+→ Uses search_documents filtered to specific categories or tags
 
-"Find work items that dealt with performance optimization"
-→ Uses semantic_search for "performance optimization" concepts
+"Find documentation that deals with performance optimization"
+→ Uses search_documents with semantic search for "performance optimization" concepts
 
 "Get detailed setup instructions from completed projects"
-→ Uses search_work_items + search_file_chunks for comprehensive documentation
+→ Uses search_documents with category filtering for comprehensive setup documentation
 ```
 
 ### Architecture and Design Queries
 
 ```
-"How did we approach authentication in previous work items?"
-→ Uses search_work_items + semantic_search for comprehensive coverage
+"How did we approach authentication in previous projects?"
+→ Uses search_documents with comprehensive search for authentication patterns
 
 "What API design patterns appear most frequently in our documentation?"
-→ Uses search_work_items with "API design" query
+→ Uses search_documents with "API design" query across all contexts
 
-"Find work items that document integration with external services"
-→ Uses semantic_search for "external integration" concepts
+"Find documentation about integration with external services"
+→ Uses search_documents with semantic search for "external integration" concepts
 
-"Show me the complete architecture documentation from PersonalDocumentationAssistantMCPServer"
-→ Uses search_by_work_item + search_file_chunks for detailed exploration
+"Show me the complete architecture documentation from my main project"
+→ Uses search_documents with context filtering + category filtering for detailed exploration
 ```
 
 ### Document Exploration Queries
 
 ```
 "Walk me through the setup process step by step"
-→ Uses search_file_chunks + search_chunk_range for sequential reading
+→ Uses search_documents with category filtering for setup documentation
 
-"Find all troubleshooting information across work items"
-→ Uses search_work_items + semantic_search for comprehensive troubleshooting
+"Find all troubleshooting information across my documentation"
+→ Uses search_documents with semantic search for comprehensive troubleshooting
 
-"Show me the complete documentation structure for my largest work item"
-→ Uses get_work_item_list + search_by_work_item + search_file_chunks for exploration
+"Show me the complete documentation structure for my largest context"
+→ Uses get_document_contexts + explore_document_structure + search_documents for exploration
 
-"Get specific implementation details from chunk 5 of the analysis document"
-→ Uses search_by_chunk for precise content retrieval
+"What file types and categories do I have in my documentation?"
+→ Uses get_index_summary for comprehensive structure analysis
 ```
 
 ---
 
-**🔌 MCP Server is now integrated with VS Code and GitHub Copilot!** You can now ask GitHub Copilot questions about your work item documentation using Agent mode with access to **8 specialized search and navigation tools** for comprehensive document exploration and analysis.
+**🔌 MCP Server is now integrated with VS Code and GitHub Copilot!** You can now ask GitHub Copilot questions about your documentation using Agent mode with access to **4 universal search and navigation tools** for comprehensive document exploration and analysis.
