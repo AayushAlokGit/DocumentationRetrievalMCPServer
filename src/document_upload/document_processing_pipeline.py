@@ -22,8 +22,8 @@ from dataclasses import dataclass
 import sys
 sys.path.append(str(Path(__file__).parent.parent))
 
-from discovery_strategies import DocumentDiscoveryStrategy, DocumentDiscoveryResult
-from processing_strategies import DocumentProcessingStrategy, ProcessedDocument, DocumentProcessingResult
+from document_upload.discovery_strategies import DocumentDiscoveryStrategy, DocumentDiscoveryResult
+from document_upload.processing_strategies import DocumentProcessingStrategy, ProcessedDocument, DocumentProcessingResult
 
 # Import Azure search service for upload phase
 from common.azure_cognitive_search import get_azure_search_service
@@ -59,7 +59,7 @@ class DocumentDiscoveryPhase:
             self.discovery_strategy = discovery_strategy
         else:
             # Use PersonalDocumentationDiscoveryStrategy as default
-            from discovery_strategies import PersonalDocumentationDiscoveryStrategy
+            from document_upload.discovery_strategies import PersonalDocumentationDiscoveryStrategy
             self.discovery_strategy = PersonalDocumentationDiscoveryStrategy()
     
     def discover_documents(self, root_directory: str, **kwargs) -> DocumentDiscoveryResult:
@@ -174,7 +174,7 @@ class DocumentProcessingPhase:
             self.strategy = processing_strategy
         else:
             # Use PersonalDocumentationAssistantProcessingStrategy as default
-            from processing_strategies import PersonalDocumentationAssistantProcessingStrategy
+            from document_upload.processing_strategies import PersonalDocumentationAssistantProcessingStrategy
             self.strategy = PersonalDocumentationAssistantProcessingStrategy()
     
     def process_documents(self, discovered_files: List[Path]) -> DocumentProcessingResult:
@@ -200,7 +200,7 @@ class DocumentProcessingPhase:
             print(f"   📄 Document processing breakdown:")
             for i, doc in enumerate(result.processed_documents, 1):
                 print(f"      {i:2d}. {doc.file_name}")
-                print(f"          └─ Chunks: {doc.chunk_count}, Context: {doc.context_id}")
+                print(f"          └─ Chunks: {doc.chunk_count}, Context: {doc.context_name}")
         
         return result
     
@@ -294,7 +294,7 @@ class DocumentUploadPhase:
             self.processing_strategy = processing_strategy
         else:
             # Use PersonalDocumentationAssistantProcessingStrategy as default
-            from processing_strategies import PersonalDocumentationAssistantProcessingStrategy
+            from document_upload.processing_strategies import PersonalDocumentationAssistantProcessingStrategy
             self.processing_strategy = PersonalDocumentationAssistantProcessingStrategy()
     
     async def upload_documents(self, processed_documents: List[ProcessedDocument], 
@@ -467,7 +467,7 @@ class DocumentProcessingPipeline:
         if tracker is not None:
             self.tracker = tracker
         else:
-            from file_tracker import DocumentProcessingTracker
+            from document_upload.file_tracker import DocumentProcessingTracker
             self.tracker = DocumentProcessingTracker()
         
         self.force_reprocess = force_reprocess
