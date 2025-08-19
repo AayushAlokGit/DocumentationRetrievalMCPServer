@@ -66,7 +66,7 @@ Expected output:
 ✅ Embedding service connection successful
 ✅ Connected to search index: 375 documents, 22 contexts
 🎯 MCP Server ready for connections
-🛠️  Available tools: 4 (search_documents, get_document_contexts, explore_document_structure, get_index_summary)
+🛠️  Available tools: 5 (search_documents, get_document_contexts, explore_document_structure, get_index_summary, get_document_content)
 ```
 
 If successful, press `Ctrl+C` to stop the test server.
@@ -186,7 +186,7 @@ After setting up the MCP configuration:
    - Open Chat view (`Ctrl+Alt+I`)
    - Switch to **Agent** mode from the dropdown
    - Click the **Tools** button to see available MCP tools
-   - You should see **4 tools**: `search_documents`, `get_document_contexts`, `explore_document_structure`, `get_index_summary`
+   - You should see **5 tools**: `search_documents`, `get_document_contexts`, `explore_document_structure`, `get_index_summary`, `get_document_content`
 
 ### Step 4: Test GitHub Copilot Integration
 
@@ -237,7 +237,7 @@ You can directly reference MCP tools in any chat mode:
 
 ## 🔧 Available MCP Tools
 
-Once integrated with VS Code, GitHub Copilot can use these **4 universal tools** in Agent mode:
+Once integrated with VS Code, GitHub Copilot can use these **5 universal tools** in Agent mode:
 
 ### Universal Search Tool (1)
 
@@ -248,6 +248,17 @@ Once integrated with VS Code, GitHub Copilot can use these **4 universal tools**
   - Max results: 50 (default: 5)
   - Best for: All types of searches across your entire documentation base
   - Advanced filters: context, category, file type, tags
+  - **Note**: Returns content preview (400 characters) - use `get_document_content` for full text
+
+### Full Content Retrieval Tool (1)
+
+- **`get_document_content`**: Retrieve complete document content without truncation
+
+  - Get full content by document IDs (from search results) or context+file combination
+  - No content truncation (unlike search_documents which shows 400-char previews)
+  - Optional content length limits and metadata inclusion
+  - Best for: Reading complete documents after finding them with search_documents
+  - Perfect complement to search tools for full document access
 
 ### Documentation Discovery Tools (3)
 
@@ -282,6 +293,12 @@ Once integrated with VS Code, GitHub Copilot can use these **4 universal tools**
 "What documentation deals with authentication?"
 → Uses search_documents tool with query "authentication"
 
+"Show me the full content of document ID abc123"
+→ Uses get_document_content tool with document ID
+
+"Get the complete content of readme.md from the project context"
+→ Uses get_document_content tool with context+file combination
+
 "Show me information about my documentation structure"
 → Uses explore_document_structure tool
 
@@ -303,6 +320,21 @@ Once integrated with VS Code, GitHub Copilot can use these **4 universal tools**
 
 "Show me error handling patterns from my documentation"
 → Uses search_documents with semantic search for concept discovery
+```
+
+### Search + Full Content Workflow
+
+```
+"Find authentication documentation, then show me the complete setup guide"
+→ First uses search_documents to find relevant docs
+→ Then uses get_document_content to retrieve full content of specific documents
+
+"Search for API examples and give me the full code from the most relevant document"
+→ Uses search_documents to identify relevant documents
+→ Uses get_document_content to get complete content without truncation
+
+"Find deployment guides and show me the complete instructions"
+→ Combined workflow: search → identify → retrieve full content
 ```
 
 ### Document Navigation Queries

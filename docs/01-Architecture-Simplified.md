@@ -144,16 +144,17 @@ The generic schema adapts to different use cases through strategy-specific field
 
 ### Universal Document Search Tools
 
-The MCP server provides **4 specialized tools** designed to work across any document type or context:
+The MCP server provides **5 specialized tools** designed to work across any document type or context:
 
-#### Universal Tools (4 tools)
+#### Universal Tools (5 tools)
 
 _Work across any document type or context_
 
-1. **`search_documents`** - Universal search with comprehensive filtering and multiple search types
-2. **`get_document_contexts`** - Discover available contexts with document statistics
-3. **`explore_document_structure`** - Navigate document structure and chunk organization
-4. **`get_index_summary`** - System health, statistics, and index overview
+1. **`search_documents`** - Universal search with comprehensive filtering and multiple search types (400-char content previews)
+2. **`get_document_content`** - Retrieve complete document content without truncation (complements search results)
+3. **`get_document_contexts`** - Discover available contexts with document statistics
+4. **`explore_document_structure`** - Navigate document structure and chunk organization
+5. **`get_index_summary`** - System health, statistics, and index overview
 
 ### Search Types & Performance Characteristics
 
@@ -170,6 +171,7 @@ _Work across any document type or context_
 ToolRouter
 ├── Universal Handlers (context-agnostic)
 │   ├── handle_search_documents
+│   ├── handle_get_document_content
 │   ├── handle_get_document_contexts
 │   ├── handle_explore_document_structure
 │   └── handle_get_index_summary

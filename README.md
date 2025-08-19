@@ -209,7 +209,8 @@ This project has **two separate setup processes** for each component:
 
 **Universal Tools:**
 
-- `search_documents` - Universal search across all document types with advanced filtering
+- `search_documents` - Universal search across all document types with advanced filtering (400-char previews)
+- `get_document_content` - Retrieve complete document content without truncation (complements search)
 - `get_document_contexts` - Discover available contexts (projects, research, etc.) with statistics
 - `explore_document_structure` - Navigate through document hierarchy and structure
 - `get_index_summary` - Get comprehensive index statistics and analytics
@@ -335,7 +336,7 @@ The system consists of two main parts working together:
 
 ## 🔍 MCP Tools
 
-Once integrated with VS Code, you can use these **4 universal document search tools** through natural language queries:
+Once integrated with VS Code, you can use these **5 universal document search tools** through natural language queries:
 
 ### 🌟 Universal Search Tools
 
@@ -345,6 +346,14 @@ Once integrated with VS Code, you can use these **4 universal document search to
   - **Filtering**: Context name, file type, category, file name, chunk pattern, tags
   - **Scope**: Works across projects, research, APIs, contracts, and all document types
   - **Best for**: Any document search need with advanced filtering
+  - **Note**: Returns 400-character content previews
+
+- **`get_document_content`**: Retrieve complete document content without truncation
+
+  - **Features**: Full content access by document ID or context+file combination
+  - **Flexibility**: Optional content length limits and metadata inclusion control
+  - **Best for**: Reading complete documents after finding them with search_documents
+  - **Perfect complement**: Use search_documents to find → get_document_content for full text
 
 - **`get_document_contexts`**: Discover available document contexts with statistics
 
@@ -369,6 +378,9 @@ Simply ask questions naturally - the MCP server automatically selects the approp
 
 - "What's in my Project-A documentation?" → Uses `search_documents` with context filter
 - "Find anything about authentication" → Uses `search_documents`
+- "Show me the full content of document abc123" → Uses `get_document_content` with document ID
+- "Get the complete readme file from the project context" → Uses `get_document_content` with context+file
+- "Find deployment guides then show me the complete instructions" → Combined workflow: search + content retrieval
 - "List all documentation contexts" → Uses `get_document_contexts`
 - "Show me my documentation structure" → Uses `explore_document_structure`
 
