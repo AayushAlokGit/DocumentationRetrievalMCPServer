@@ -14,7 +14,8 @@ from .universal_tools import (
     handle_search_documents,
     handle_get_document_contexts, 
     handle_explore_document_structure,
-    handle_get_index_summary
+    handle_get_index_summary,
+    handle_get_document_content
 )
 
 from .work_item_tools import WORK_ITEM_TOOL_HANDLERS
@@ -34,6 +35,7 @@ class ToolRouter:
             "get_document_contexts": handle_get_document_contexts,
             "explore_document_structure": handle_explore_document_structure,
             "get_index_summary": handle_get_index_summary,
+            "get_document_content": handle_get_document_content,
         }
         
         # Combine universal and work item specific handlers

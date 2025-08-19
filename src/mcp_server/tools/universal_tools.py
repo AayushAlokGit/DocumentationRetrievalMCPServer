@@ -545,3 +545,118 @@ async def _explore_categories(search_service, arguments: dict) -> list[types.Tex
         response += f"*... and {len(categories) - max_items} more categories available*\n"
     
     return [types.TextContent(type="text", text=response)]
+
+
+async def handle_get_document_content(search_service, arguments: dict) -> list[types.TextContent]:
+    """Handle full document content retrieval by document IDs or context+file"""
+    try:
+        document_ids = arguments.get("document_ids")
+        context_and_file = arguments.get("context_and_file")
+        max_content_length = arguments.get("max_content_length")
+        include_metadata = arguments.get("include_metadata", True)
+        
+        logger.info(f"[CONTENT] Getting document content: ids={document_ids}, context_file={context_and_file}")
+        
+        # Ensure we have at least one identifier
+        if not any([document_ids, context_and_file]):
+            return [types.TextContent(
+                type="text",
+                text="[ERROR] At least one identifier required: document_ids or context_and_file"
+            )]
+        
+        results = []
+        
+        # Handle document IDs
+        if document_ids:
+            id_list = document_ids if isinstance(document_ids, list) else [document_ids]
+            for doc_id in id_list:
+                try:
+                    result = search_service.search_client.get_document(key=doc_id)
+                    results.append(result)
+                except Exception as e:
+                    logger.warning(f"Could not retrieve document ID {doc_id}: {e}")
+        
+        # Handle context and file combination
+        if context_and_file:
+            context_name = context_and_file.get("context_name")
+            file_name = context_and_file.get("file_name")
+            if context_name and file_name:
+                filter_expr = f"context_name eq '{context_name}' and file_name eq '{file_name}'"
+                search_results = search_service.search_client.search(
+                    search_text="*",
+                    filter=filter_expr,
+                    top=100,
+                    order_by="chunk_index asc"
+                )
+                results.extend(list(search_results))
+        
+        if not results:
+            return [types.TextContent(
+                type="text",
+                text="[CONTENT] No documents found matching the specified identifiers"
+            )]
+        
+        # Format results with full content
+        formatted_results = []
+        for i, result in enumerate(results, 1):
+            result_text = f"## Document {i}\n"
+            
+            # Core document identification
+            if include_metadata:
+                result_text += f"**Context:** {result.get('context_name', 'Unknown')}\n"
+                result_text += f"**File:** {result.get('file_name', 'Unknown')}\n"
+                result_text += f"**Title:** {result.get('title', 'No title')}\n"
+                result_text += f"**Chunk:** {result.get('chunk_index', 'N/A')}\n"
+                
+                # Additional metadata
+                file_type = result.get('file_type', '').lstrip('.')
+                if file_type:
+                    result_text += f"**File Type:** {file_type.upper()}\n"
+                
+                file_path = result.get('file_path', '')
+                if file_path:
+                    result_text += f"**Path:** {file_path}\n"
+                
+                category = result.get('category', '')
+                if category:
+                    result_text += f"**Category:** {category}\n"
+                
+                tags = result.get('tags', '')
+                if tags:
+                    tag_list = [tag.strip() for tag in tags.split(',') if tag.strip()]
+                    if tag_list:
+                        result_text += f"**Tags:** {', '.join(tag_list)}\n"
+                
+                last_modified = result.get('last_modified', '')
+                if last_modified:
+                    result_text += f"**Last Modified:** {last_modified}\n"
+                
+                doc_id = result.get('id', '')
+                if doc_id:
+                    result_text += f"**Document ID:** {doc_id}\n"
+                
+                result_text += "\n"
+            
+            # Full content (with optional length limit)
+            content = result.get('content', '').strip()
+            if content:
+                if max_content_length and len(content) > max_content_length:
+                    content = content[:max_content_length] + f"... [content truncated at {max_content_length} characters]"
+                
+                result_text += f"**Full Content:**\n```\n{content}\n```\n"
+            else:
+                result_text += "**Full Content:** *No content available*\n"
+            
+            result_text += "\n---\n\n"
+            formatted_results.append(result_text)
+        
+        response = f"# Document Content\n\n**Documents Retrieved:** {len(results)}\n\n" + "".join(formatted_results)
+        
+        return [types.TextContent(type="text", text=response)]
+        
+    except Exception as e:
+        logger.error(f"Error in get_document_content: {e}")
+        return [types.TextContent(
+            type="text", 
+            text=f"[ERROR] Content retrieval failed: {str(e)}"
+        )]

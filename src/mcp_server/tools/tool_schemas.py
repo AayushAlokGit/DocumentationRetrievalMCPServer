@@ -91,6 +91,44 @@ def get_universal_search_tools() -> list[types.Tool]:
                 },
                 "required": ["query"]
             }
+        ),
+        types.Tool(
+            name="get_document_content",
+            description="Retrieve full content of specific documents by their identifiers",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "document_ids": {
+                        "oneOf": [
+                            {"type": "string"},
+                            {"type": "array", "items": {"type": "string"}}
+                        ],
+                        "description": "Document ID(s) to retrieve full content for"
+                    },
+                    "context_and_file": {
+                        "type": "object",
+                        "properties": {
+                            "context_name": {"type": "string"},
+                            "file_name": {"type": "string"}
+                        },
+                        "description": "Retrieve all chunks for a specific file within a context"
+                    },
+                    "max_content_length": {
+                        "type": "integer",
+                        "description": "Maximum content length per chunk (default: unlimited)",
+                        "minimum": 100
+                    },
+                    "include_metadata": {
+                        "type": "boolean",
+                        "description": "Include document metadata (default: true)",
+                        "default": True
+                    }
+                },
+                "anyOf": [
+                    {"required": ["document_ids"]},
+                    {"required": ["context_and_file"]}
+                ]
+            }
         )
     ]
 
