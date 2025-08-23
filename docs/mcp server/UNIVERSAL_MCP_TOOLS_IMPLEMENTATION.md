@@ -6,27 +6,35 @@ Successfully implemented the new universal MCP tools that replace the old work-i
 
 ## ✅ Implementation Completed
 
-### **New Universal Tools (4 tools)**
+### **New Universal Tools (5 tools)**
 
 #### 1. `search_documents` - Universal Document Search
 
 - **Purpose**: Universal search across all document types with comprehensive filtering
 - **Features**:
   - Multiple search types: text, vector, semantic, hybrid
-  - Advanced filtering: context_id, file_type, category, file_name, chunk_pattern, tags
-  - Configurable result size and content inclusion
+  - Advanced filtering: context_name, file_type, category, file_name, chunk_pattern, tags
+  - Configurable result size and content inclusion (400-char previews)
 - **FilterBuilder Integration**: Uses `FilterBuilder.build_filter()` and `FilterBuilder.build_advanced_filter()`
 
-#### 2. `get_document_contexts` - Context Discovery
+#### 2. `get_document_content` - Full Content Retrieval
+
+- **Purpose**: Retrieve complete document content without truncation
+- **Features**:
+  - Get full content by document IDs or context+file combination
+  - No content truncation (unlike search_documents which shows 400-char previews)
+  - Optional content length limits and metadata inclusion
+- **Implementation**: Complements search_documents for full document access
+
+#### 3. `get_document_contexts` - Context Discovery
 
 - **Purpose**: Discover available document contexts with statistics
 - **Features**:
-  - Context type filtering: work_item, project, contract, all
   - Document count statistics per context
   - Configurable result limits
 - **Implementation**: Uses Azure Search facets API
 
-#### 3. `explore_document_structure` - Structure Navigation
+#### 4. `explore_document_structure` - Structure Navigation
 
 - **Purpose**: Navigate through document hierarchy (contexts, files, chunks, categories)
 - **Features**:
@@ -35,7 +43,7 @@ Successfully implemented the new universal MCP tools that replace the old work-i
   - Context and file filtering
 - **Implementation**: Uses Azure Search with proper ordering
 
-#### 4. `get_index_summary` - Index Analytics
+#### 5. `get_index_summary` - Index Analytics
 
 - **Purpose**: Comprehensive index statistics and document distribution
 - **Features**:
@@ -166,7 +174,7 @@ INFO:work-items-mcp:[TARGET] MCP Server ready for connections
 
 The universal MCP tools implementation is **100% complete and functional**:
 
-1. ✅ **New Universal Tools**: All 4 tools implemented and tested
+1. ✅ **New Universal Tools**: All 5 tools implemented and tested
 2. ✅ **Legacy Compatibility**: All 8 legacy tools supported via mapping
 3. ✅ **FilterBuilder Integration**: Verified 100% compatibility
 4. ✅ **Server Running**: Successfully started and ready for connections

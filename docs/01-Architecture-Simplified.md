@@ -253,10 +253,11 @@ SUPPORTED_FILE_EXTENSIONS=.md,.txt,.docx
 ```json
 {
   "servers": {
-    "personal-documentation-assistant": {
-      "command": "python",
-      "args": ["run_mcp_server.py"],
-      "cwd": "C:\\absolute\\path\\to\\DocumentationRetrievalMCPServer"
+    "documentation-retrieval-mcp": {
+      "type": "stdio",
+      "command": "C:\\path\\to\\venv\\Scripts\\python.exe",
+      "args": ["C:\\path\\to\\run_mcp_server.py"],
+      "cwd": "C:\\path\\to\\DocumentationRetrievalMCPServer Project"
     }
   }
 }
@@ -265,6 +266,8 @@ SUPPORTED_FILE_EXTENSIONS=.md,.txt,.docx
 ### Initial System Setup
 
 ```bash
+# 0. Go to project root
+cd projectRoot
 # 1. Create virtual environment
 python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
@@ -277,10 +280,10 @@ cp .env.example .env
 # Edit .env with your Azure credentials
 
 # 4. Create Azure Cognitive Search index
-python src/document_upload/common_scripts/create_index.py
+python projectRoot/src/document_upload/common_scripts/create_index.py
 
 # 5. Process initial documents
-python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py
+python projectRoot/src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py
 ```
 
 ---
@@ -329,29 +332,29 @@ python src/document_upload/personal_documentation_assistant_scripts/upload_with_
 
 ```bash
 # Process new or changed documents (idempotent - safe to run multiple times)
-python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py
+python projectRoot/src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py
 
 # Upload single document with custom metadata
-python src/document_upload/personal_documentation_assistant_scripts/upload_with_custom_metadata.py "path/to/document.md" --category "technical" --tags "api,authentication"
+python projectRoot/src/document_upload/personal_documentation_assistant_scripts/upload_with_custom_metadata.py "path/to/document.md" --category "technical" --tags "api,authentication"
 
 # Preview document processing without actual upload
-python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py --dry-run
+python projectRoot/src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py --dry-run
 
 # Delete specific documents with preview
-python src/document_upload/personal_documentation_assistant_scripts/delete_by_context_and_filename.py
+python projectRoot/src/document_upload/personal_documentation_assistant_scripts/delete_by_context_and_filename.py
 ```
 
 ### System Maintenance
 
 ```bash
 # Verify system health and connections
-python src/document_upload/common_scripts/create_index.py --test-connection
+python projectRoot/src/document_upload/common_scripts/create_index.py --test-connection
 
 # Force complete reprocessing (use with caution)
-python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py --force-reset
+python projectRoot/src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py --force-reset
 
 # Run comprehensive test suites
-cd src/document_upload/personal_documentation_assistant_scripts/script_tests
+cd  projectRoot/src/document_upload/personal_documentation_assistant_scripts/script_tests
 python test_upload_with_pipeline_script.py
 python test_upload_with_custom_metadata_script.py
 python test_delete_by_context_and_filename_script.py

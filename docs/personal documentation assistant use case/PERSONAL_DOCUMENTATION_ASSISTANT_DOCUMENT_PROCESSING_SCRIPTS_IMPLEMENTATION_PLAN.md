@@ -439,7 +439,7 @@ Examples:
   python upload_with_pipeline.py "C:/Work Items"
 
   # Force reprocess all files (ignores tracker)
-  python upload_with_pipeline.py "C:/docs" --force-reprocess
+  python upload_with_pipeline.py "C:/docs" --force-reset
 
   # Complete reset: delete all + reprocess all
   python upload_with_pipeline.py "C:/docs" --force-reset

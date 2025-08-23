@@ -11,7 +11,7 @@ This project provides **intelligent document search and retrieval** for your doc
 - **Purpose**: Processes and indexes your documentation into Azure Cognitive Search
 - **Features**: Smart chunking, vector embeddings, idempotent processing, batch uploads
 - **Usage**: Run periodically to maintain your searchable document index
-- **Key Scripts**: `upload_with_pipeline.py`, `create_index.py`, `verify_document_upload_setup.py`
+- **Key Scripts**: `upload_with_pipeline.py`, `upload_with_custom_metadata.py`, `create_index.py`
 
 ### 🔌 MCP Server for VS Code Integration
 
@@ -43,7 +43,7 @@ This project provides **intelligent document search and retrieval** for your doc
 ### VS Code Integration
 
 - **🤖 MCP Protocol**: Native integration with VS Code Copilot and AI assistants
-- **🛠️ Universal Tools**: 4 powerful universal tools for comprehensive document access
+- **🛠️ Universal Tools**: 5 powerful universal tools for comprehensive document access
 - **🌐 Cross-Document Search**: Universal search across projects, research, APIs, and all document types
 - **💬 Natural Language**: Query using plain English questions and concepts
 - **📋 Structured Results**: Formatted output with source references and metadata
@@ -76,11 +76,8 @@ DocumentationRetrievalMCPServer/
 │   │   ├── discovery_strategies.py   # Document discovery strategies
 │   │   ├── processing_strategies.py  # Document processing strategies
 │   │   ├── file_tracker.py           # File processing tracking
-│   │   ├── common_scripts/           # Core upload utilities
-│   │   │   ├── create_index.py       # Index creation
-│   │   │   ├── upload_single_file.py # Single file upload
-│   │   │   ├── delete_by_file_path.py # Delete by file path
-│   │   │   └── verify_document_upload_setup.py # System verification
+│   │   ├── common_scripts/           # Common utility scripts
+│   │   │   └── create_index.py       # Index creation script
 │   │   └── personal_documentation_assistant_scripts/ # Main upload scripts
 │   │       ├── upload_with_pipeline.py # Main upload script
 │   │       ├── upload_with_custom_metadata.py # Custom metadata upload
@@ -174,29 +171,26 @@ This project has **two separate setup processes** for each component:
 
 **System Setup & Verification:**
 
-- `python src/document_upload/common_scripts/verify_document_upload_setup.py` - Verify complete system setup
 - `python src/document_upload/common_scripts/create_index.py` - Create Azure Search index with vector capabilities
 
 **Document Processing:**
 
-- `python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py` - Process and index all documentation
-- `python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py --context <NAME>` - Upload specific context by name
-- `python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py --dry-run` - Preview what will be processed without uploading
-- `python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py --force --context <NAME>` - Force reprocessing of specific context (deletes existing + re-uploads)
-- `python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py --reset` - Delete all documents and reset tracker for fresh start
-- `python src/document_upload/common_scripts/upload_single_file.py <file_path>` - Upload a single file
+- `python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py <path>` - Process and index all documentation from specified path
+- `python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py <path> --dry-run` - Preview what will be processed without uploading
+- `python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py <path> --force-reset` - Delete all documents and tracker, then reprocess everything
+- `python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py <path> --stats` - Show detailed processing statistics after completion
+- `python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py <path> --verbose` - Enable verbose logging for debugging
+- `python src/document_upload/personal_documentation_assistant_scripts/upload_with_custom_metadata.py <path> --metadata '{"title": "Custom Title", "tags": "tag1,tag2", "category": "reference", "work_item_id": "PROJ-123"}'` - Upload with custom metadata override
+- `python src/document_upload/personal_documentation_assistant_scripts/upload_with_custom_metadata.py <path> --metadata '{...}' --validate-only` - Validate metadata without uploading
 
 **Document Management:**
 
 - `python src/document_upload/personal_documentation_assistant_scripts/delete_by_context_and_filename.py <context_name>` - Delete all documents for a specific context
 - `python src/document_upload/personal_documentation_assistant_scripts/delete_by_context_and_filename.py <context_name> --no-confirm` - Delete without confirmation
-- `python src/document_upload/common_scripts/delete_by_file_path.py <file_pattern>` - Delete documents matching file path pattern
-- `python src/document_upload/common_scripts/delete_by_file_path.py <file_pattern> --no-confirm` - Delete without confirmation
 
 **Testing:**
 
-- `python src/tests/test_simple_e2e.py` - Run simple end-to-end verification tests
-- `python src/tests/test_end_to_end.py` - Run comprehensive system tests
+Test your configuration by running document processing in dry-run mode and starting the MCP server.
 
 #### MCP Server Commands (🔌)
 
@@ -288,12 +282,11 @@ CHUNK_OVERLAP=200
 ### Test Document Upload System (📄)
 
 ```bash
-# Verify document upload setup is correct
-python src/document_upload/common_scripts/verify_document_upload_setup.py
+# Create the search index
+python src/document_upload/common_scripts/create_index.py
 
-# Test document processing
-python src/tests/test_end_to_end.py
-python src/tests/test_simple_e2e.py
+# Test document processing with pipeline
+python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py "path/to/your/docs" --dry-run
 ```
 
 ### Test MCP Server Integration (🔌)
@@ -444,17 +437,14 @@ python src/document_upload/personal_documentation_assistant_scripts/delete_by_co
 
 # Clean up specific context documents
 python src/document_upload/personal_documentation_assistant_scripts/delete_by_context_and_filename.py <context_name>
-
-# Remove documents by file pattern
-python src/document_upload/common_scripts/delete_by_file_path.py "filename.md"
 ```
 
 ### Get Help
 
-1. Run `python src/document_upload/common_scripts/verify_document_upload_setup.py` to diagnose issues
-2. Check the troubleshooting section in setup guides
+1. Check Azure service connections in your `.env` file
+2. Use `--dry-run` flag with upload scripts to test configuration
 3. Review log files for detailed error messages
-4. Use force reprocessing for clean document state
+4. Use the `create_index.py` script to recreate the search index if needed
 
 ## 📝 License
 
