@@ -231,6 +231,45 @@ class ProcessedDocument:
     chunk_count: int
     processing_strategy: str
     metadata_json: Optional[str]  # Additional strategy-specific metadata
+    
+    @property
+    def metadata(self) -> Dict[str, Any]:
+        """
+        Return structured metadata for this processed document.
+        This property provides a consolidated view of all document metadata
+        for use with file tracking and audit systems.
+        
+        Returns:
+            Dict containing document metadata including:
+            - Basic file information (title, file_type, file_name)
+            - Categorization (category, context_name, tags)
+            - Processing details (processing_strategy, chunk_count)
+            - Timestamps and additional metadata
+        """
+        metadata = {
+            'title': self.title,
+            'file_type': self.file_type,
+            'file_name': self.file_name,
+            'category': self.category,
+            'context_name': self.context_name,
+            'tags': self.tags if self.tags else [],
+            'processing_strategy': self.processing_strategy,
+            'chunk_count': self.chunk_count,
+            'last_modified': self.last_modified,
+            'document_id': self.document_id,
+        }
+        
+        # Include additional strategy-specific metadata if available
+        if self.metadata_json:
+            try:
+                import json
+                additional_metadata = json.loads(self.metadata_json)
+                metadata.update(additional_metadata)
+            except (json.JSONDecodeError, TypeError):
+                # If JSON parsing fails, include raw metadata_json
+                metadata['metadata_json'] = self.metadata_json
+        
+        return metadata
 
 
 @dataclass

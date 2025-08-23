@@ -370,7 +370,7 @@ class DocumentUploadPhase:
                         
                         # Mark file as processed immediately after successful upload
                         if tracker is not None:
-                            tracker.mark_processed(Path(processed_doc.file_path))
+                            tracker.mark_processed(Path(processed_doc.file_path), processed_doc.metadata)
                             print(f"      📋 Marked as processed in tracker")
                 else:
                     error_msg = f"Document {doc_idx} ({processed_doc.file_name}): No search objects generated"

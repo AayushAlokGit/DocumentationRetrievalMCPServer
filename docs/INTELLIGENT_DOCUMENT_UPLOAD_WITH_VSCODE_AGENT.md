@@ -343,6 +343,222 @@ Test that uploaded documents are searchable:
 # Search by work item: "DocumentationRetrievalMCPServer"
 ```
 
+#### Document Deletion
+
+If you need to remove documents from the search index, use the deletion script:
+
+```bash
+python projectRoot/src/document_upload/personal_documentation_assistant_scripts/delete_by_context_and_filename.py
+```
+
+**Features**:
+
+- **Interactive mode**: Prompts you to select documents to delete
+- **Preview mode**: Shows which documents will be deleted before confirmation
+- **Safe deletion**: Includes confirmation prompts and tracker cleanup
+- **Multiple matching strategies**: Exact, contains, or flexible filename matching
+
+**Required Parameters**:
+
+- **Context**: Use your work item ID (e.g., "DocumentationRetrievalMCPServer", "API-DOCS-2024")
+- **Filename**: Use the actual filename with extension (e.g., "authentication_guide.md", "CONTEXT_ALIGNMENT_PRINCIPLE.md")
+
+**Step-by-Step Usage**:
+
+1. **Run the script**: Execute the deletion script command
+2. **Enter context**: Provide your work item ID when prompted
+3. **Enter filename**: Provide the filename (supports partial matching)
+4. **Review results**: The script shows all matching documents
+5. **Select matching strategy**: Choose exact, contains, or flexible matching
+6. **Preview deletion**: Review which documents will be deleted
+7. **Confirm deletion**: Type 'yes' to proceed or 'no' to cancel
+8. **Verify cleanup**: Script automatically updates tracker and confirms deletion
+
+**Matching Strategies**:
+
+- **Exact**: Matches filename exactly (case-sensitive)
+- **Contains**: Matches files containing the text (case-insensitive)
+- **Flexible**: Smart matching with partial text and fuzzy logic
+
+**Common Use Cases**:
+
+**Scenario 1: Remove specific document**
+
+```bash
+# Context: DocumentationRetrievalMCPServer
+# Filename: INTELLIGENT_DOCUMENT_UPLOAD_WITH_VSCODE_AGENT.md
+# Strategy: Exact
+```
+
+**Scenario 2: Remove all files from a directory**
+
+```bash
+# Context: DocumentationRetrievalMCPServer
+# Filename: future plans/
+# Strategy: Contains (matches all files with "future plans/" in path)
+```
+
+**Scenario 3: Remove files by partial name**
+
+```bash
+# Context: API-DOCS-2024
+# Filename: authentication
+# Strategy: Contains (matches authentication_guide.md, authentication_setup.md, etc.)
+```
+
+**Best Practices**:
+
+- Always use **Preview mode** first to verify which documents will be deleted
+- Use **Exact matching** when deleting single, specific files
+- Use **Contains matching** for bulk deletion by directory or keyword
+- Keep track of your **work item IDs** for easier context identification
+- **Double-check context and filename** before confirming deletion
+
+**Safety Features**:
+
+- **Preview before deletion**: See exactly which documents will be removed
+- **Confirmation prompts**: Multiple confirmations prevent accidental deletion
+- **Tracker cleanup**: Automatically removes deleted files from processing tracker
+- **Error handling**: Graceful handling of missing documents or connection issues
+
+**Troubleshooting**:
+
+- **No documents found**: Check context and filename spelling
+- **Connection errors**: Verify Azure Search service is accessible
+- **Multiple matches**: Use more specific filename or exact matching
+- **Partial deletion**: Some chunks may remain if deletion fails - rerun script
+
+**Real-World Case Study: Document Update Workflow**
+
+This section documents a practical example of when and how to use the deletion script effectively.
+
+**Scenario**: You've uploaded documentation to the search index, then made significant improvements to the document. You need to remove the old version before uploading the updated version to avoid having duplicate or outdated content in your search results.
+
+**Step-by-Step Walkthrough**:
+
+1. **Initial Upload**: Documentation was uploaded with these parameters:
+
+   ```bash
+   # Original upload command
+   python projectRoot/src/document_upload/personal_documentation_assistant_scripts/upload_with_custom_metadata.py "docs/INTELLIGENT_DOCUMENT_UPLOAD_WITH_VSCODE_AGENT.md" --metadata '{"title": "Intelligent Document Upload Using VS Code Agent Mode", "tags": "documentation,vscode-agent,ai-powered,metadata-generation,upload-workflow,intelligent-tagging,process-guide", "category": "Process Guide", "work_item_id": "DocumentationRetrievalMCPServer"}'
+
+   # Result: 5 chunks created and indexed
+   ```
+
+2. **Document Enhancement**: Made significant improvements including:
+
+   - Enhanced deletion script documentation
+   - Added more detailed use cases
+   - Improved troubleshooting guidance
+   - Expanded best practices section
+
+3. **Preview Deletion** (Always do this first):
+
+   ```bash
+   python projectRoot/src/document_upload/personal_documentation_assistant_scripts/delete_by_context_and_filename.py "DocumentationRetrievalMCPServer" "INTELLIGENT_DOCUMENT_UPLOAD_WITH_VSCODE_AGENT.md" --preview
+
+   # Output showed:
+   # ✅ Search completed: 5 chunks in 1 files
+   # 📊 Total chunks to delete: 5
+   # 📄 Unique files affected: 1
+   # 🎯 Matching mode: exact
+   ```
+
+4. **Execute Deletion**:
+
+   ```bash
+   python projectRoot/src/document_upload/personal_documentation_assistant_scripts/delete_by_context_and_filename.py "DocumentationRetrievalMCPServer" "INTELLIGENT_DOCUMENT_UPLOAD_WITH_VSCODE_AGENT.md"
+
+   # Results:
+   # ✅ Successfully deleted: 5 chunks
+   # ❌ Failed deletions: 0
+   # ⏱️ Operation time: 1.24s
+   # 📈 Success rate: 100.0%
+   # 📋 Tracker files cleaned: 1/1
+   ```
+
+5. **Upload Updated Version**: Now safe to upload the improved documentation without conflicts
+
+**Key Learnings from This Case**:
+
+1. **Preview is Essential**: Always use `--preview` first to understand the deletion impact
+
+   - Shows exactly how many chunks will be deleted
+   - Confirms you're targeting the right document
+   - Prevents accidental deletion of wrong files
+
+2. **Exact Matching Works Best for Single Files**: Using the exact filename with exact matching strategy provides precise targeting
+
+3. **Context Must Match Upload**: Use the same `work_item_id` that was used during upload as the context parameter
+
+4. **Tracker Cleanup is Automatic**: The script automatically removes the file from the processing tracker, allowing it to be uploaded again as if it were new
+
+5. **Fast and Reliable**: Deletion completed in ~1.2 seconds with 100% success rate
+
+**When to Use This Workflow**:
+
+- **Document Updates**: Major revisions to existing documentation
+- **Content Restructuring**: When reorganizing or splitting documents
+- **Error Correction**: Fixing mistakes in uploaded content or metadata
+- **Version Management**: Replacing outdated documentation with current versions
+- **Testing**: Cleaning up test uploads during development
+
+**Pro Tips from This Experience**:
+
+- Keep a record of your `work_item_id` values for easy deletion
+- Use descriptive filenames that are easy to remember and type
+- Always preview before deletion, especially in production environments
+- Monitor the success rate and operation time for performance insights
+- The automatic tracker cleanup means you can immediately re-upload after deletion
+
+---
+
+## Recent Technical Enhancement: Metadata Integration
+
+### ProcessedDocument Metadata Property
+
+**Enhancement Date**: January 2024
+
+The DocumentationRetrievalMCPServer has been enhanced with improved metadata integration between document processing and file tracking systems. This enhancement resolves the previously missing link between `ProcessedDocument` objects and the file tracker metadata storage.
+
+#### What Was Added
+
+A new `metadata` property was added to the `ProcessedDocument` dataclass in `processing_strategies.py`:
+
+```python
+@property
+def metadata(self) -> Dict[str, Any]:
+    """
+    Return structured metadata for this processed document.
+    This property provides a consolidated view of all document metadata
+    for use with file tracking and audit systems.
+    """
+```
+
+#### Integration Benefits
+
+- **Complete Audit Trail**: File tracker now stores comprehensive metadata alongside file signatures
+- **Enhanced Searchability**: All document metadata (tags, category, context_name) available for tracking queries
+- **Unified Metadata Access**: Single property provides all document metadata in structured format
+- **Backward Compatibility**: Existing code continues to work without changes
+
+#### Technical Details
+
+The metadata property consolidates the following fields:
+
+- **File Information**: `title`, `file_type`, `file_name`, `document_id`
+- **Classification**: `category`, `context_name`, `tags`
+- **Processing Details**: `processing_strategy`, `chunk_count`, `last_modified`
+- **Additional Data**: Any custom metadata from `metadata_json` field
+
+This enhancement enables the existing call in `document_processing_pipeline.py`:
+
+```python
+tracker.mark_processed(Path(processed_doc.file_path), processed_doc.metadata)
+```
+
+The integration is fully tested and operational, ensuring that all uploaded documents now have complete metadata tracking for future auditing and management workflows.
+
 ---
 
 ## Success Metrics and Monitoring

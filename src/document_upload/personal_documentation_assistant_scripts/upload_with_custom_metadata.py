@@ -375,7 +375,7 @@ async def process_and_upload(target_path: Path, metadata: Dict[str, Any],
                 
                 if upload_result['success']:
                     # Mark file as processed in tracker
-                    tracker.mark_processed(file_path)
+                    tracker.mark_processed(file_path, metadata)
                     successfully_uploaded_files.append(file_path)
                     print(f"   📋 Marked as processed in tracker")
                 else:
