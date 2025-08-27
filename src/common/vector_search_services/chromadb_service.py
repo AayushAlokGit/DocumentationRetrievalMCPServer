@@ -40,6 +40,7 @@ class ChromaDBFilterBuilder:
             return None
 
         chromadb_where = {}
+        filter_conditions = []
         
         for field, value in filters.items():
             if value is None:
@@ -48,18 +49,24 @@ class ChromaDBFilterBuilder:
             # Handle different value types
             if isinstance(value, list):
                 # Multiple values - use $in
-                chromadb_where[field] = {"$in": value}
+                filter_conditions.append({field: {"$in": value}})
             elif isinstance(value, dict):
                 # Operator dictionary - ensure $ prefix
                 ops = {}
                 for op, val in value.items():
                     ops[f"${op}" if not op.startswith('$') else op] = val
-                chromadb_where[field] = ops
+                filter_conditions.append({field: ops})
             else:
                 # Simple equality
-                chromadb_where[field] = value
+                filter_conditions.append({field: value})
 
-        return chromadb_where if chromadb_where else None
+        # If multiple conditions, combine with $and
+        if len(filter_conditions) > 1:
+            return {"$and": filter_conditions}
+        elif len(filter_conditions) == 1:
+            return filter_conditions[0]
+        else:
+            return None
 
     @staticmethod
     def combine_filters(*filter_dicts: Dict) -> Optional[Dict]:
@@ -103,8 +110,8 @@ class ChromaDBService:
         self.collection_name = collection_name or os.getenv('CHROMADB_COLLECTION_NAME', 'documentation_collection')
         self.persist_directory = persist_directory or os.getenv('CHROMADB_PERSIST_DIRECTORY', './chromadb_data')
 
-        # Initialize embedding service for query encoding
-        self.embedding_generator = get_embedding_generator(provider="local")
+        # Lazy initialization for embedding service
+        self._embedding_generator = None
 
         # Initialize ChromaDB client with persistence
         self.client = chromadb.PersistentClient(
@@ -126,6 +133,13 @@ class ChromaDBService:
                 metadata={"description": "Documentation retrieval collection"}
             )
             print(f"[INFO] Created new ChromaDB collection: {self.collection_name}")
+
+    @property
+    def embedding_generator(self):
+        """Lazy initialization of embedding generator"""
+        if self._embedding_generator is None:
+            self._embedding_generator = get_embedding_generator(provider="local")
+        return self._embedding_generator
 
     def test_connection(self) -> bool:
         """Test ChromaDB connection and collection access"""
@@ -260,7 +274,60 @@ class ChromaDBService:
             print(f"[ERROR] Filter-based delete failed: {e}")
             return 0
 
-    # ===== SEARCH OPERATIONS (Vector search only) =====
+    async def delete_documents(self, document_ids: List[str]) -> int:
+        """Delete multiple documents by their IDs"""
+        try:
+            if not document_ids:
+                return 0
+                
+            self.collection.delete(ids=document_ids)
+            return len(document_ids)
+            
+        except Exception as e:
+            print(f"[ERROR] Multiple document delete failed: {e}")
+            return 0
+
+    # ===== SEARCH OPERATIONS =====
+
+    def get_documents_by_filter(self, filters: Dict[str, Any]) -> List[Dict]:
+        """Get documents matching filter criteria without vector search"""
+        try:
+            # Convert filters to ChromaDB format
+            chromadb_filters = self._convert_filters_to_chromadb(filters) if filters else None
+
+            # Get documents using ChromaDB collection get method
+            results = self.collection.get(
+                where=chromadb_filters,
+                include=['metadatas', 'documents']
+            )
+
+            # Format results to match expected structure
+            formatted_results = []
+            if results and 'ids' in results:
+                for i, doc_id in enumerate(results['ids']):
+                    doc_data = {
+                        'id': doc_id,
+                        'content': results['documents'][i] if i < len(results['documents']) else '',
+                        'metadata': results['metadatas'][i] if i < len(results['metadatas']) else {}
+                    }
+                    
+                    # Extract common metadata fields
+                    metadata = doc_data['metadata']
+                    doc_data.update({
+                        'file_name': metadata.get('file_name', ''),
+                        'context_name': metadata.get('context_name', ''),
+                        'file_path': metadata.get('file_path', ''),
+                        'title': metadata.get('title', ''),
+                        'chunk_index': metadata.get('chunk_index', 0)
+                    })
+                    
+                    formatted_results.append(doc_data)
+
+            return formatted_results
+
+        except Exception as e:
+            print(f"[ERROR] Get documents by filter failed: {e}")
+            return []
 
     async def vector_search(self, query: str, filters: Optional[Dict[str, Any]] = None, top: int = 5) -> List[Dict]:
         """Core vector search implementation"""
@@ -343,3 +410,18 @@ class ChromaDBService:
             formatted_results.append(doc)
 
         return formatted_results
+
+
+async def get_chromadb_service(persist_directory: Optional[str] = None,
+                              collection_name: Optional[str] = None) -> ChromaDBService:
+    """
+    Factory function to create a ChromaDBService instance
+    
+    Args:
+        persist_directory: Directory for persistent storage (from env if not provided)
+        collection_name: Collection name (from env if not provided)
+        
+    Returns:
+        ChromaDBService instance
+    """
+    return ChromaDBService(persist_directory, collection_name)

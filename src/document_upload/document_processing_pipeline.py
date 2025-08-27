@@ -275,7 +275,7 @@ class DocumentUploadPhase:
         Initialize the document upload phase.
         
         Args:
-            upload_strategy: Strategy to use for document upload (default: AzureCognitiveSearchUploadStrategy)
+            upload_strategy: Strategy to use for document upload (default: AzureCognitiveSearchDocumentUploadStrategy)
         """
         if upload_strategy is None:
             raise ValueError("Document Upload Strategy should be provided for the Document Upload Phase")
@@ -340,7 +340,7 @@ class DocumentProcessingPipeline:
         Args:
             discovery_strategy: Strategy for document discovery (default: PersonalDocumentationDiscoveryStrategy)
             processing_strategy: Strategy for document processing (default: PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy)
-            upload_strategy: Strategy for document upload (default: AzureCognitiveSearchUploadStrategy)
+            upload_strategy: Strategy for document upload (default: AzureCognitiveSearchDocumentUploadStrategy)
             tracker: DocumentProcessingTracker instance (default: create new tracker)
             force_reprocess: If True, force reprocessing of already processed files
         """
@@ -409,9 +409,7 @@ class DocumentProcessingPipeline:
 
         print(f"   ✅ Force cleanup completed - ready for reprocessing")
     
-    async def run_complete_pipeline(self, root_directory: str, 
-                             service_name: str, admin_key: str, index_name: str, 
-                             **kwargs) -> tuple[DocumentDiscoveryResult, DocumentProcessingResult, DocumentUploadResult]:
+    async def run_complete_pipeline(self, root_directory: str, **kwargs) -> tuple[DocumentDiscoveryResult, DocumentProcessingResult, DocumentUploadResult]:
         """
         Run the complete 3-phase document processing pipeline.
         
@@ -469,14 +467,13 @@ class DocumentProcessingPipeline:
             processing_result = self.processing_phase.process_documents(discovery_result.discovered_files)
             self.processing_phase.print_processing_summary(processing_result)
             
-            # Phase 3: Upload (upload processed documents to Azure Search)
+            # Phase 3: Upload (upload processed documents)
             if processing_result.processed_documents:
                 print(f"\n📤 Phase 3: Document Upload")
-                print(f"   🔄 Uploading {len(processing_result.processed_documents)} processed documents to Azure Search...")
+                print(f"   🔄 Uploading {len(processing_result.processed_documents)} processed documents Search service...")
                 
                 upload_result = await self.upload_phase.upload_documents(
                     processing_result.processed_documents,
-                    service_name, admin_key, index_name,
                     tracker=self.tracker  # Pass tracker for immediate file marking
                 )
                 self.upload_phase.print_upload_summary(upload_result)

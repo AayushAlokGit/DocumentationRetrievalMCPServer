@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 """
-Direct Metadata Upload Script
-=============================
+Direct Metadata Upload Script for ChromaDB
+===========================================
 
-A specialized script for uploading documents with custom metadata directly to Azure Cognitive Search,
+A specialized script for uploading documents with custom metadata directly to ChromaDB,
 bypassing all auto-generation logic for maximum user control.
 
 This script provides:
 - Direct metadata injection with complete user control
-- Schema validation against Azure Search index fields
+- Schema validation against ChromaDB document fields
 - File and directory support via GeneralDocumentDiscoveryStrategy
 - Document Processing Tracker integration for idempotent operations
 - Individual file processing with comprehensive error handling
+- Local embeddings generation for vector search
 
 Usage:
     python upload_with_custom_metadata.py /path/to/file --metadata '{"title": "My Doc", "tags": "important,api", "category": "tutorial", "work_item_id": "PROJ-123"}'
@@ -21,7 +22,6 @@ Usage:
 import os
 import sys
 import json
-import argparse
 import asyncio
 from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
@@ -34,12 +34,11 @@ src_dir = current_dir.parent.parent
 sys.path.insert(0, str(src_dir))
 
 # Import project modules
-from src.common.vector_search_services.azure_cognitive_search import AzureCognitiveSearch, get_azure_search_service
+from src.common.vector_search_services.chromadb_service import get_chromadb_service
 from src.document_upload.document_processing_tracker import DocumentProcessingTracker
 from document_upload.processing_strategies import (
     DocumentProcessingStrategy,
-    PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy, 
-    AZURE_SEARCH_INDEX_FIELDS,
+    PersonalDocumentationAssistantChromaDBProcessingStrategy,
     ProcessedDocument
 )
 from document_upload.discovery_strategies import GeneralDocumentDiscoveryStrategy
@@ -48,8 +47,16 @@ from document_upload.discovery_strategies import GeneralDocumentDiscoveryStrateg
 load_dotenv()
 
 
+# ChromaDB document fields (based on ChromaDB processing strategy)
+CHROMADB_DOCUMENT_FIELDS = {
+    'id', 'content', 'content_vector', 'chunk_index', 'file_name', 'file_path',
+    'title', 'tags', 'category', 'work_item_id', 'context_name', 'file_type', 
+    'last_modified', 'metadata_json', 'file_size', 'chunk_count'
+}
+
+
 def validate_metadata_schema(metadata: Dict[str, Any]) -> Tuple[bool, List[str]]:
-    """Validate metadata dictionary matches Azure Search schema requirements
+    """Validate metadata dictionary matches ChromaDB schema requirements
     
     Note: DirectMetadataProcessingStrategy requires complete metadata
     since it bypasses all auto-generation logic for maximum control.
@@ -77,7 +84,7 @@ def validate_metadata_schema(metadata: Dict[str, Any]) -> Tuple[bool, List[str]]
     system_generated = {'id', 'content', 'content_vector', 'chunk_index', 'context_name'}
     
     # Optional fields that can be provided or auto-generated
-    optional_fields = AZURE_SEARCH_INDEX_FIELDS - required_fields - system_generated
+    optional_fields = CHROMADB_DOCUMENT_FIELDS - required_fields - system_generated
     
     # Check for missing required fields
     missing_required = required_fields - set(metadata.keys())
@@ -93,7 +100,7 @@ def validate_metadata_schema(metadata: Dict[str, Any]) -> Tuple[bool, List[str]]
     all_valid_fields = required_fields | optional_fields
     unknown_fields = set(metadata.keys()) - all_valid_fields
     if unknown_fields:
-        errors.append(f"Unknown fields (not in Azure Search schema): {', '.join(sorted(unknown_fields))}")
+        errors.append(f"Unknown fields (not in ChromaDB schema): {', '.join(sorted(unknown_fields))}")
     
     # Validate specific field types and values
     if 'tags' in metadata:
@@ -123,7 +130,7 @@ def validate_metadata_schema(metadata: Dict[str, Any]) -> Tuple[bool, List[str]]
     return is_valid, errors
 
 
-class DirectMetadataProcessingStrategy(PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy):
+class DirectMetadataProcessingStrategy(PersonalDocumentationAssistantChromaDBProcessingStrategy):
     """Strategy that injects provided metadata directly into processed documents
     
     This strategy completely overrides metadata extraction to provide maximum
@@ -148,108 +155,96 @@ class DirectMetadataProcessingStrategy(PersonalDocumentationAssistantAzureCognit
         
         Required fields in custom_metadata (based on process_single_document usage):
         - title: Document title
-        - tags: Document tags (string or list)
+        - tags: Document tags (string or list) 
         - category: Document category
-        - work_item_id: Work item ID (used by extract_context_info for context_name)
-        - file_type: File type (optional, auto-detected from extension if not provided)
-        - last_modified: Last modified timestamp (optional, auto-generated if not provided)
+        - work_item_id: Work item ID for context extraction
+        
+        Optional fields that will be auto-generated if not provided:
+        - file_type: File extension (auto-detected from file_path)
+        - last_modified: File modification timestamp (auto-generated from file stats)
+        - metadata_json: Additional metadata as JSON string
         
         Args:
-            content: Document content (unused in this strategy)
+            content: Document content (ignored - metadata comes from custom_metadata)
             file_path: Path to the document file
             
         Returns:
-            Dict containing the custom metadata with auto-generated optional fields
+            Dict with custom metadata plus any auto-generated fields
         """
-        # Start with custom metadata as the base
-        metadata = dict(self.custom_metadata)
+        # Start with custom metadata as base
+        metadata = self.custom_metadata.copy()
         
-        # Auto-detect file_type if not provided
+        # Auto-generate optional fields if not provided by user
         if 'file_type' not in metadata:
-            file_extension = file_path.suffix.lower()
-            type_mapping = {
-                '.md': 'markdown',
-                '.txt': 'text',
-                '.docx': 'document',
-                '.pdf': 'pdf'
-            }
-            metadata['file_type'] = type_mapping.get(file_extension, 'unknown')
+            metadata['file_type'] = file_path.suffix.lower().lstrip('.')
         
-        # Auto-generate last_modified if not provided
         if 'last_modified' not in metadata:
-            file_stat = file_path.stat()
-            last_modified_dt = datetime.fromtimestamp(file_stat.st_mtime)
-            metadata['last_modified'] = last_modified_dt.isoformat() + 'Z'
+            try:
+                file_stats = file_path.stat()
+                metadata['last_modified'] = datetime.fromtimestamp(file_stats.st_mtime).isoformat()
+            except Exception:
+                metadata['last_modified'] = datetime.now().isoformat()
         
-        # Ensure tags is a list (convert string to list if needed for internal processing)
-        if isinstance(metadata.get('tags'), str):
-            metadata['tags'] = [tag.strip() for tag in metadata['tags'].split(',')]
-        elif not isinstance(metadata.get('tags'), list):
-            metadata['tags'] = []
+        # Note: context_name is generated by extract_context_info in parent class
+        # which uses work_item_id that must be provided in custom_metadata
         
         return metadata
 
 
 def process_target_path(target_path: Path, metadata: Dict[str, Any]) -> List[Path]:
-    """Process target path (file or directory) using GeneralDocumentDiscoveryStrategy
-    
-    Note: GeneralDocumentDiscoveryStrategy automatically handles both files and directories,
-    so no manual path type checking is needed. It will:
-    - For files: Return the file if it has a supported extension
-    - For directories: Discover all supported files within the directory
+    """Discover all files to process from target path
     
     Args:
-        target_path: Path to file or directory to process
-        metadata: Custom metadata dictionary (passed for context, not used in discovery)
+        target_path: Path to file or directory
+        metadata: Custom metadata dictionary (used for validation)
         
     Returns:
-        List of discovered file paths to process
-        
-    Raises:
-        ValueError: If no supported documents are found
+        List of file paths to process
     """
-    # Use GeneralDocumentDiscoveryStrategy for unified file/directory handling
     discovery_strategy = GeneralDocumentDiscoveryStrategy()
-    files_to_process = discovery_strategy.discover_documents(str(target_path))
     
-    if not files_to_process:
-        if target_path.is_file():
-            raise ValueError(f"File type not supported: {target_path}")
-        else:
-            raise ValueError(f"No supported documents found in directory: {target_path}")
+    if target_path.is_file():
+        # Single file processing
+        return [target_path]
     
-    return files_to_process
+    elif target_path.is_dir():
+        # Directory processing - discover all supported files
+        discovered_files = discovery_strategy.discover_documents(str(target_path))
+        # GeneralDocumentDiscoveryStrategy returns List[Path] directly
+        return discovered_files
+    
+    else:
+        raise ValueError(f"Path is neither file nor directory: {target_path}")
 
 
-async def upload_document_to_azure(processed_document: ProcessedDocument, processing_strategy: DocumentProcessingStrategy, 
-                                 azure_search_service: AzureCognitiveSearch) -> Dict[str, Any]:
-    """Upload a single processed document to Azure Cognitive Search
+async def upload_document_to_chromadb(processed_doc: ProcessedDocument, 
+                                     processing_strategy: DirectMetadataProcessingStrategy,
+                                     chromadb_service) -> Dict[str, Any]:
+    """Upload a single processed document to ChromaDB
     
     Args:
-        processed_document: ProcessedDocument instance
-        processing_strategy: Processing strategy instance
-        azure_search_service: Azure Cognitive Search service instance
+        processed_doc: Processed document from processing strategy
+        processing_strategy: Strategy used for processing (for creating search objects)
+        chromadb_service: ChromaDB service instance
         
     Returns:
-        Dictionary with upload results
+        Dict with upload results: {'success': bool, 'uploaded': int, 'failed': int, 'total': int, 'error': str}
     """
     try:
-        # Create search index objects for this document
-        print(f"      🔄 Creating search objects with embeddings...")
+        print(f"      🔄 Creating ChromaDB search objects with local embeddings...")
         
         # Collect search objects for this document
         doc_search_objects = []
-        async for search_object in processing_strategy.create_search_index_objects([processed_document]):
+        async for search_object in processing_strategy.create_search_index_objects([processed_doc]):
             doc_search_objects.append(search_object)
         
         doc_total_objects = len(doc_search_objects)
-        print(f"      📊 Generated {doc_total_objects} search objects")
+        print(f"      📊 Generated {doc_total_objects} ChromaDB search objects")
         
         if doc_search_objects:
-            # Upload this document's search objects to Azure Search
-            print(f"      📤 Uploading {doc_total_objects} objects to Azure Search...", end=" ")
+            print(f"      📤 Uploading {doc_total_objects} objects to ChromaDB...", end=" ")
             
-            successful, failed = azure_search_service.upload_search_objects_batch(doc_search_objects)
+            successful, failed = chromadb_service.upload_search_objects_batch(doc_search_objects)
             
             if failed > 0:
                 print(f"⚠️  ({successful} succeeded, {failed} failed)")
@@ -333,14 +328,14 @@ async def process_and_upload(target_path: Path, metadata: Dict[str, Any],
         print(f"✅ Validation complete: {len(files_to_process)} files ready for processing")
         return
     
-    # Initialize Azure Search service
-    print("🔗 Initializing Azure Cognitive Search connection...")
+    # Initialize ChromaDB service
+    print("🔗 Initializing ChromaDB connection...")
     try:
-        azure_search_service = get_azure_search_service()
-        print("✅ Azure Search connection established")
+        chromadb_service = await get_chromadb_service()
+        print("✅ ChromaDB connection established")
         
     except Exception as e:
-        print(f"❌ Failed to initialize Azure Search service: {str(e)}")
+        print(f"❌ Failed to initialize ChromaDB service: {str(e)}")
         return
     
     # Initialize tracker
@@ -368,11 +363,11 @@ async def process_and_upload(target_path: Path, metadata: Dict[str, Any],
                 processed_doc = processing_result.processed_documents[0]
                 print(f"   ✅ Document processed: {processed_doc.chunk_count} chunks created")
                 
-                # Upload processed document to Azure Search
-                upload_result = await upload_document_to_azure(
+                # Upload processed document to ChromaDB
+                upload_result = await upload_document_to_chromadb(
                     processed_doc, 
                     processing_strategy,
-                    azure_search_service
+                    chromadb_service
                 )
                 
                 if upload_result['success']:
@@ -421,8 +416,10 @@ async def process_and_upload(target_path: Path, metadata: Dict[str, Any],
 
 def main():
     """Main entry point for the direct metadata upload script"""
+    import argparse
+    
     parser = argparse.ArgumentParser(
-        description="Upload documents with custom metadata to Azure Cognitive Search",
+        description="Upload documents with custom metadata to ChromaDB",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
@@ -486,7 +483,7 @@ Optional metadata fields:
         return 1
     
     # Show configuration
-    print("🚀 Direct Metadata Upload Script")
+    print("🚀 Direct Metadata Upload Script - ChromaDB")
     print("=" * 50)
     print(f"Target path: {target_path}")
     print(f"Metadata fields: {', '.join(metadata.keys())}")

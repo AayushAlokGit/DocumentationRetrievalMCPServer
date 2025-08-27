@@ -36,6 +36,8 @@ from pathlib import Path
 from typing import Dict, List, Any, Optional, Tuple
 from dotenv import load_dotenv
 
+from src.document_upload.upload_strategies import AzureCognitiveSearchDocumentUploadStrategy
+
 # Add src to path for imports - navigate up to src directory
 current_dir = Path(__file__).parent
 src_dir = current_dir.parent.parent
@@ -100,6 +102,8 @@ def create_configured_pipeline() -> DocumentProcessingPipeline:
     # Use PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy for auto metadata generation
     processing_strategy = PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy()
 
+    upload_strategy = AzureCognitiveSearchDocumentUploadStrategy(processing_strategy=processing_strategy)
+
     # Initialize tracker for idempotent operations
     tracker = DocumentProcessingTracker()
 
@@ -107,6 +111,7 @@ def create_configured_pipeline() -> DocumentProcessingPipeline:
     pipeline = DocumentProcessingPipeline(
         discovery_strategy=discovery_strategy,
         processing_strategy=processing_strategy,
+        upload_strategy=upload_strategy,
         tracker=tracker
     )
     

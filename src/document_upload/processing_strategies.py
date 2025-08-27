@@ -334,6 +334,7 @@ class DocumentProcessingStrategy(ABC):
         """
         pass
     
+    @abstractmethod
     def process_single_document(self, file_path: Path) -> Optional[ProcessedDocument]:
         """
         Process a single document file. This method can be overridden by subclasses
@@ -345,41 +346,7 @@ class DocumentProcessingStrategy(ABC):
         Returns:
             ProcessedDocument: Processed document ready for search upload, or None if failed
         """
-        # Read the document
-        file_data = _read_document_file(file_path)
-        if not file_data:
-            return None
-        
-        content = file_data['content']
-        
-        # Extract metadata using strategy-specific logic
-        metadata = self.extract_metadata(content, file_path)
-        
-        # Generate chunks using strategy-specific chunking
-        chunks = self.chunk_document_content(content) if hasattr(self, 'chunk_document_content') else _simple_chunk_text(content)
-        
-        # Map metadata to search index fields
-        context_name = self.extract_context_info(metadata)
-        
-        # Prepare additional metadata as JSON
-        additional_metadata = self.prepare_additional_metadata(metadata)
-        
-        return ProcessedDocument(
-            document_id=self.generate_document_id(file_path),
-            file_path=str(file_path),
-            file_name=file_path.name,
-            file_type=metadata.get('file_type', 'unknown'),
-            title=metadata.get('title', file_path.stem),
-            content=content,
-            content_chunks=chunks,
-            tags=metadata.get('tags', []),
-            category=metadata.get('category', metadata.get('document_category')),
-            context_name=context_name,
-            last_modified=metadata.get('last_modified', datetime.now().isoformat() + 'Z'),
-            chunk_count=len(chunks),
-            processing_strategy=self.get_strategy_name(),
-            metadata_json=json.dumps(additional_metadata) if additional_metadata else None
-        )
+        pass
     
     @abstractmethod
     def extract_metadata(self, content: str, file_path: Path) -> Dict:
@@ -451,7 +418,54 @@ class PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy(Docum
     """
     
     def get_strategy_name(self) -> str:
-        return "PersonalDocumentationAssistant"
+        return "PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy"
+    
+    def process_single_document(self, file_path: Path) -> Optional[ProcessedDocument]:
+        """
+        Process a single document file. This method can be overridden by subclasses
+        for strategy-specific processing, but provides a default implementation.
+        
+        Args:
+            file_path: Path to the document file
+            
+        Returns:
+            ProcessedDocument: Processed document ready for search upload, or None if failed
+        """
+        # Read the document
+        file_data = _read_document_file(file_path)
+        if not file_data:
+            return None
+        
+        content = file_data['content']
+        
+        # Extract metadata using strategy-specific logic
+        metadata = self.extract_metadata(content, file_path)
+        
+        # Generate chunks using strategy-specific chunking
+        chunks = self.chunk_document_content(content) if hasattr(self, 'chunk_document_content') else _simple_chunk_text(content)
+        
+        # Map metadata to search index fields
+        context_name = self.extract_context_info(metadata)
+        
+        # Prepare additional metadata as JSON
+        additional_metadata = self.prepare_additional_metadata(metadata)
+        
+        return ProcessedDocument(
+            document_id=self.generate_document_id(file_path),
+            file_path=str(file_path),
+            file_name=file_path.name,
+            file_type=metadata.get('file_type', 'unknown'),
+            title=metadata.get('title', file_path.stem),
+            content=content,
+            content_chunks=chunks,
+            tags=metadata.get('tags', []),
+            category=metadata.get('category', metadata.get('document_category')),
+            context_name=context_name,
+            last_modified=metadata.get('last_modified', datetime.now().isoformat() + 'Z'),
+            chunk_count=len(chunks),
+            processing_strategy=self.get_strategy_name(),
+            metadata_json=json.dumps(additional_metadata) if additional_metadata else None
+        )
     
     def process_documents(self, discovered_files: List[Path]) -> DocumentProcessingResult:
         """Process documents with Personal Documentation Assistant focus."""
@@ -810,5 +824,388 @@ class PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy(Docum
             #     # Only 1 object in memory at any time vs 300+ without yield
 
             # Yield each search object
+            for search_object in search_objects:
+                yield search_object
+
+
+class PersonalDocumentationAssistantChromaDBProcessingStrategy(DocumentProcessingStrategy):
+    """
+    Processing strategy for Personal Documentation Assistant use case with ChromaDB.
+    
+    Focuses on work item organization and creates search objects optimized for ChromaDB
+    with local embeddings. Metadata is flattened to meet ChromaDB constraints.
+    """
+    
+    def get_strategy_name(self) -> str:
+        return "PersonalDocumentationAssistant_ChromaDB"
+    
+    def process_single_document(self, file_path: Path) -> Optional[ProcessedDocument]:
+        """
+        Process a single document file. This method can be overridden by subclasses
+        for strategy-specific processing, but provides a default implementation.
+        
+        Args:
+            file_path: Path to the document file
+            
+        Returns:
+            ProcessedDocument: Processed document ready for search upload, or None if failed
+        """
+        # Read the document
+        file_data = _read_document_file(file_path)
+        if not file_data:
+            return None
+        
+        content = file_data['content']
+        
+        # Extract metadata using strategy-specific logic
+        metadata = self.extract_metadata(content, file_path)
+        
+        # Generate chunks using strategy-specific chunking
+        chunks = self.chunk_document_content(content) if hasattr(self, 'chunk_document_content') else _simple_chunk_text(content)
+        
+        # Map metadata to search index fields
+        context_name = self.extract_context_info(metadata)
+        
+        return ProcessedDocument(
+            document_id=self.generate_document_id(file_path),
+            file_path=str(file_path),
+            file_name=file_path.name,
+            file_type=metadata.get('file_type', 'unknown'),
+            title=metadata.get('title', file_path.stem),
+            content=content,
+            content_chunks=chunks,
+            tags=metadata.get('tags', []),
+            category=metadata.get('category', metadata.get('document_category')),
+            context_name=context_name,
+            last_modified=metadata.get('last_modified', datetime.now().isoformat() + 'Z'),
+            chunk_count=len(chunks),
+            processing_strategy=self.get_strategy_name(),
+            metadata_json=json.dumps(metadata) if metadata else None
+        )
+    
+    def process_documents(self, discovered_files: List[Path]) -> DocumentProcessingResult:
+        """Process documents with Personal Documentation Assistant focus for ChromaDB."""
+        start_time = datetime.now()
+        processed_documents = []
+        errors = []
+        successfully_processed = 0
+        failed_documents = 0
+        
+        # Track work item statistics
+        work_items_found = set()
+        
+        print(f"      🔄 Processing {len(discovered_files)} discovered documents for ChromaDB...")
+        
+        for i, file_path in enumerate(discovered_files, 1):
+            try:
+                print(f"         {i:2d}/{len(discovered_files)}: Processing {file_path.name}...", end=" ")
+                
+                processed_doc = self.process_single_document(file_path)
+                if processed_doc:
+                    processed_documents.append(processed_doc)
+                    successfully_processed += 1
+                    
+                    # Track work items
+                    if processed_doc.context_name:
+                        work_items_found.add(processed_doc.context_name)
+                    
+                    print(f"✅ ({processed_doc.chunk_count} chunks)")
+                else:
+                    failed_documents += 1
+                    errors.append(f"Failed to process: {file_path}")
+                    print("❌ Failed to process")
+                    
+            except Exception as e:
+                failed_documents += 1
+                errors.append(f"Error processing {file_path}: {str(e)}")
+                print(f"❌ Error: {str(e)}")
+        
+        processing_time = (datetime.now() - start_time).total_seconds()
+        
+        # Strategy-specific metadata
+        strategy_metadata = {
+            "work_items_count": len(work_items_found),
+            "work_items_found": list(work_items_found),
+            "documents_per_work_item": {
+                work_item: len([doc for doc in processed_documents if doc.context_name == work_item])
+                for work_item in work_items_found
+            },
+            "vector_service": "ChromaDB",
+            "embedding_service": "local"
+        }
+        
+        return DocumentProcessingResult(
+            total_documents=len(discovered_files),
+            successfully_processed=successfully_processed,
+            failed_documents=failed_documents,
+            processed_documents=processed_documents,
+            processing_time=processing_time,
+            errors=errors,
+            strategy_name=self.get_strategy_name(),
+            strategy_metadata=strategy_metadata
+        )
+    
+    def extract_context_info(self, metadata: Dict) -> Optional[str]:
+        """Extract work item information as context."""
+        context_name = metadata.get('work_item_id')
+        return context_name
+    
+    def extract_metadata(self, content: str, file_path: Path) -> Dict:
+        """
+        Extract comprehensive metadata using Personal Documentation Assistant strategy.
+        
+        Reuses the same metadata extraction logic as Azure strategy but ensures
+        all metadata values are ChromaDB-compatible (strings or numbers only).
+        """
+        try:
+            # Determine file type
+            file_extension = file_path.suffix.lower()
+            file_type = self._get_file_type(file_extension)
+            
+            # Initialize metadata
+            metadata = {}
+            
+            # Extract frontmatter if markdown file
+            post = None
+            clean_content = content
+            if file_type == 'markdown':
+                try:
+                    post = frontmatter.loads(content)
+                    metadata = dict(post.metadata) if post.metadata else {}
+                    clean_content = post.content if post.metadata else content
+                except:
+                    pass  # If frontmatter parsing fails, use content as-is
+            
+            # Extract work item ID from directory structure (primary strategy)
+            work_item_id = self._extract_work_item_id(file_path)
+            metadata['work_item_id'] = work_item_id
+            metadata['file_type'] = file_type
+            
+            # Add the cleaned content to metadata
+            metadata['content'] = clean_content
+            
+            # Extract title using strategy priority
+            metadata['title'] = self._extract_title(clean_content, file_path, metadata, file_type)
+            
+            # Extract tags/keywords using comprehensive strategy
+            metadata['tags'] = self._extract_tags(clean_content, file_path, metadata, file_type, work_item_id, post)
+            
+            # Add file system metadata
+            metadata.update(self._extract_file_system_metadata(file_path))
+            
+            return metadata
+            
+        except Exception as e:
+            # Return minimal metadata on error
+            return self._get_error_metadata(file_path, str(e))
+    
+    def _get_file_type(self, file_extension: str) -> str:
+        """Map file extension to file type."""
+        type_mapping = {
+            '.md': 'markdown',
+            '.txt': 'text', 
+            '.docx': 'document'
+        }
+        return type_mapping.get(file_extension, 'unknown')
+    
+    def _extract_work_item_id(self, file_path: Path) -> str:
+        """Extract work item ID from directory structure."""
+        work_item_dir = file_path.parent
+        return work_item_dir.name
+    
+    def _extract_title(self, content: str, file_path: Path, metadata: Dict, file_type: str) -> str:
+        """Extract title using Personal Documentation Assistant strategy."""
+        filename_title = file_path.stem.replace('_', ' ').replace('-', ' ')
+        formatted_title = ' '.join(word.capitalize() for word in filename_title.split())
+        return formatted_title
+    
+    def _extract_tags(self, content: str, file_path: Path, metadata: Dict, 
+                     file_type: str, work_item_id: str, post) -> list:
+        """Extract tags/keywords using Personal Documentation Assistant strategy."""
+        tags = set()
+        
+        # Add work item ID as primary tag
+        tags.add(work_item_id.lower())
+        
+        # Add file type as tag
+        tags.add(file_type)
+        
+        # Add filename (stem without extension) as tag for better searchability
+        filename_tag = file_path.stem.lower().replace('_', '-').replace(' ', '-')
+        tags.add(filename_tag)
+        
+        return sorted(list(tags))
+    
+    def _extract_file_system_metadata(self, file_path: Path) -> Dict:
+        """Extract file system metadata."""
+        file_stat = file_path.stat()
+        last_modified_dt = datetime.fromtimestamp(file_stat.st_mtime)
+        
+        return {
+            'last_modified': last_modified_dt.isoformat() + 'Z',
+            'work_item_directory': str(file_path.parent),
+            'directory_path': str(file_path.parent)
+        }
+    
+    def _get_error_metadata(self, file_path: Path, error_message: str) -> Dict:
+        """Return minimal metadata when extraction fails."""
+        filename_tag = file_path.stem.lower().replace('_', '-').replace(' ', '-')
+        
+        return {
+            'file_type': 'unknown',
+            'title': file_path.stem,
+            'tags': [file_path.parent.name, 'error', filename_tag],
+            'work_item_id': file_path.parent.name,
+            'last_modified': datetime.now().isoformat() + 'Z',
+            'extraction_error': error_message
+        }
+    
+    def chunk_document_content(self, content: str, max_chunk_size: int = 4000) -> List[str]:
+        """Chunk document content for ChromaDB processing."""
+        return _simple_chunk_text(content, max_chunk_size)
+    
+    async def generate_chunk_embeddings(self, chunks: List[str]) -> List[List[float]]:
+        """
+        Generate embeddings for document chunks using local embedding service.
+        
+        Args:
+            chunks: List of text chunks to generate embeddings for
+            
+        Returns:
+            List[List[float]]: List of embedding vectors
+        """
+        from src.common.embedding_services.embedding_service_factory import get_embedding_generator
+        
+        embedding_generator = get_embedding_generator()
+        embeddings = []
+        
+        for i, chunk in enumerate(chunks):
+            try:
+                embedding = await embedding_generator.generate_embedding(chunk)
+                if embedding is None:
+                    print(f"Warning: Failed to generate embedding for chunk {i}")
+                    embeddings.append([])  # Empty vector as fallback
+                else:
+                    embeddings.append(embedding)
+            except Exception as e:
+                print(f"Error generating embedding for chunk {i}: {e}")
+                embeddings.append([])  # Empty vector as fallback
+        
+        return embeddings
+    
+    def _flatten_metadata_for_chromadb(self, metadata_json_str: str) -> Dict[str, Any]:
+        """
+        Flatten complex metadata for ChromaDB compatibility.
+        ChromaDB only accepts string or number values in metadata.
+        
+        Args:
+            metadata_json_str: JSON string containing complex metadata
+            
+        Returns:
+            Dict with flattened string/number values only
+        """
+        if not metadata_json_str:
+            return {}
+            
+        try:
+            metadata = json.loads(metadata_json_str)
+            flattened = {}
+            
+            def flatten_dict(obj, prefix=''):
+                for key, value in obj.items():
+                    new_key = f"{prefix}{key}" if prefix else key
+                    
+                    if isinstance(value, (str, int, float)):
+                        flattened[new_key] = value
+                    elif isinstance(value, bool):
+                        flattened[new_key] = str(value).lower()
+                    elif isinstance(value, list):
+                        # Convert lists to comma-separated strings
+                        flattened[new_key] = ', '.join(str(item) for item in value)
+                    elif isinstance(value, dict):
+                        # Recursively flatten nested dictionaries
+                        flatten_dict(value, f"{new_key}_")
+                    else:
+                        # Convert other types to string
+                        flattened[new_key] = str(value)
+            
+            flatten_dict(metadata)
+            return flattened
+            
+        except (json.JSONDecodeError, TypeError):
+            return {}
+    
+    def create_chromadb_search_objects(self, processed_doc: ProcessedDocument, 
+                                      chunk_embeddings: List[List[float]]) -> List[Dict[str, Any]]:
+        """
+        Create ChromaDB-optimized search objects for each chunk of a document.
+        
+        Args:
+            processed_doc: Processed document with metadata and chunks
+            chunk_embeddings: List of embedding vectors for each chunk
+            
+        Returns:
+            List[Dict[str, Any]]: List of ChromaDB search objects, one per chunk
+        """
+        search_objects = []
+        
+        # Flatten additional metadata for ChromaDB
+        flattened_metadata = self._flatten_metadata_for_chromadb(processed_doc.metadata_json)
+        
+        for chunk_index, (chunk_content, embedding) in enumerate(zip(processed_doc.content_chunks, chunk_embeddings)):
+            # Store both comma-separated tags AND individual tag fields for better querying
+            tags_str = ', '.join(processed_doc.tags) if isinstance(processed_doc.tags, list) else str(processed_doc.tags) if processed_doc.tags else ''
+            
+            # Create enhanced chunk index for better identification
+            enhanced_chunk_index = f"{processed_doc.file_name}_chunk_{chunk_index}"
+            
+            # Create ChromaDB-compatible search object
+            search_object = {
+                "id": f"{processed_doc.document_id}_chunk_{chunk_index}",
+                "content": chunk_content,
+                "content_vector": embedding,
+                "file_path": processed_doc.file_path,
+                "file_name": processed_doc.file_name,
+                "file_type": processed_doc.file_type,
+                "title": processed_doc.title,
+                "tags": tags_str,
+                "category": processed_doc.category or "",
+                "context_name": processed_doc.context_name or "",
+                "last_modified": processed_doc.last_modified,
+                "chunk_index": enhanced_chunk_index,
+                "processing_strategy": processed_doc.processing_strategy
+            }
+            
+            # Add tag count for filtering if tags exist
+            if processed_doc.tags:
+                search_object["tag_count"] = len(processed_doc.tags)
+            
+            # Add flattened metadata fields directly to the search object
+            search_object.update(flattened_metadata)
+            
+            search_objects.append(search_object)
+        
+        return search_objects
+    
+    async def create_search_index_objects(self, processed_documents: List[ProcessedDocument]):
+        """
+        Create ChromaDB search objects optimized for Personal Documentation Assistant.
+        
+        Creates chunk-based objects with local embeddings and flattened metadata
+        compatible with ChromaDB constraints.
+        """
+        for doc in processed_documents:
+            # Generate embeddings for all chunks of this document
+            try:
+                chunk_embeddings = await self.generate_chunk_embeddings(doc.content_chunks)
+            except Exception as e:
+                print(f"Error generating embeddings for document {doc.file_name}: {e}")
+                # Create empty embeddings as fallback
+                chunk_embeddings = [[] for _ in doc.content_chunks]
+            
+            # Create ChromaDB search objects for each chunk with its embedding and metadata
+            search_objects = self.create_chromadb_search_objects(doc, chunk_embeddings)
+            
+            # Yield each search object for memory efficiency
             for search_object in search_objects:
                 yield search_object
