@@ -35,7 +35,7 @@ sys.path.insert(0, str(src_dir))
 
 # Import project modules
 from src.common.vector_search_services.azure_cognitive_search import get_azure_search_service
-from document_upload.file_tracker import DocumentProcessingTracker
+from src.document_upload.document_processing_tracker import DocumentProcessingTracker
 from document_upload.processing_strategies import (
     PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy, 
     AZURE_SEARCH_INDEX_FIELDS

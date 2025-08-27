@@ -211,15 +211,6 @@ def test_connection():
             print(f"   Service: {search_service.service_name}")
             print(f"   Endpoint: {search_service.endpoint}")
             print(f"   Target index: {search_service.index_name}")
-            
-            # Test embedding service connectivity if available
-            try:
-                from src.common.embedding_services.embedding_service_factory import get_embedding_generator
-                embedding_generator = get_embedding_generator()
-                print(f"   Embedding service: Available")
-            except Exception as e:
-                print(f"   ⚠️  Embedding service: Not available ({e})")
-                
         else:
             print("❌ Connection to Azure Cognitive Search failed")
             print("   Check your environment variables and network connectivity")

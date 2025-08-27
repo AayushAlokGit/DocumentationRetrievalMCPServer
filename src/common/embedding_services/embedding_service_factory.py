@@ -28,8 +28,8 @@ def get_embedding_generator(provider: str = None):
     """
     # Auto-detect provider if not specified
     if provider is None:
-        provider = 'local'
-    
+        provider = os.getenv('EMBEDDING_PROVIDER_SERVICE', 'local')
+
     print(f"[INFO] Using embedding provider: {provider}")
     
     if provider in ('local', 'sentence-transformers'):
