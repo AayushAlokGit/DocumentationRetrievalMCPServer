@@ -37,7 +37,7 @@ sys.path.insert(0, str(src_dir))
 from src.common.vector_search_services.azure_cognitive_search import get_azure_search_service
 from document_upload.file_tracker import DocumentProcessingTracker
 from document_upload.processing_strategies import (
-    PersonalDocumentationAssistantProcessingStrategy, 
+    PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy, 
     AZURE_SEARCH_INDEX_FIELDS
 )
 from document_upload.discovery_strategies import GeneralDocumentDiscoveryStrategy
@@ -121,7 +121,7 @@ def validate_metadata_schema(metadata: Dict[str, Any]) -> Tuple[bool, List[str]]
     return is_valid, errors
 
 
-class DirectMetadataProcessingStrategy(PersonalDocumentationAssistantProcessingStrategy):
+class DirectMetadataProcessingStrategy(PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy):
     """Strategy that injects provided metadata directly into processed documents
     
     This strategy completely overrides metadata extraction to provide maximum

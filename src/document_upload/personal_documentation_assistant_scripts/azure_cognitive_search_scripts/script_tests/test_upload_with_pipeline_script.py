@@ -47,7 +47,7 @@ sys.path.insert(0, str(src_dir))
 from src.common.vector_search_services.azure_cognitive_search import get_azure_search_service
 from document_upload.file_tracker import DocumentProcessingTracker
 from document_upload.document_processing_pipeline import DocumentProcessingPipeline
-from document_upload.processing_strategies import PersonalDocumentationAssistantProcessingStrategy
+from document_upload.processing_strategies import PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy
 from document_upload.discovery_strategies import GeneralDocumentDiscoveryStrategy
 
 
@@ -166,7 +166,7 @@ This document tests the complete upload_with_pipeline.py functionality including
 
 ### Pipeline Validation Points
 - Document discovery using GeneralDocumentDiscoveryStrategy
-- Processing with PersonalDocumentationAssistantProcessingStrategy
+- Processing with PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy
 - Upload to Azure Search with embeddings
 - Tracker state management and persistence
 
@@ -249,7 +249,7 @@ Testing comprehensive pipeline functionality with realistic document structure.
             
             # Create configured pipeline (no force_reprocess needed for this test)
             discovery_strategy = GeneralDocumentDiscoveryStrategy()
-            processing_strategy = PersonalDocumentationAssistantProcessingStrategy()
+            processing_strategy = PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy()
             tracker = DocumentProcessingTracker()
             
             pipeline = DocumentProcessingPipeline(
@@ -308,7 +308,7 @@ Testing comprehensive pipeline functionality with realistic document structure.
             
             # Create configured pipeline
             discovery_strategy = GeneralDocumentDiscoveryStrategy()
-            processing_strategy = PersonalDocumentationAssistantProcessingStrategy()
+            processing_strategy = PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy()
             tracker = DocumentProcessingTracker()
             
             pipeline = DocumentProcessingPipeline(
@@ -465,7 +465,7 @@ Testing comprehensive pipeline functionality with realistic document structure.
             # Create pipeline and run again - should skip processed files
             # Use a fresh tracker that loads from file to test persistence
             discovery_strategy = GeneralDocumentDiscoveryStrategy()
-            processing_strategy = PersonalDocumentationAssistantProcessingStrategy()
+            processing_strategy = PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy()
             fresh_tracker = DocumentProcessingTracker()  # Fresh tracker loads from saved file
             
             pipeline = DocumentProcessingPipeline(
@@ -522,7 +522,7 @@ Testing comprehensive pipeline functionality with realistic document structure.
             
             # Create pipeline with force_reprocess=True
             discovery_strategy = GeneralDocumentDiscoveryStrategy()
-            processing_strategy = PersonalDocumentationAssistantProcessingStrategy()
+            processing_strategy = PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy()
             tracker = DocumentProcessingTracker()
             
             # Note: Since we removed force_reprocess from upload_with_pipeline.py,

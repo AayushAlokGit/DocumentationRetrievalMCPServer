@@ -8,7 +8,7 @@ create different Azure Cognitive Search index objects.
 
 This module is specifically designed for the Personal Documentation Assistant MCP Server
 and contains strategies tailored to work item-based document organization:
-- PersonalDocumentationAssistantProcessingStrategy: Work item-focused processing
+- PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy: Work item-focused processing for AzureCognitiveSearch
 - Future strategies: Could include project-specific, category-specific, or other 
   domain-specific processing approaches for the Personal Documentation Assistant
 """
@@ -442,7 +442,7 @@ class DocumentProcessingStrategy(ABC):
         return hashlib.md5(path_str.encode()).hexdigest()
 
 
-class PersonalDocumentationAssistantProcessingStrategy(DocumentProcessingStrategy):
+class PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy(DocumentProcessingStrategy):
     """
     Processing strategy for Personal Documentation Assistant use case.
     

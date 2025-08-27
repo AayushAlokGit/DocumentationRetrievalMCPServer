@@ -45,7 +45,7 @@ sys.path.insert(0, str(src_dir))
 from src.common.vector_search_services.azure_cognitive_search import get_azure_search_service
 from document_upload.file_tracker import DocumentProcessingTracker
 from document_upload.document_processing_pipeline import DocumentProcessingPipeline
-from document_upload.processing_strategies import PersonalDocumentationAssistantProcessingStrategy
+from document_upload.processing_strategies import PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy
 from document_upload.discovery_strategies import GeneralDocumentDiscoveryStrategy
 
 # Load environment variables
@@ -97,8 +97,8 @@ def create_configured_pipeline() -> DocumentProcessingPipeline:
     # (eliminates need for manual path type checking like in Script 1)
     discovery_strategy = GeneralDocumentDiscoveryStrategy()
 
-    # Use PersonalDocumentationAssistantProcessingStrategy for auto metadata generation
-    processing_strategy = PersonalDocumentationAssistantProcessingStrategy()
+    # Use PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy for auto metadata generation
+    processing_strategy = PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy()
 
     # Initialize tracker for idempotent operations
     tracker = DocumentProcessingTracker()

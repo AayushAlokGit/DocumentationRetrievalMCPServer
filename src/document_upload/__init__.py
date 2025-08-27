@@ -7,12 +7,12 @@ Includes document processing, file tracking, and upload utilities.
 """
 
 from .file_tracker import DocumentProcessingTracker
-from .processing_strategies import PersonalDocumentationAssistantProcessingStrategy, DocumentProcessingStrategy
+from .processing_strategies import PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy, DocumentProcessingStrategy
 from .discovery_strategies import PersonalDocumentationDiscoveryStrategy, DocumentDiscoveryStrategy
 
 __all__ = [
     'DocumentProcessingTracker',
-    'PersonalDocumentationAssistantProcessingStrategy',
+    'PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy',
     'DocumentProcessingStrategy',
     'PersonalDocumentationDiscoveryStrategy',
     'DocumentDiscoveryStrategy'

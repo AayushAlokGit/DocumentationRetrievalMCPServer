@@ -168,15 +168,15 @@ class DocumentProcessingPhase:
         Initialize the document processing phase.
         
         Args:
-            processing_strategy: Strategy to use for document processing (default: PersonalDocumentationAssistantProcessingStrategy)
+            processing_strategy: Strategy to use for document processing (default: PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy)
         """
         if processing_strategy is not None:
             self.strategy = processing_strategy
         else:
-            # Use PersonalDocumentationAssistantProcessingStrategy as default
-            from document_upload.processing_strategies import PersonalDocumentationAssistantProcessingStrategy
-            self.strategy = PersonalDocumentationAssistantProcessingStrategy()
-    
+            # Use PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy as default
+            from document_upload.processing_strategies import PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy
+            self.strategy = PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy()
+
     def process_documents(self, discovered_files: List[Path]) -> DocumentProcessingResult:
         """
         Process all discovered documents using the configured strategy.
@@ -287,15 +287,15 @@ class DocumentUploadPhase:
         
         Args:
             azure_search_service: Azure search service instance (default: from environment config)
-            processing_strategy: Processing strategy to create search objects (default: PersonalDocumentationAssistantProcessingStrategy)
+            processing_strategy: Processing strategy to create search objects (default: PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy)
         """
         self.azure_search_service = azure_search_service
         if processing_strategy is not None:
             self.processing_strategy = processing_strategy
         else:
-            # Use PersonalDocumentationAssistantProcessingStrategy as default
-            from document_upload.processing_strategies import PersonalDocumentationAssistantProcessingStrategy
-            self.processing_strategy = PersonalDocumentationAssistantProcessingStrategy()
+            # Use PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy as default
+            from document_upload.processing_strategies import PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy
+            self.processing_strategy = PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy()
     
     async def upload_documents(self, processed_documents: List[ProcessedDocument], 
                         service_name: str, admin_key: str, index_name: str, 
@@ -454,7 +454,7 @@ class DocumentProcessingPipeline:
         
         Args:
             discovery_strategy: Strategy for document discovery (default: PersonalDocumentationDiscoveryStrategy)
-            processing_strategy: Strategy for document processing (default: PersonalDocumentationAssistantProcessingStrategy)
+            processing_strategy: Strategy for document processing (default: PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy)
             azure_search_service: Azure search service instance (default: from environment config)
             tracker: DocumentProcessingTracker instance (default: create new tracker)
             force_reprocess: If True, force reprocessing of already processed files

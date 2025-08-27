@@ -50,7 +50,7 @@ sys.path.insert(0, str(src_dir))
 from src.common.vector_search_services.azure_cognitive_search import get_azure_search_service
 from document_upload.file_tracker import DocumentProcessingTracker
 from document_upload.document_processing_pipeline import DocumentProcessingPipeline
-from document_upload.processing_strategies import PersonalDocumentationAssistantProcessingStrategy
+from document_upload.processing_strategies import PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy
 from document_upload.discovery_strategies import GeneralDocumentDiscoveryStrategy
 
 
@@ -247,7 +247,7 @@ Final paragraph to complete the test document with sufficient content for chunki
             for temp_dir in self.temp_dirs:
                 # Create pipeline for this directory
                 discovery_strategy = GeneralDocumentDiscoveryStrategy()
-                processing_strategy = PersonalDocumentationAssistantProcessingStrategy()
+                processing_strategy = PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy()
                 tracker = DocumentProcessingTracker()
                 
                 pipeline = DocumentProcessingPipeline(
