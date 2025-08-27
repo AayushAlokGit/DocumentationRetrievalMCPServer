@@ -24,20 +24,10 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from document_upload.discovery_strategies import DocumentDiscoveryStrategy, DocumentDiscoveryResult
 from document_upload.processing_strategies import DocumentProcessingStrategy, ProcessedDocument, DocumentProcessingResult
+from document_upload.upload_strategies import DocumentUploadStrategy, DocumentUploadResult
 
 # Import Azure search service for upload phase
 from src.common.vector_search_services.azure_cognitive_search import get_azure_search_service
-
-
-@dataclass
-class DocumentUploadResult:
-    """Result of the document upload phase."""
-    total_search_objects: int
-    successfully_uploaded: int
-    failed_uploads: int
-    upload_time: float
-    errors: List[str]
-    upload_metadata: Optional[Dict[str, Any]] = None
 
 
 class DocumentDiscoveryPhase:
@@ -276,145 +266,40 @@ class DocumentUploadPhase:
     """
     Phase 3: Document Upload
     
-    Responsible for uploading processed documents to Azure Cognitive Search.
-    This phase takes the processed documents, creates search index objects with embeddings,
-    and uploads them to the Azure search service.
+    Responsible for uploading processed documents using configurable upload strategies.
+    Different strategies can handle different vector search services (Azure, ChromaDB, etc.).
     """
     
-    def __init__(self, azure_search_service=None, processing_strategy=None):
+    def __init__(self, upload_strategy: DocumentUploadStrategy = None):
         """
         Initialize the document upload phase.
         
         Args:
-            azure_search_service: Azure search service instance (default: from environment config)
-            processing_strategy: Processing strategy to create search objects (default: PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy)
+            upload_strategy: Strategy to use for document upload (default: AzureCognitiveSearchUploadStrategy)
         """
-        self.azure_search_service = azure_search_service
-        if processing_strategy is not None:
-            self.processing_strategy = processing_strategy
-        else:
-            # Use PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy as default
-            from document_upload.processing_strategies import PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy
-            self.processing_strategy = PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy()
+        if upload_strategy is None:
+            raise ValueError("Document Upload Strategy should be provided for the Document Upload Phase")
+        self.upload_strategy = upload_strategy
     
     async def upload_documents(self, processed_documents: List[ProcessedDocument], 
-                        service_name: str, admin_key: str, index_name: str, 
-                        tracker=None) -> DocumentUploadResult:
+                             tracker=None, **kwargs) -> DocumentUploadResult:
         """
-        Upload processed documents to Azure Cognitive Search.
-        
-        This method processes each document individually:
-        1. Creates search index objects with embeddings for each document
-        2. Uploads the objects to Azure Cognitive Search immediately
-        3. Marks successfully uploaded files as processed in the tracker immediately
+        Upload processed documents using the configured strategy.
         
         Args:
-            processed_documents: List of processed documents from Phase 2
-            service_name: Azure Search service name
-            admin_key: Azure Search admin key
-            index_name: Azure Search index name
+            processed_documents: List of processed documents from Processing Phase 
             tracker: DocumentProcessingTracker instance for marking files as processed
+            **kwargs: Additional strategy-specific parameters
             
         Returns:
             DocumentUploadResult: Upload results with statistics and errors
         """
-        start_time = datetime.now()
-        total_search_objects = 0
-        successfully_uploaded = 0
-        failed_uploads = 0
-        errors = []
-        successfully_uploaded_files = []
-        failed_upload_files = []
-        
-        print(f"   📤 Uploading {len(processed_documents)} processed documents to Azure Search...")
-        
-        # Initialize Azure search service if not provided
-        if self.azure_search_service is None:
-            self.azure_search_service = get_azure_search_service(service_name, admin_key, index_name)
-        
-        # Process each document individually
-        for doc_idx, processed_doc in enumerate(processed_documents, 1):
-            try:
-                print(f"   📄 Document {doc_idx}/{len(processed_documents)}: {processed_doc.file_name}")
-                
-                # Create search index objects for this document
-                print(f"      🔄 Creating search objects with embeddings...")
-                
-                # Collect search objects for this document
-                doc_search_objects = []
-                async for search_object in self.processing_strategy.create_search_index_objects([processed_doc]):
-                    doc_search_objects.append(search_object)
-                
-                doc_total_objects = len(doc_search_objects)
-                total_search_objects += doc_total_objects
-                
-                print(f"      📊 Generated {doc_total_objects} search objects")
-                
-                if doc_search_objects:
-                    # Upload this document's search objects to Azure Search
-                    print(f"      📤 Uploading {doc_total_objects} objects to Azure Search...", end=" ")
-                    
-                    successful, failed = self.azure_search_service.upload_search_objects_batch(doc_search_objects)
-                    
-                    successfully_uploaded += successful
-                    failed_uploads += failed
-                    
-                    if failed > 0:
-                        error_msg = f"Document {doc_idx} ({processed_doc.file_name}): {failed}/{doc_total_objects} objects failed to upload"
-                        errors.append(error_msg)
-                        print(f"⚠️  ({successful} succeeded, {failed} failed)")
-                        failed_upload_files.append(Path(processed_doc.file_path))
-                    else:
-                        print("✅")
-                        successfully_uploaded_files.append(Path(processed_doc.file_path))
-                        
-                        # Mark file as processed immediately after successful upload
-                        if tracker is not None:
-                            tracker.mark_processed(Path(processed_doc.file_path), processed_doc.metadata)
-                            print(f"      📋 Marked as processed in tracker")
-                else:
-                    error_msg = f"Document {doc_idx} ({processed_doc.file_name}): No search objects generated"
-                    errors.append(error_msg)
-                    print(f"      ❌ No search objects generated")
-                    failed_upload_files.append(Path(processed_doc.file_path))
-                    
-            except Exception as e:
-                error_msg = f"Document {doc_idx} ({processed_doc.file_name}): Upload error - {str(e)}"
-                errors.append(error_msg)
-                print(f"      ❌ Error: {str(e)}")
-                # Count all potential objects from this document as failed
-                failed_uploads += processed_doc.chunk_count  # Estimate based on chunk count
-                failed_upload_files.append(Path(processed_doc.file_path))
-        
-        # Save tracker after all uploads are complete
-        if tracker is not None and successfully_uploaded_files:
-            tracker.save()
-            print(f"   📋 Saved tracker with {len(successfully_uploaded_files)} successfully processed files")
-        
-        upload_time = (datetime.now() - start_time).total_seconds()
-        
-        # Create upload metadata
-        upload_metadata = {
-            "documents_processed": len(processed_documents),
-            "documents_successfully_uploaded": len(successfully_uploaded_files),
-            "documents_failed_upload": len(failed_upload_files),
-            "individual_document_processing": True,
-            "average_objects_per_document": total_search_objects / len(processed_documents) if processed_documents else 0,
-            "processing_mode": "individual_document_upload_with_immediate_tracking"
-        }
-        
-        return DocumentUploadResult(
-            total_search_objects=total_search_objects,
-            successfully_uploaded=successfully_uploaded,
-            failed_uploads=failed_uploads,
-            upload_time=upload_time,
-            errors=errors,
-            upload_metadata=upload_metadata
-        )
+        return await self.upload_strategy.upload_documents(processed_documents, tracker, **kwargs)
     
     def print_upload_summary(self, result: DocumentUploadResult):
         """Print a summary of the upload phase results."""
-        print(f"\n📤 Document Upload Phase Complete")
+        print(f"\n� Document Upload Phase Complete")
+        print(f"   Strategy: {result.strategy_name}")
         print(f"   Total search objects: {result.total_search_objects}")
         print(f"   Successfully uploaded: {result.successfully_uploaded}")
         print(f"   Failed uploads: {result.failed_uploads}")
@@ -446,7 +331,7 @@ class DocumentProcessingPipeline:
     def __init__(self, 
                  discovery_strategy: DocumentDiscoveryStrategy = None,
                  processing_strategy: DocumentProcessingStrategy = None,
-                 azure_search_service=None,
+                 upload_strategy: DocumentUploadStrategy = None,
                  tracker=None,
                  force_reprocess: bool = False):
         """
@@ -455,19 +340,19 @@ class DocumentProcessingPipeline:
         Args:
             discovery_strategy: Strategy for document discovery (default: PersonalDocumentationDiscoveryStrategy)
             processing_strategy: Strategy for document processing (default: PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy)
-            azure_search_service: Azure search service instance (default: from environment config)
+            upload_strategy: Strategy for document upload (default: AzureCognitiveSearchUploadStrategy)
             tracker: DocumentProcessingTracker instance (default: create new tracker)
             force_reprocess: If True, force reprocessing of already processed files
         """
         self.discovery_phase = DocumentDiscoveryPhase(discovery_strategy)
         self.processing_phase = DocumentProcessingPhase(processing_strategy)
-        self.upload_phase = DocumentUploadPhase(azure_search_service, processing_strategy)
+        self.upload_phase = DocumentUploadPhase(upload_strategy)
         
         # Initialize document tracker
         if tracker is not None:
             self.tracker = tracker
         else:
-            from document_upload.file_tracker import DocumentProcessingTracker
+            from .document_processing_tracker import DocumentProcessingTracker
             self.tracker = DocumentProcessingTracker()
         
         self.force_reprocess = force_reprocess
@@ -482,10 +367,6 @@ class DocumentProcessingPipeline:
         Returns:
             Tuple of (unprocessed_files, total_discovered, already_processed_count)
         """
-        if self.force_reprocess:
-            print(f"   🔄 Force reprocess enabled - processing all {len(discovered_files)} files")
-            return discovered_files, len(discovered_files), 0
-        
         unprocessed_files = []
         already_processed = 0
         
@@ -502,69 +383,30 @@ class DocumentProcessingPipeline:
         
         return unprocessed_files, len(discovered_files), already_processed
     
-    def force_cleanup_files(self, discovered_files: List[Path], service_name: str, admin_key: str, index_name: str):
+    def force_cleanup_files(self):
         """
         Clean up files when force reprocess is enabled.
         
         This method:
-        1. Removes files from the document tracker
-        2. Removes corresponding documents from the search index
+        1. Removes All files from the document tracker
+        2. Removes All documents from the search service
         
-        Args:
-            discovered_files: List of file paths that will be reprocessed
-            service_name: Azure Search service name
-            admin_key: Azure Search admin key  
-            index_name: Azure Search index name
         """
         if not self.force_reprocess:
             return
         
         print(f"\n🧹 Force Cleanup Phase (Force Reprocess Enabled)")
-        print(f"   🔄 Cleaning up {len(discovered_files)} files from tracker and search index...")
         
-        # Step 1: Remove files from document tracker
-        files_removed_from_tracker = 0
-        for file_path in discovered_files:
-            if self.tracker.is_processed(file_path):
-                self.tracker.mark_unprocessed(file_path)
-                files_removed_from_tracker += 1
-        
+        # Step 1: Clean the document tracker
+        files_removed_from_tracker = self.tracker.get_stats()['total_processed']
+        self.tracker.reset()
         # Save tracker changes
         self.tracker.save()
         print(f"   📋 Removed {files_removed_from_tracker} files from document tracker")
         
-        # Step 2: Remove corresponding documents from search index
-        try:
-            # Initialize Azure search service if not already done
-            if self.upload_phase.azure_search_service is None:
-                from src.common.vector_search_services.azure_cognitive_search import get_azure_search_service
-                self.upload_phase.azure_search_service = get_azure_search_service(service_name, admin_key, index_name)
-            
-            # Delete documents from search index based on file paths
-            print(f"   🗑️  Removing documents from search index...")
-            total_deleted_count = 0
-            
-            for file_path in discovered_files:
-                try:
-                    # Use the filename to delete documents using the filter method
-                    file_name = file_path.name
-                    deleted_count = self.upload_phase.azure_search_service.delete_documents_by_filter({"file_name": file_name})
-                    total_deleted_count += deleted_count
-                    
-                    if deleted_count > 0:
-                        print(f"      ✅ Deleted {deleted_count} documents for {file_name}")
-                    else:
-                        print(f"      ℹ️  No documents found for {file_name}")
-                        
-                except Exception as e:
-                    print(f"      ⚠️  Error deleting documents for {file_path.name}: {str(e)}")
-            
-            print(f"   🗑️  Removed {total_deleted_count} total documents from search index")
-            
-        except Exception as e:
-            print(f"   ❌ Error during search index cleanup: {str(e)}")
-            print(f"   ⚠️  Continuing with reprocessing despite cleanup errors...")
-        
+        # Step 2: Remove all documents from search service
+        self.upload_phase.upload_strategy.delete_all_documents_from_service()
+
         print(f"   ✅ Force cleanup completed - ready for reprocessing")
     
     async def run_complete_pipeline(self, root_directory: str, 
@@ -585,15 +427,16 @@ class DocumentProcessingPipeline:
         """
         print("🚀 Starting Complete Document Processing Pipeline")
         print("=" * 60)
+
+                
+        # Force Cleanup (Emtpy the search service of all documents and clean up the tracker)
+        if self.force_reprocess:
+            self.force_cleanup_files()
         
         # Phase 1: Discovery
         print("\n📁 Phase 1: Document Discovery")
         discovery_result = self.discovery_phase.discover_documents(root_directory, **kwargs)
         self.discovery_phase.print_discovery_summary(discovery_result)
-        
-        # Phase 1.5: Force Cleanup (if force reprocess is enabled)
-        if discovery_result.discovered_files and self.force_reprocess:
-            self.force_cleanup_files(discovery_result.discovered_files, service_name, admin_key, index_name)
         
         # Phase 1.6: Filter files using tracker (unless force reprocess)
         if discovery_result.discovered_files:
