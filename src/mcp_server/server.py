@@ -24,8 +24,8 @@ import mcp.server.stdio
 import mcp.types as types
 
 # Import our search functionality
-from common.azure_cognitive_search import get_azure_search_service
-from common.embedding_service import get_embedding_generator
+from src.common.vector_search_services.azure_cognitive_search import get_azure_search_service
+from src.common.embedding_services.embedding_service_factory import get_embedding_generator
 
 # Import refactored tool components
 from mcp_server.tools.tool_schemas import get_all_tools

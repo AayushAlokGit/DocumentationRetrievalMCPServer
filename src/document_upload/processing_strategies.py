@@ -704,7 +704,7 @@ class PersonalDocumentationAssistantProcessingStrategy(DocumentProcessingStrateg
         Returns:
             List[List[float]]: List of embedding vectors, empty list for failed embeddings
         """
-        from common.embedding_service import get_embedding_generator
+        from src.common.embedding_services.embedding_service_factory import get_embedding_generator
         
         embedding_generator = get_embedding_generator()
         embeddings = []

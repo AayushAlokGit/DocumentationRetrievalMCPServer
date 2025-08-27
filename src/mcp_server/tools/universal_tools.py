@@ -10,7 +10,7 @@ import logging
 from typing import Dict, Any, Optional, List
 import mcp.types as types
 
-from common.azure_cognitive_search import FilterBuilder
+from src.common.vector_search_services.azure_cognitive_search import FilterBuilder
 
 logger = logging.getLogger("work-items-mcp")
 

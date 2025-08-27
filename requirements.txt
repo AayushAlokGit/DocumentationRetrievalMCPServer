@@ -1,5 +1,11 @@
+# ChromaDB Dependencies
+chromadb>=0.4.0
+
+# Legacy Azure Dependencies (keeping for reference)
 azure-search-documents==11.4.0
 azure-core==1.29.5
+
+# Core Dependencies
 openai>=1.0.0,<2.0.0
 python-frontmatter==1.1.0
 python-dotenv==1.0.0

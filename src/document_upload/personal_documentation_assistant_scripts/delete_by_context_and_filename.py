@@ -51,7 +51,7 @@ src_dir = current_dir.parent.parent
 sys.path.insert(0, str(src_dir))
 
 # Import project modules
-from common.azure_cognitive_search import get_azure_search_service, FilterBuilder
+from src.common.vector_search_services.azure_cognitive_search import get_azure_search_service, FilterBuilder
 from document_upload.file_tracker import DocumentProcessingTracker
 
 # Load environment variables

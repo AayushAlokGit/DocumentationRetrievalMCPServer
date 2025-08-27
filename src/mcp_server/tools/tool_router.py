@@ -57,7 +57,7 @@ class ToolRouter:
             
             # Initialize search service if not already done
             if self.search_service is None:
-                from common.azure_cognitive_search import get_azure_search_service
+                from src.common.vector_search_services.azure_cognitive_search import get_azure_search_service
                 self.search_service = get_azure_search_service()
                 logger.info("[SUCCESS] Azure Search Service initialized")
             

@@ -26,7 +26,7 @@ from document_upload.discovery_strategies import DocumentDiscoveryStrategy, Docu
 from document_upload.processing_strategies import DocumentProcessingStrategy, ProcessedDocument, DocumentProcessingResult
 
 # Import Azure search service for upload phase
-from common.azure_cognitive_search import get_azure_search_service
+from src.common.vector_search_services.azure_cognitive_search import get_azure_search_service
 
 
 @dataclass
@@ -537,7 +537,7 @@ class DocumentProcessingPipeline:
         try:
             # Initialize Azure search service if not already done
             if self.upload_phase.azure_search_service is None:
-                from common.azure_cognitive_search import get_azure_search_service
+                from src.common.vector_search_services.azure_cognitive_search import get_azure_search_service
                 self.upload_phase.azure_search_service = get_azure_search_service(service_name, admin_key, index_name)
             
             # Delete documents from search index based on file paths

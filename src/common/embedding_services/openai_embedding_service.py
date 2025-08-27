@@ -10,13 +10,13 @@ import os
 import asyncio
 from typing import List, Optional
 from dotenv import load_dotenv
-from common.openai_service import get_openai_service
+from ..openai_service import get_openai_service
 
 # Load environment variables
 load_dotenv()
 
 
-class EmbeddingGenerator:
+class OpenAIEmbeddingGenerator:
     """
     Service for generating embeddings using Azure OpenAI
     Supports both single queries and batch processing
@@ -36,7 +36,7 @@ class EmbeddingGenerator:
         # Initialize OpenAI service
         self.openai_service = get_openai_service()
         
-        print(f"[INFO] EmbeddingGenerator initialized:")
+        print(f"[INFO] OpenAIEmbeddingGenerator initialized:")
         print(f"   - Endpoint: {self.azure_openai_endpoint}")
         print(f"   - Deployment: {self.embedding_deployment}")
         print(f"   - Dimension: {self.embedding_dimension}")
@@ -51,7 +51,7 @@ class EmbeddingGenerator:
         try:
             return self.openai_service.test_connection()
         except Exception as e:
-            print(f"[ERROR] EmbeddingGenerator connection test failed: {e}")
+            print(f"[ERROR] OpenAIEmbeddingGenerator connection test failed: {e}")
             return False
     
     async def generate_embedding(self, text: str) -> Optional[List[float]]:
@@ -156,23 +156,9 @@ class EmbeddingGenerator:
 # Global instance for easy access
 _embedding_generator = None
 
-def get_embedding_generator() -> EmbeddingGenerator:
-    """Get a singleton instance of the EmbeddingGenerator"""
+def get_openai_embedding_generator() -> OpenAIEmbeddingGenerator:
+    """Get a singleton instance of the OpenAIEmbeddingGenerator"""
     global _embedding_generator
     if _embedding_generator is None:
-        _embedding_generator = EmbeddingGenerator()
+        _embedding_generator = OpenAIEmbeddingGenerator()
     return _embedding_generator
-
-
-async def generate_query_embedding(query: str) -> Optional[List[float]]:
-    """
-    Convenience function to generate embedding for a search query
-    
-    Args:
-        query: Search query text
-        
-    Returns:
-        Embedding vector or None if failed
-    """
-    generator = get_embedding_generator()
-    return await generator.generate_embedding(query)

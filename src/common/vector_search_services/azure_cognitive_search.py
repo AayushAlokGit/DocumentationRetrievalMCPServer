@@ -47,7 +47,7 @@ project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root / 'src'))
 
 # Import embedding service
-from common.embedding_service import get_embedding_generator
+from src.common.embedding_services.embedding_service_factory import get_embedding_generator
 
 # Load environment variables
 load_dotenv()
@@ -396,9 +396,8 @@ class AzureCognitiveSearch:
             credential=self.credential
         )
         
-        # Initialize embedding generator
-        self.embedding_generator = get_embedding_generator()
-    
+        self.embedding_generator = get_embedding_generator(provider='openai')
+
     # ===== INDEX MANAGEMENT =====
     
     def create_index(self, vector_dimensions: int = 1536) -> bool:

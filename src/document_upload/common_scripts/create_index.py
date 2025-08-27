@@ -36,7 +36,7 @@ src_dir = current_dir.parent.parent
 sys.path.insert(0, str(src_dir))
 
 from dotenv import load_dotenv
-from common.azure_cognitive_search import get_azure_search_service
+from src.common.vector_search_services.azure_cognitive_search import get_azure_search_service
 
 # Load environment variables
 load_dotenv()
@@ -214,7 +214,7 @@ def test_connection():
             
             # Test embedding service connectivity if available
             try:
-                from common.embedding_service import get_embedding_generator
+                from src.common.embedding_services.embedding_service_factory import get_embedding_generator
                 embedding_generator = get_embedding_generator()
                 print(f"   Embedding service: Available")
             except Exception as e:
