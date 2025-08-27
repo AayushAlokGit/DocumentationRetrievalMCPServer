@@ -61,7 +61,6 @@ def _get_local_embedding_generator():
         print("       Install with: pip install sentence-transformers")
         raise
 
-
 def _get_openai_embedding_generator():
     """Get OpenAI embedding generator"""
     try:
