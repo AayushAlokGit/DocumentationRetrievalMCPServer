@@ -390,7 +390,7 @@ Final paragraph to complete the test document with sufficient content for chunki
             
             # Import the deletion module
             sys.path.insert(0, str(scripts_dir))
-            from delete_by_context_and_filename import find_matching_documents
+            from src.document_upload.personal_documentation_assistant_scripts.azure_cognitive_search_scripts.delete_by_context_and_filename import find_matching_documents
             
             # Find matching documents
             matching_docs, search_stats = find_matching_documents(
@@ -435,7 +435,7 @@ Final paragraph to complete the test document with sufficient content for chunki
             
             # Import the deletion module
             sys.path.insert(0, str(scripts_dir))
-            from delete_by_context_and_filename import find_matching_documents
+            from src.document_upload.personal_documentation_assistant_scripts.azure_cognitive_search_scripts.delete_by_context_and_filename import find_matching_documents
             
             # Find matching documents
             matching_docs, search_stats = find_matching_documents(
@@ -489,7 +489,7 @@ Final paragraph to complete the test document with sufficient content for chunki
             
             # Import the deletion module
             sys.path.insert(0, str(scripts_dir))
-            from delete_by_context_and_filename import find_matching_documents
+            from src.document_upload.personal_documentation_assistant_scripts.azure_cognitive_search_scripts.delete_by_context_and_filename import find_matching_documents
             
             # Test 1: Flexible with exact match available
             file_name = test_doc["file_name"]
@@ -547,7 +547,7 @@ Final paragraph to complete the test document with sufficient content for chunki
             
             # Import the deletion module
             sys.path.insert(0, str(scripts_dir))
-            from delete_by_context_and_filename import find_matching_documents, preview_deletion_impact
+            from src.document_upload.personal_documentation_assistant_scripts.azure_cognitive_search_scripts.delete_by_context_and_filename import find_matching_documents, preview_deletion_impact
             
             context_name = test_doc["context_name"]
             file_name = test_doc["file_name"]
@@ -598,7 +598,7 @@ Final paragraph to complete the test document with sufficient content for chunki
             
             # Import the deletion module
             sys.path.insert(0, str(scripts_dir))
-            from delete_by_context_and_filename import find_matching_documents, delete_documents_and_cleanup_tracker
+            from src.document_upload.personal_documentation_assistant_scripts.azure_cognitive_search_scripts.delete_by_context_and_filename import find_matching_documents, delete_documents_and_cleanup_tracker
             
             context_name = test_doc["context_name"]
             file_name = test_doc["file_name"]
@@ -675,7 +675,7 @@ Final paragraph to complete the test document with sufficient content for chunki
                 
                 # Import the deletion module
                 sys.path.insert(0, str(scripts_dir))
-                from delete_by_context_and_filename import delete_documents_and_cleanup_tracker
+                from src.document_upload.personal_documentation_assistant_scripts.azure_cognitive_search_scripts.delete_by_context_and_filename import delete_documents_and_cleanup_tracker
                 
                 # Delete the document and clean up tracker
                 context_name = "TEST-DELETE-002"

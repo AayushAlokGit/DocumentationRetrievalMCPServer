@@ -28,10 +28,7 @@ def get_embedding_generator(provider: str = None):
     """
     # Auto-detect provider if not specified
     if provider is None:
-        provider = os.getenv('EMBEDDING_PROVIDER', 'auto')
-    
-    if provider == 'auto':
-        provider = _auto_detect_provider()
+        provider = 'local'
     
     print(f"[INFO] Using embedding provider: {provider}")
     
@@ -41,16 +38,6 @@ def get_embedding_generator(provider: str = None):
         return _get_openai_embedding_generator()
     else:
         raise ValueError(f"Unknown embedding provider: {provider}. Supported: 'local', 'openai'")
-
-
-def _auto_detect_provider() -> str:
-    """Auto-detect the best available embedding provider"""
-    # Check for OpenAI API key
-    if os.getenv('OPENAI_API_KEY'):
-        return 'openai'
-    # Default to local sentence transformers
-    return 'local'
-
 
 def _get_local_embedding_generator():
     """Get local sentence transformers embedding generator"""

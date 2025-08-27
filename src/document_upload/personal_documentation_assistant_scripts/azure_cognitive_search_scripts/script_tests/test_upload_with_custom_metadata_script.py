@@ -164,7 +164,7 @@ metadata fields in the Azure Search index.
             sys.path.insert(0, str(script_path.parent))
             
             try:
-                import upload_with_custom_metadata as script
+                import src.document_upload.personal_documentation_assistant_scripts.azure_cognitive_search_scripts.upload_with_custom_metadata as script
                 
                 # Run upload_with_custom_metadata's main processing function
                 success = await script.process_and_upload(
