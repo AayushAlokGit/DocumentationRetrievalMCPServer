@@ -204,46 +204,6 @@ async def handle_get_index_summary(search_service: ChromaDBService, arguments: d
         logger.error(f"[ERROR] Index summary failed: {e}")
         return [types.TextContent(type="text", text=f"[ERROR] Index summary failed: {e}")]
 
-
-# Helper functions
-
-def _process_search_filters(filters: dict) -> dict:
-    """Process and convert filters for ChromaDB compatibility"""
-    if not filters:
-        return {}
-
-    processed_filters = {}
-
-    for key, value in filters.items():
-        # Handle special filter mappings
-        if key == "chunk_index":
-            processed_filters["chunk_index"] = value
-        elif key == "file_name":
-            # Direct mapping for file name filtering
-            processed_filters["file_name"] = value
-        elif key == "context_name":
-            # Direct mapping for context filtering
-            processed_filters["context_name"] = value
-        elif key == "category":
-            # Direct mapping for category filtering
-            processed_filters["category"] = value
-        elif key == "file_type":
-            # Direct mapping for file type filtering
-            processed_filters["file_type"] = value
-        elif key == "tags":
-            # Handle tags filtering (stored as comma-separated string in ChromaDB)
-            if isinstance(value, list):
-                # For list of tags, use first tag only (ChromaDB limitation)
-                processed_filters["tags"] = value[0] if value else None
-            else:
-                processed_filters["tags"] = value
-        else:
-            # Pass through other filters as-is
-            processed_filters[key] = value
-
-    return processed_filters
-
-
 def _format_search_results(results: list, include_content: bool, max_results: int) -> list[types.TextContent]:
     """Format search results for MCP display"""
     formatted_results = []

@@ -331,7 +331,7 @@ async def process_and_upload(target_path: Path, metadata: Dict[str, Any],
     # Initialize ChromaDB service
     print("🔗 Initializing ChromaDB connection...")
     try:
-        chromadb_service = await get_chromadb_service()
+        chromadb_service = get_chromadb_service()
         print("✅ ChromaDB connection established")
         
     except Exception as e:

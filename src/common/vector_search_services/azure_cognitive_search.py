@@ -42,6 +42,9 @@ from azure.search.documents.models import VectorizedQuery
 from azure.core.credentials import AzureKeyCredential
 from azure.core.exceptions import ResourceNotFoundError
 
+# Import the vector search interface
+from .vector_search_interface import IVectorSearchService
+
 # ONE simple line to fix all imports - find project root and add src
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root / 'src'))
@@ -53,7 +56,7 @@ from src.common.embedding_services.embedding_service_factory import get_embeddin
 load_dotenv()
 
 
-class FilterBuilder:
+class AzureCognitiveSearchFilterBuilder:
     """
     Enhanced Filter builder for Azure Cognitive Search OData expressions
     
@@ -351,7 +354,7 @@ class FilterBuilder:
         return " and ".join(expressions) if expressions else None
 
 
-class AzureCognitiveSearch:
+class AzureCognitiveSearch(IVectorSearchService):
     """
     Comprehensive Azure Cognitive Search service class
     

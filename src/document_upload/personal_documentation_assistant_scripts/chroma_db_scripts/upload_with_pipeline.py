@@ -57,7 +57,7 @@ async def force_reset_chromadb_and_tracker() -> bool:
     
     try:
         # Initialize ChromaDB service and tracker
-        chromadb_service = await get_chromadb_service()
+        chromadb_service = get_chromadb_service()
         tracker = DocumentProcessingTracker()
         processing_strategy = PersonalDocumentationAssistantChromaDBProcessingStrategy()
         upload_strategy = ChromaDBDocumentUploadStrategy(processing_strategy=processing_strategy)

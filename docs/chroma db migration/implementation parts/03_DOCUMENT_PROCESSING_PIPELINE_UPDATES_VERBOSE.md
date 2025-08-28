@@ -344,7 +344,7 @@ chromadb_pipeline = DocumentProcessingPipeline(upload_strategy=chromadb_upload)
 
 **Current Issue:** The existing `DocumentUploadPhase` class directly imports and uses Azure Cognitive Search service.
 
-**Required Change:** Update the class to use `VectorSearchServiceFactory.get_service()` for provider-agnostic service retrieval.
+**Required Change:** Update the class to use `IVectorSearchServiceFactory.get_service()` for provider-agnostic service retrieval.
 
 Add factory-based upload method to `DocumentUploadPhase` class:
 
@@ -352,11 +352,11 @@ Add factory-based upload method to `DocumentUploadPhase` class:
 async def upload_documents_with_factory(self, processed_documents: List[ProcessedDocument],
                                        vector_service = None) -> DocumentUploadResult:
     """Upload documents using Vector Search Service Factory"""
-    from src.common.vector_search_service_factory import VectorSearchServiceFactory
+    from src.common.vector_search_service_factory import IVectorSearchServiceFactory
 
     # Get service if not provided - THIS IS THE KEY CHANGE
     if vector_service is None:
-        vector_service = VectorSearchServiceFactory.get_service()
+        vector_service = IVectorSearchServiceFactory.get_service()
 
     # Determine service type and route to appropriate method
     service_type = type(vector_service).__name__
@@ -386,8 +386,8 @@ async def upload_documents(self, processed_documents: List[ProcessedDocument],
 
     # Use factory if no explicit Azure parameters provided
     if not (service_name and admin_key and index_name):
-        from src.common.vector_search_service_factory import VectorSearchServiceFactory
-        vector_service = VectorSearchServiceFactory.get_service()
+        from src.common.vector_search_service_factory import IVectorSearchServiceFactory
+        vector_service = IVectorSearchServiceFactory.get_service()
         return await self.upload_documents_with_factory(processed_documents, vector_service)
 
     # Otherwise use existing Azure logic

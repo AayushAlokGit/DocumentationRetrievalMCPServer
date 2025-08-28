@@ -512,7 +512,7 @@ Examples:
         # Initialize services
         print("🔧 Initializing ChromaDB services...")
         try:
-            chromadb_service = await get_chromadb_service()
+            chromadb_service = get_chromadb_service()
             tracker = DocumentProcessingTracker()
             print("   ✅ Services initialized successfully")
         except Exception as e:

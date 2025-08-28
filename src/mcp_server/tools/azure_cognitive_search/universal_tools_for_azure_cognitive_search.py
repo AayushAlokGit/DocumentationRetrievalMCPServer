@@ -10,7 +10,7 @@ import logging
 from typing import Dict, Any, Optional, List
 import mcp.types as types
 
-from src.common.vector_search_services.azure_cognitive_search import FilterBuilder
+from src.common.vector_search_services.azure_cognitive_search import AzureCognitiveSearchFilterBuilder
 
 logger = logging.getLogger("work-items-mcp")
 
@@ -330,7 +330,7 @@ async def _explore_files(search_service, arguments: dict) -> list[types.TextCont
     # Use search client directly with facets for file exploration
     results = search_service.search_client.search(
         search_text="*",
-        filter=FilterBuilder.build_filter(filters) if filters else None,
+        filter=AzureCognitiveSearchFilterBuilder.build_filter(filters) if filters else None,
         facets=["file_name,count:1000"],
         select="file_name,file_type,file_path,category,tags,last_modified",
         top=0
@@ -351,7 +351,7 @@ async def _explore_files(search_service, arguments: dict) -> list[types.TextCont
         
         file_results = search_service.search_client.search(
             search_text="*",
-            filter=FilterBuilder.build_filter(file_query_filters),
+            filter=AzureCognitiveSearchFilterBuilder.build_filter(file_query_filters),
             select="file_name,file_type,file_path,category,tags,last_modified",
             top=1
         )
@@ -431,7 +431,7 @@ async def _explore_chunks(search_service, arguments: dict) -> list[types.TextCon
     # Use Azure Search with proper sorting and additional metadata fields
     results = search_service.search_client.search(
         search_text="*",
-        filter=FilterBuilder.build_filter(filters) if filters else None,
+        filter=AzureCognitiveSearchFilterBuilder.build_filter(filters) if filters else None,
         select="id,file_name,file_path,file_type,chunk_index,context_name,title,content,category,tags,last_modified,metadata_json",
         top=max_items
     )
@@ -524,7 +524,7 @@ async def _explore_categories(search_service, arguments: dict) -> list[types.Tex
     # Use search client with facets for category exploration
     results = search_service.search_client.search(
         search_text="*",
-        filter=FilterBuilder.build_filter(filters) if filters else None,
+        filter=AzureCognitiveSearchFilterBuilder.build_filter(filters) if filters else None,
         facets=["category,count:1000"],
         top=0
     )

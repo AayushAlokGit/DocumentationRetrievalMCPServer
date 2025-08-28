@@ -181,7 +181,7 @@ seamlessly while maintaining compatibility with the existing pipeline structure.
             self.log(f"Created test document: {self.test_file_name}", "SUCCESS")
             
             # Initialize ChromaDB service
-            self.chromadb_service = await get_chromadb_service()
+            self.chromadb_service = get_chromadb_service()
             if not self.chromadb_service:
                 self.log("Failed to initialize ChromaDB service", "ERROR")
                 return False

@@ -13,6 +13,8 @@ from typing import Optional
 import sys
 from pathlib import Path
 
+from src.common.vector_search_services.vector_search_interface import IVectorSearchService
+from src.common.vector_search_services.vector_search_service_factory import get_vector_search_service
 from src.mcp_server.tools import get_all_tools
 
 # ONE simple line to fix all imports - find project root and add src
@@ -26,7 +28,6 @@ import mcp.server.stdio
 import mcp.types as types
 
 # Import our search functionality
-from src.common.vector_search_services.azure_cognitive_search import get_azure_search_service
 from src.common.embedding_services.embedding_service_factory import get_embedding_generator
 
 # Import refactored tool components
@@ -51,7 +52,7 @@ async def initialize_services():
     
     if search_service is None:
         logger.info("[INFO] Initializing search services...")
-        search_service = get_azure_search_service()
+        search_service = get_vector_search_service()
         
     if embedding_generator is None:
         logger.info("[INFO] Initializing embedding services...")
@@ -92,7 +93,7 @@ async def main():
         
         # Initialize and test search functionality
         global search_service, embedding_generator
-        search_service = get_azure_search_service()
+        search_service = get_vector_search_service()
         embedding_generator = get_embedding_generator()
         
         # Test embedding service

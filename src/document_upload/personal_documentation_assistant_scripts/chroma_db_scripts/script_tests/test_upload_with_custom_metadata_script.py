@@ -246,7 +246,7 @@ troubleshooting, errors, support, help
                 self.log(f"Created test document: {doc['filename']}")
             
             # Initialize ChromaDB service
-            self.chromadb_service = await get_chromadb_service()
+            self.chromadb_service = get_chromadb_service()
             if not self.chromadb_service:
                 self.log("Failed to initialize ChromaDB service", "ERROR")
                 return False

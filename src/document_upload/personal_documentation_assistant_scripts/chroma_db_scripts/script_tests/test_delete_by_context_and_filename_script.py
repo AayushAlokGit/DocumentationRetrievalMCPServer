@@ -165,7 +165,7 @@ class ChromaDBDeleteByContextAndFilenameTestRunner:
             self.log("Setting up ChromaDB comprehensive test environment...")
             
             # Initialize ChromaDB service
-            self.chromadb_service = await get_chromadb_service()
+            self.chromadb_service = get_chromadb_service()
             self.log("ChromaDB service initialized", "SUCCESS")
             
             # Test ChromaDB connection

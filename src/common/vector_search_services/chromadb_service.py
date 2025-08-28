@@ -13,6 +13,7 @@ import asyncio
 from datetime import datetime
 
 from ..embedding_services.embedding_service_factory import get_embedding_generator
+from .vector_search_interface import IVectorSearchService
 
 
 class ChromaDBFilterBuilder:
@@ -89,7 +90,7 @@ class ChromaDBFilterBuilder:
             return {"$and": valid_filters}
 
 
-class ChromaDBService:
+class ChromaDBService(IVectorSearchService):
     """
     ChromaDB service implementation for vector search
 
@@ -187,6 +188,19 @@ class ChromaDBService:
                 'context_count': 0,
                 'storage_path': self.persist_directory
             }
+
+    def get_document_count(self) -> int:
+        """
+        Get total number of documents in the collection
+        
+        Returns:
+            Number of documents
+        """
+        try:
+            return self.collection.count()
+        except Exception as e:
+            print(f"[ERROR] Error getting document count: {e}")
+            return 0
 
     # ===== DOCUMENT UPLOAD OPERATIONS =====
 
@@ -411,17 +425,65 @@ class ChromaDBService:
 
         return formatted_results
 
+    def get_unique_field_values(self, field_name: str, max_values: int = 1000) -> List[str]:
+        """
+        Get unique values for any field by querying all documents
+        
+        Args:
+            field_name: Name of the field to get unique values for
+            max_values: Maximum number of unique values to return (default: 1000)
+            
+        Returns:
+            List of unique values for the field
+        """
+        try:
+            # Get all documents with their metadata
+            all_results = self.collection.get()
+            
+            unique_values_set = set()
+            
+            # Extract unique values from metadata
+            if all_results['metadatas']:
+                for metadata in all_results['metadatas']:
+                    if metadata and field_name in metadata:
+                        value = metadata[field_name]
+                        if value is not None:
+                            if isinstance(value, list):
+                                # Handle array fields (like tags)
+                                unique_values_set.update(str(item).strip() for item in value if item is not None)
+                            elif isinstance(value, str):
+                                # Handle comma-separated string fields (like tags stored as strings)
+                                if ',' in value:
+                                    # Split comma-separated values
+                                    values = [v.strip() for v in value.split(',') if v.strip()]
+                                    unique_values_set.update(values)
+                                else:
+                                    unique_values_set.add(value.strip())
+                            else:
+                                # Handle single value fields
+                                unique_values_set.add(str(value).strip())
+            
+            # Convert to sorted list and apply limit
+            unique_values = sorted(list(unique_values_set))[:max_values]
+            
+            print(f"[DEBUG] Found {len(unique_values)} unique values for '{field_name}'")
+            return unique_values
+            
+        except Exception as e:
+            print(f"[ERROR] Failed to get unique values for field '{field_name}': {e}")
+            return []
 
-async def get_chromadb_service(persist_directory: Optional[str] = None,
-                              collection_name: Optional[str] = None) -> ChromaDBService:
+
+def get_chromadb_service(collection_name: Optional[str] = None,
+                              persist_directory: Optional[str] = None) -> ChromaDBService:
     """
     Factory function to create a ChromaDBService instance
     
     Args:
-        persist_directory: Directory for persistent storage (from env if not provided)
         collection_name: Collection name (from env if not provided)
+        persist_directory: Directory for persistent storage (from env if not provided)
         
     Returns:
         ChromaDBService instance
     """
-    return ChromaDBService(persist_directory, collection_name)
+    return ChromaDBService(collection_name, persist_directory)

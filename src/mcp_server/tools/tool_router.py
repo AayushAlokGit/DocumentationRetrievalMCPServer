@@ -11,6 +11,8 @@ import logging
 from typing import Dict, Any
 import mcp.types as types
 
+from src.common.vector_search_services.vector_search_interface import IVectorSearchService
+
 # Azure Cognitive Search handlers
 from .azure_cognitive_search.universal_tools_for_azure_cognitive_search import (
     handle_search_documents as azure_handle_search_documents,
@@ -36,7 +38,7 @@ logger = logging.getLogger("documentation-retrieval-mcp")
 class ToolRouter:
     """Routes MCP tool calls to appropriate handlers based on search service backend"""
     
-    def __init__(self, search_service):
+    def __init__(self, search_service: IVectorSearchService):
         self.search_service = search_service
         
         # Set up all handlers
