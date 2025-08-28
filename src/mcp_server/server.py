@@ -13,6 +13,8 @@ from typing import Optional
 import sys
 from pathlib import Path
 
+from src.mcp_server.tools import get_all_tools
+
 # ONE simple line to fix all imports - find project root and add src
 project_root = Path(__file__).parent.parent.parent
 sys.path.insert(0, str(project_root / 'src'))
@@ -28,7 +30,6 @@ from src.common.vector_search_services.azure_cognitive_search import get_azure_s
 from src.common.embedding_services.embedding_service_factory import get_embedding_generator
 
 # Import refactored tool components
-from mcp_server.tools.tool_schemas import get_all_tools
 from mcp_server.tools.tool_router import ToolRouter
 
 # Configure logging

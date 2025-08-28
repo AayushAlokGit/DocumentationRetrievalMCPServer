@@ -12,7 +12,6 @@ This module contains:
 """
 
 import mcp.types as types
-from .work_item_tools import get_work_item_tool_schemas
 
 
 def get_universal_search_tools() -> list[types.Tool]:
@@ -218,17 +217,10 @@ def get_analytics_tools() -> list[types.Tool]:
     ]
 
 
-def get_work_item_specific_tools() -> list[types.Tool]:
-    """Get work item specific tool definitions"""
-    return get_work_item_tool_schemas()
-
-
-def get_all_tools() -> list[types.Tool]:
-    """Get all available tool definitions (universal + work item specific)"""
+def get_all_azure_cognitive_search_tools() -> list[types.Tool]:
+    """Get all available Azure Cognitive Search tool definitions"""
     tools = []
     tools.extend(get_universal_search_tools())
     tools.extend(get_context_discovery_tools()) 
     tools.extend(get_analytics_tools())
-    # Include work item specific tools
-    # tools.extend(get_work_item_specific_tools())
     return tools

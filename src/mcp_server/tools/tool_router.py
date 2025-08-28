@@ -2,70 +2,77 @@
 Universal Tool Router for MCP Server
 ====================================
 
-Central router for universal document search tools and work item specific tools.
-Routes tool calls to appropriate handlers based on tool type.
+Central router for document search tools supporting both Azure Cognitive Search
+and ChromaDB backends. Routes tool calls to appropriate handlers based on 
+the search service type.
 """
 
 import logging
 from typing import Dict, Any
 import mcp.types as types
 
-from .universal_tools import (
-    handle_search_documents,
-    handle_get_document_contexts, 
-    handle_explore_document_structure,
-    handle_get_index_summary,
-    handle_get_document_content
+# Azure Cognitive Search handlers
+from .azure_cognitive_search.universal_tools_for_azure_cognitive_search import (
+    handle_search_documents as azure_handle_search_documents,
+    handle_get_document_contexts as azure_handle_get_document_contexts,
+    handle_explore_document_structure as azure_handle_explore_document_structure,
+    handle_get_index_summary as azure_handle_get_index_summary,
+    handle_get_document_content as azure_handle_get_document_content
 )
 
-from .work_item_tools import WORK_ITEM_TOOL_HANDLERS
+# ChromaDB handlers
+from .chroma_db.universal_tools_for_chroma_db import (
+    handle_search_documents as chroma_handle_search_documents,
+    handle_get_document_contexts as chroma_handle_get_document_contexts,
+    handle_explore_document_structure as chroma_handle_explore_document_structure,
+    handle_get_index_summary as chroma_handle_get_index_summary,
+    handle_get_document_content as chroma_handle_get_document_content
+)
 
-logger = logging.getLogger("work-items-mcp")
+
+logger = logging.getLogger("documentation-retrieval-mcp")
 
 
 class ToolRouter:
-    """Routes MCP tool calls to universal and work item specific handlers"""
+    """Routes MCP tool calls to appropriate handlers based on search service backend"""
     
     def __init__(self, search_service):
         self.search_service = search_service
         
-        # Map tool names to their universal handlers
-        self.universal_handlers = {
-            "search_documents": handle_search_documents,
-            "get_document_contexts": handle_get_document_contexts,
-            "explore_document_structure": handle_explore_document_structure,
-            "get_index_summary": handle_get_index_summary,
-            "get_document_content": handle_get_document_content,
-        }
-        
-        # Combine universal and work item specific handlers
-        self.tool_handlers = {
-            **self.universal_handlers,
-            **WORK_ITEM_TOOL_HANDLERS
+        # Set up all handlers
+        self._setup_handlers()
+    
+    def _setup_handlers(self):
+        """Setup all handlers for both Azure and ChromaDB tools"""
+        logger.info("[ROUTER] Setting up all tool handlers")
+        self.handlers = {
+            # Azure Cognitive Search tools
+            "search_documents": azure_handle_search_documents,
+            "get_document_contexts": azure_handle_get_document_contexts,
+            "explore_document_structure": azure_handle_explore_document_structure,
+            "get_index_summary": azure_handle_get_index_summary,
+            "get_document_content": azure_handle_get_document_content,
+            # ChromaDB tools
+            "chromadb_search_documents": chroma_handle_search_documents,
+            "chromadb_get_document_contexts": chroma_handle_get_document_contexts,
+            "chromadb_explore_document_structure": chroma_handle_explore_document_structure,
+            "chromadb_get_index_summary": chroma_handle_get_index_summary,
+            "chromadb_get_document_content": chroma_handle_get_document_content,
         }
     
     async def handle_tool_call(self, name: str, arguments: dict) -> list[types.TextContent]:
-        """Route tool call to appropriate universal or work item handler"""
+        """Route tool call to appropriate handler"""
         try:
-            if name not in self.tool_handlers:
+            if name not in self.handlers:
                 return [types.TextContent(
                     type="text", 
-                    text=f"[ERROR] Unknown tool: {name}. Available tools: {', '.join(self.tool_handlers.keys())}"
+                    text=f"[ERROR] Unknown tool: {name}. Available tools: {', '.join(self.handlers.keys())}"
                 )]
             
-            handler = self.tool_handlers[name]
+            handler = self.handlers[name]
             
-            # Initialize search service if not already done
-            if self.search_service is None:
-                from src.common.vector_search_services.azure_cognitive_search import get_azure_search_service
-                self.search_service = get_azure_search_service()
-                logger.info("[SUCCESS] Azure Search Service initialized")
-            
-            # Log whether using universal or work item handler
-            if name in self.universal_handlers:
-                logger.info(f"[ROUTER] Routing {name} to universal handler")
-            else:
-                logger.info(f"[ROUTER] Routing {name} to work item specific handler")
+            # Log the routing decision
+            logger.info(f"[ROUTER] Routing {name} to handler")
             
             return await handler(self.search_service, arguments)
             
@@ -75,15 +82,3 @@ class ToolRouter:
                 type="text", 
                 text=f"[ERROR] Error executing {name}: {str(e)}"
             )]
-    
-    def get_available_tools(self) -> list[str]:
-        """Get list of available tool names (universal + work item specific)"""
-        return list(self.tool_handlers.keys())
-    
-    def get_universal_tools(self) -> list[str]:
-        """Get list of universal tool names"""
-        return list(self.universal_handlers.keys())
-    
-    def get_work_item_tools(self) -> list[str]:
-        """Get list of work item specific tool names"""
-        return list(WORK_ITEM_TOOL_HANDLERS.keys())

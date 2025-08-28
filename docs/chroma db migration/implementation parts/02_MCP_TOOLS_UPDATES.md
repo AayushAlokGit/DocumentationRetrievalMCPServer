@@ -61,8 +61,7 @@ from mcp import types
 import logging
 
 # ChromaDB imports (NEW)
-from common.chromadb_service import ChromaDBService
-from common.chromadb_filter_builder import ChromaDBFilterBuilder
+from common.vector_search_services.chromadb_service import ChromaDBService, ChromaDBFilterBuilder
 
 # Remove Azure imports - these are no longer needed:
 # from common.azure_cognitive_search import FilterBuilder
@@ -502,7 +501,7 @@ class ToolRouter:
 
             if include_stats:
                 # Add collection statistics
-                stats = self.search_service.get_index_stats()
+                stats = self.search_service.get_collection_stats()
                 stats_text = f"\n## Collection Statistics\n"
                 stats_text += f"**Total Documents:** {stats.get('document_count', 0)}\n"
                 stats_text += f"**Collection Name:** {stats.get('collection_name', 'unknown')}\n"
@@ -533,7 +532,7 @@ class ToolRouter:
             logger.info(f"[SUMMARY] Getting index summary, facets={include_facets}, limit={facet_limit}")
 
             # Get basic collection statistics
-            stats = self.search_service.get_index_stats()
+            stats = self.search_service.get_collection_stats()
 
             summary_text = "## ChromaDB Collection Summary\n\n"
             summary_text += f"**Collection Name:** {stats.get('collection_name')}\n"
@@ -637,14 +636,14 @@ Updated for ChromaDB backend with vector-only search capabilities
 
 import asyncio
 import logging
-from contextual import mcp
+import mcp
 from mcp import server, types
 from mcp.server.models import InitializationOptions
 from mcp.server import NotificationOptions
 
 # ChromaDB imports (NEW)
-from common.chromadb_service import ChromaDBService
-from common.embedding_service import get_embedding_generator
+from common.vector_search_services.chromadb_service import ChromaDBService
+from common.embedding_services.embedding_service_factory import get_embedding_generator
 
 # MCP Tools
 from mcp_server.tools.universal_tools import ToolRouter
@@ -862,7 +861,7 @@ async def main():
             logger.info("[SUCCESS] ChromaDB connection successful")
 
             # Display collection statistics
-            stats = search_service.get_index_stats()
+            stats = search_service.get_collection_stats()
             logger.info(f"[INFO] Collection: {stats.get('collection_name')}")
             logger.info(f"[INFO] Documents: {stats.get('document_count', 0)}")
             logger.info(f"[INFO] Contexts: {stats.get('context_count', 0)}")
@@ -899,253 +898,6 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-```
-
-## Testing Strategy for Part 2 🧪
-
-### Integration Tests for MCP Tools
-
-**File: `tests/integration/test_mcp_tools_chromadb.py`**
-
-```python
-import pytest
-import asyncio
-from unittest.mock import Mock, patch, MagicMock
-from mcp import types
-
-from src.mcp_server.tools.universal_tools import ToolRouter
-from src.common.chromadb_service import ChromaDBService
-
-class TestMCPToolsIntegration:
-
-    @pytest.fixture
-    def mock_chromadb_service(self):
-        """Create mock ChromaDB service for testing"""
-        service = Mock(spec=ChromaDBService)
-
-        # Mock vector_search method
-        service.vector_search = Mock(return_value=[
-            {
-                'id': 'doc1',
-                'content': 'This is test document content',
-                'context_name': 'test_context',
-                'file_name': 'test_file.md',
-                'title': 'Test Document',
-                'category': 'manual',
-                'file_type': 'md',
-                '@search.score': 0.85
-            },
-            {
-                'id': 'doc2',
-                'content': 'Another test document',
-                'context_name': 'test_context',
-                'file_name': 'test_file2.md',
-                'title': 'Second Document',
-                'category': 'guide',
-                'file_type': 'md',
-                '@search.score': 0.72
-            }
-        ])
-
-        # Mock get_index_stats method
-        service.get_index_stats = Mock(return_value={
-            'collection_name': 'test_collection',
-            'document_count': 100,
-            'context_count': 5,
-            'storage_path': './test_data'
-        })
-
-        # Mock collection for direct access
-        mock_collection = MagicMock()
-        mock_collection.get.return_value = {
-            'ids': ['doc1'],
-            'documents': ['Test content'],
-            'metadatas': [{'title': 'Test Doc'}]
-        }
-        service.collection = mock_collection
-        service._format_search_results = Mock(return_value=[{
-            'id': 'doc1',
-            'content': 'Test content',
-            'title': 'Test Doc',
-            '@search.score': 1.0
-        }])
-
-        return service
-
-    @pytest.fixture
-    def tool_router(self, mock_chromadb_service):
-        """Create tool router with mocked service"""
-        return ToolRouter(mock_chromadb_service)
-
-    @pytest.mark.asyncio
-    async def test_search_documents_basic(self, tool_router, mock_chromadb_service):
-        """Test basic document search functionality"""
-        arguments = {
-            "query": "test query",
-            "search_type": "vector",
-            "max_results": 5
-        }
-
-        results = await tool_router.handle_search_documents(arguments)
-
-        # Verify results structure
-        assert isinstance(results, list)
-        assert len(results) == 2  # Two mock documents
-
-        for result in results:
-            assert isinstance(result, types.TextContent)
-            assert result.type == "text"
-            assert "Result" in result.text
-            assert "Context:" in result.text
-            assert "File:" in result.text
-
-        # Verify service was called correctly
-        mock_chromadb_service.vector_search.assert_called_once()
-        call_args = mock_chromadb_service.vector_search.call_args
-        assert call_args[0][0] == "test query"  # Query parameter
-        assert call_args[0][2] == 5  # Max results parameter
-
-    @pytest.mark.asyncio
-    async def test_search_documents_with_filters(self, tool_router, mock_chromadb_service):
-        """Test document search with filters"""
-        arguments = {
-            "query": "test query",
-            "filters": {
-                "context_name": "docs",
-                "category": "manual",
-                "file_type": "pdf"
-            },
-            "max_results": 3
-        }
-
-        results = await tool_router.handle_search_documents(arguments)
-
-        # Verify filters were processed and passed
-        mock_chromadb_service.vector_search.assert_called_once()
-        call_args = mock_chromadb_service.vector_search.call_args
-
-        filters_used = call_args[0][1]  # Second parameter (filters)
-        assert filters_used["context_name"] == "docs"
-        assert filters_used["category"] == "manual"
-        assert filters_used["file_type"] == "pdf"
-
-    @pytest.mark.asyncio
-    async def test_get_document_content_by_context_file(self, tool_router, mock_chromadb_service):
-        """Test getting document content by context and file"""
-        arguments = {
-            "context_and_file": {
-                "context_name": "test_context",
-                "file_name": "test_file.md"
-            },
-            "include_metadata": True
-        }
-
-        results = await tool_router.handle_get_document_content(arguments)
-
-        # Verify results
-        assert isinstance(results, list)
-        assert len(results) == 2  # Two mock documents
-
-        # Verify service was called with empty query (content retrieval)
-        mock_chromadb_service.vector_search.assert_called()
-        call_args = mock_chromadb_service.vector_search.call_args
-        assert call_args[0][0] == ""  # Empty query for content retrieval
-
-    @pytest.mark.asyncio
-    async def test_get_document_content_by_ids(self, tool_router, mock_chromadb_service):
-        """Test getting document content by IDs"""
-        arguments = {
-            "document_ids": ["doc1", "doc2"],
-            "include_metadata": True
-        }
-
-        results = await tool_router.handle_get_document_content(arguments)
-
-        # Verify collection.get was called with IDs
-        mock_chromadb_service.collection.get.assert_called_with(ids=["doc1", "doc2"])
-
-        # Verify results formatting
-        assert isinstance(results, list)
-        for result in results:
-            assert isinstance(result, types.TextContent)
-            assert "Document" in result.text
-
-    @pytest.mark.asyncio
-    async def test_explore_document_structure_contexts(self, tool_router, mock_chromadb_service):
-        """Test exploring document contexts"""
-        arguments = {
-            "structure_type": "contexts",
-            "max_items": 50
-        }
-
-        results = await tool_router.handle_explore_document_structure(arguments)
-
-        # Verify service was called for context exploration
-        mock_chromadb_service.vector_search.assert_called()
-
-        # Verify results
-        assert isinstance(results, list)
-        assert len(results) == 1  # Single result with context summary
-        assert "Available Contexts" in results[0].text
-
-    @pytest.mark.asyncio
-    async def test_get_index_summary(self, tool_router, mock_chromadb_service):
-        """Test getting index summary"""
-        arguments = {
-            "include_facets": True,
-            "facet_limit": 25
-        }
-
-        results = await tool_router.handle_get_index_summary(arguments)
-
-        # Verify get_index_stats was called
-        mock_chromadb_service.get_index_stats.assert_called_once()
-
-        # Verify results contain expected information
-        assert isinstance(results, list)
-        assert len(results) == 1
-        result_text = results[0].text
-        assert "ChromaDB Collection Summary" in result_text
-        assert "Collection Name:" in result_text
-        assert "Total Documents:" in result_text
-
-    @pytest.mark.asyncio
-    async def test_error_handling(self, tool_router, mock_chromadb_service):
-        """Test error handling in MCP tools"""
-        # Configure service to raise exception
-        mock_chromadb_service.vector_search.side_effect = Exception("Test error")
-
-        arguments = {
-            "query": "test query"
-        }
-
-        results = await tool_router.handle_search_documents(arguments)
-
-        # Verify error is handled gracefully
-        assert isinstance(results, list)
-        assert len(results) == 1
-        assert results[0].type == "text"
-        assert "[ERROR]" in results[0].text
-        assert "Test error" in results[0].text
-
-    @pytest.mark.asyncio
-    async def test_all_search_types_route_to_vector(self, tool_router, mock_chromadb_service):
-        """Test that all search types route to vector search"""
-        search_types = ["vector", "text", "hybrid", "semantic"]
-
-        for search_type in search_types:
-            # Reset mock
-            mock_chromadb_service.vector_search.reset_mock()
-
-            arguments = {
-                "query": f"test {search_type} query",
-                "search_type": search_type
-            }
-
-            await tool_router.handle_search_documents(arguments)
-
-            # Verify vector_search was called regardless of search_type
-            mock_chromadb_service.vector_search.assert_called_once()
 ```
 
 ## Integration Points with Other Components 🔗
