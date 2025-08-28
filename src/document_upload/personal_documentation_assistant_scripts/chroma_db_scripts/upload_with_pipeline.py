@@ -35,17 +35,17 @@ import asyncio
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Add src to path for imports - navigate up to src directory
+# Add project root to path for imports - navigate up to project root
 current_dir = Path(__file__).parent
-src_dir = current_dir.parent.parent
-sys.path.insert(0, str(src_dir))
+project_root = current_dir.parent.parent.parent.parent
+sys.path.insert(0, str(project_root))
 
 # Import project modules
 from src.common.vector_search_services.chromadb_service import get_chromadb_service
 from src.document_upload.upload_strategies import ChromaDBDocumentUploadStrategy
 from src.document_upload.document_processing_tracker import DocumentProcessingTracker
-from document_upload.document_processing_pipeline import DocumentProcessingPipeline
-from document_upload.processing_strategies import PersonalDocumentationAssistantChromaDBProcessingStrategy
+from src.document_upload.document_processing_pipeline import DocumentProcessingPipeline
+from src.document_upload.processing_strategies import PersonalDocumentationAssistantChromaDBProcessingStrategy
 
 # Load environment variables
 load_dotenv()
