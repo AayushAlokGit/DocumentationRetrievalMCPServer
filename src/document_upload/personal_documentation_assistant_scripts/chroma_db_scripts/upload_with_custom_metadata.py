@@ -28,20 +28,20 @@ from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime
 from dotenv import load_dotenv
 
-# Add src to path for imports - navigate up to src directory
+# Add project root to path for imports - navigate up to project root
 current_dir = Path(__file__).parent
-src_dir = current_dir.parent.parent
-sys.path.insert(0, str(src_dir))
+project_root = current_dir.parent.parent.parent.parent
+sys.path.insert(0, str(project_root))
 
 # Import project modules
 from src.common.vector_search_services.chromadb_service import get_chromadb_service
 from src.document_upload.document_processing_tracker import DocumentProcessingTracker
-from document_upload.processing_strategies import (
+from src.document_upload.processing_strategies import (
     DocumentProcessingStrategy,
     PersonalDocumentationAssistantChromaDBProcessingStrategy,
     ProcessedDocument
 )
-from document_upload.discovery_strategies import GeneralDocumentDiscoveryStrategy
+from src.document_upload.discovery_strategies import GeneralDocumentDiscoveryStrategy
 
 # Load environment variables
 load_dotenv()
