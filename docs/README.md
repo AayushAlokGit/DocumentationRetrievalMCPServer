@@ -313,11 +313,6 @@ The system uses environment variables for configuration. Create a `.env` file in
 # Required: Local Documentation Path
 PERSONAL_DOCUMENTATION_ROOT_DIRECTORY=C:\Users\YourName\Desktop\Documentation
 
-# Optional: ChromaDB Configuration
-CHROMADB_PATH=./chromadb_data
-EMBEDDING_MODEL=all-MiniLM-L6-v2
-MAX_CHUNK_SIZE=1000
-CHUNK_OVERLAP=200
 ```
 
 **For Azure Cognitive Search (Enterprise):**
@@ -336,11 +331,6 @@ AZURE_SEARCH_INDEX=documentation-index
 # Required: Local Documentation Path
 PERSONAL_DOCUMENTATION_ROOT_DIRECTORY=C:\Users\YourName\Desktop\Documentation
 
-# Optional: Advanced Configuration
-OPENAI_API_VERSION=2024-02-01
-SEARCH_API_VERSION=2024-07-01
-MAX_CHUNK_SIZE=1000
-CHUNK_OVERLAP=200
 ```
 
 ### Environment Setup Tips
