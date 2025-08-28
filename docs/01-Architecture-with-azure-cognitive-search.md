@@ -74,7 +74,7 @@ The document processing pipeline uses a **strategy pattern** with clear phase se
 
 #### Phase 2: Document Processing
 
-- **Strategy**: `PersonalDocumentationAssistantProcessingStrategy`
+- **Strategy**: `PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy`
 - **Processing**: Intelligent content chunking with context preservation
 - **Embeddings**: Asynchronous Azure OpenAI embedding generation with batching
 - **Metadata Extraction**: File-type specific parsing (frontmatter, DOCX properties)
@@ -280,10 +280,10 @@ cp .env.example .env
 # Edit .env with your Azure credentials
 
 # 4. Create Azure Cognitive Search index
-python projectRoot/src/document_upload/common_scripts/create_index.py
+python projectRoot/src/document_upload/common_scripts/azure_cogntive_search_scripts/create_index.py
 
 # 5. Process initial documents
-python projectRoot/src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py
+python projectRoot/src/document_upload/personal_documentation_assistant_scripts/azure_cognitive_search_scripts/upload_with_pipeline.py
 ```
 
 ---
@@ -332,29 +332,29 @@ python projectRoot/src/document_upload/personal_documentation_assistant_scripts/
 
 ```bash
 # Process new or changed documents (idempotent - safe to run multiple times)
-python projectRoot/src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py
+python projectRoot/src/document_upload/personal_documentation_assistant_scripts/azure_cognitive_search_scripts/upload_with_pipeline.py
 
 # Upload single document with custom metadata
-python projectRoot/src/document_upload/personal_documentation_assistant_scripts/upload_with_custom_metadata.py "path/to/document.md" --category "technical" --tags "api,authentication"
+python projectRoot/src/document_upload/personal_documentation_assistant_scripts/azure_cognitive_search_scripts/upload_with_custom_metadata.py "path/to/document.md" --category "technical" --tags "api,authentication"
 
 # Preview document processing without actual upload
-python projectRoot/src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py --dry-run
+python projectRoot/src/document_upload/personal_documentation_assistant_scripts/azure_cognitive_search_scripts/upload_with_pipeline.py --dry-run
 
 # Delete specific documents with preview
-python projectRoot/src/document_upload/personal_documentation_assistant_scripts/delete_by_context_and_filename.py
+python projectRoot/src/document_upload/personal_documentation_assistant_scripts/azure_cognitive_search_scripts/delete_by_context_and_filename.py
 ```
 
 ### System Maintenance
 
 ```bash
 # Verify system health and connections
-python projectRoot/src/document_upload/common_scripts/create_index.py --test-connection
+python projectRoot/src/document_upload/common_scripts/azure_cogntive_search_scripts/create_index.py --test-connection
 
 # Force complete reprocessing (use with caution)
-python projectRoot/src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py --force-reset
+python projectRoot/src/document_upload/personal_documentation_assistant_scripts/azure_cognitive_search_scripts/upload_with_pipeline.py --force-reset
 
 # Run comprehensive test suites
-cd  projectRoot/src/document_upload/personal_documentation_assistant_scripts/script_tests
+cd  projectRoot/src/document_upload/personal_documentation_assistant_scripts/azure_cognitive_search_scripts/script_tests
 python test_upload_with_pipeline_script.py
 python test_upload_with_custom_metadata_script.py
 python test_delete_by_context_and_filename_script.py
@@ -371,11 +371,11 @@ Once configured, the MCP server provides natural language search capabilities di
 
 # Force reprocessing
 
-python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py --reset
+python src/document_upload/personal_documentation_assistant_scripts/azure_cognitive_search_scripts/upload_with_pipeline.py --force-reset
 
 # System verification
 
-python src/document_upload/common_scripts/verify_document_upload_setup.py
+python src/document_upload/common_scripts/azure_cogntive_search_scripts/verify_document_upload_setup.py
 
 ```
 

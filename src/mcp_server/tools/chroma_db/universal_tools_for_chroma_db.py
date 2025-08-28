@@ -279,10 +279,10 @@ def _format_content_results(results: list, include_metadata: bool, max_content_l
 
 
 async def _explore_contexts(search_service: ChromaDBService, max_items: int) -> list[types.TextContent]:
-    """Explore available contexts in ChromaDB using sampling"""
+    """Explore available contexts in ChromaDB using filter-based document retrieval"""
     try:
-        # Get sample of documents to analyze contexts
-        results = await search_service.vector_search("", {}, max_items * 2)  # Get more to find unique contexts
+        # Get sample of documents without vector search - much more efficient and reliable
+        results = await search_service.get_documents_by_filter_async({}, max_items * 3)  # Get more to find unique contexts
 
         # Extract unique contexts
         contexts = {}
@@ -309,15 +309,15 @@ async def _explore_contexts(search_service: ChromaDBService, max_items: int) -> 
 
 
 async def _explore_files(search_service: ChromaDBService, context_name: str, max_items: int) -> list[types.TextContent]:
-    """Explore files in a context using ChromaDB sampling"""
+    """Explore files in a context using filter-based document retrieval"""
     try:
         # Build filter for context
         filters = {}
         if context_name:
             filters["context_name"] = context_name
 
-        # Get sample of documents
-        results = await search_service.vector_search("", filters, max_items * 2)
+        # Get sample of documents without vector search - more efficient and reliable
+        results = await search_service.get_documents_by_filter_async(filters, max_items * 3)
 
         # Extract unique files
         files = {}
@@ -352,7 +352,7 @@ async def _explore_files(search_service: ChromaDBService, context_name: str, max
 
 
 async def _explore_chunks(search_service: ChromaDBService, context_name: str, file_name: str, max_items: int) -> list[types.TextContent]:
-    """Explore chunks for a specific file"""
+    """Explore chunks for a specific file using filter-based document retrieval"""
     try:
         # Build filters
         filters = {}
@@ -361,8 +361,8 @@ async def _explore_chunks(search_service: ChromaDBService, context_name: str, fi
         if file_name:
             filters["file_name"] = file_name
 
-        # Get chunks
-        results = await search_service.vector_search("", filters, max_items)
+        # Get chunks without vector search - more reliable for exploration
+        results = await search_service.get_documents_by_filter_async(filters, max_items)
 
         if not results:
             return [types.TextContent(
@@ -389,15 +389,15 @@ async def _explore_chunks(search_service: ChromaDBService, context_name: str, fi
 
 
 async def _explore_categories(search_service: ChromaDBService, context_name: str, max_items: int) -> list[types.TextContent]:
-    """Explore categories using ChromaDB sampling"""
+    """Explore categories using filter-based document retrieval"""
     try:
         # Build filter for context if specified
         filters = {}
         if context_name:
             filters["context_name"] = context_name
 
-        # Get sample of documents
-        results = await search_service.vector_search("", filters, max_items * 2)
+        # Get sample of documents without vector search - more reliable for exploration
+        results = await search_service.get_documents_by_filter_async(filters, max_items * 3)
 
         # Extract unique categories
         categories = {}

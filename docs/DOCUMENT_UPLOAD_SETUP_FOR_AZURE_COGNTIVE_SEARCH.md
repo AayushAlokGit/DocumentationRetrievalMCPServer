@@ -123,7 +123,7 @@ The Document Upload System processes your documentation files and creates a sear
 Create the Azure Cognitive Search index that will store your documents:
 
 ```bash
-python src\document_upload\common_scripts\create_index.py
+python src\document_upload\common_scripts\azure_cogntive_search_scripts\create_index.py
 ```
 
 This script creates the Azure Cognitive Search index with vector search capabilities. It will:
@@ -155,23 +155,23 @@ Expected output:
 
 ```bash
 # Preview what will be processed (recommended first step)
-python src\document_upload\personal_documentation_assistant_scripts\upload_with_pipeline.py "C:\path\to\documentation" --dry-run
+python src\document_upload\personal_documentation_assistant_scripts\azure_cognitive_search_scripts\upload_with_pipeline.py "C:\path\to\documentation" --dry-run
 
 # Upload documents (processes only new/changed files)
-python src\document_upload\personal_documentation_assistant_scripts\upload_with_pipeline.py "C:\path\to\documentation"
+python src\document_upload\personal_documentation_assistant_scripts\azure_cognitive_search_scripts\upload_with_pipeline.py "C:\path\to\documentation"
 
 # Force complete reprocessing
-python src\document_upload\personal_documentation_assistant_scripts\upload_with_pipeline.py "C:\path\to\documentation" --force-reset
+python src\document_upload\personal_documentation_assistant_scripts\azure_cognitive_search_scripts\upload_with_pipeline.py "C:\path\to\documentation" --force-reset
 ```
 
 **Custom Metadata Upload:**
 
 ```bash
 # Validate metadata format before uploading (recommended first step)
-python src\document_upload\personal_documentation_assistant_scripts\upload_with_custom_metadata.py "C:\path\to\document.md" --metadata '{"title": "My Doc", "tags": "api,docs", "category": "tutorial", "work_item_id": "PROJ-123"}' --validate-only
+python src\document_upload\personal_documentation_assistant_scripts\azure_cognitive_search_scripts\upload_with_custom_metadata.py "C:\path\to\document.md" --metadata '{"title": "My Doc", "tags": "api,docs", "category": "tutorial", "work_item_id": "PROJ-123"}' --validate-only
 
 # Upload with custom metadata (requires: title, tags, category, work_item_id)
-python src\document_upload\personal_documentation_assistant_scripts\upload_with_custom_metadata.py "C:\path\to\document.md" --metadata '{"title": "My Doc", "tags": "api,docs", "category": "tutorial", "work_item_id": "PROJ-123"}'
+python src\document_upload\personal_documentation_assistant_scripts\azure_cognitive_search_scripts\upload_with_custom_metadata.py "C:\path\to\document.md" --metadata '{"title": "My Doc", "tags": "api,docs", "category": "tutorial", "work_item_id": "PROJ-123"}'
 ```
 
 💡 **Tip**: Use `--validate-only` first to check your metadata format and ensure all required fields are present before actual upload.
@@ -185,7 +185,7 @@ The script will show progress and statistics for processed documents.
 ```bash
 python -c "
 import sys; sys.path.append('src')
-from common.azure_cognitive_search import get_azure_search_service
+from common.vector_search_services.azure_cognitive_search import get_azure_search_service
 search_svc = get_azure_search_service()
 count = search_svc.get_document_count()
 print(f'📊 Documents indexed: {count}')
@@ -197,7 +197,7 @@ print(f'📊 Documents indexed: {count}')
 ```bash
 python -c "
 import sys; sys.path.append('src')
-from common.azure_cognitive_search import get_azure_search_service
+from common.vector_search_services.azure_cognitive_search import get_azure_search_service
 import asyncio
 
 async def test_search():
@@ -260,14 +260,14 @@ Press Ctrl+C to stop the test server.
 #    Documentation/New-Project/implementation.md
 
 # 2. Process the new project directory
-python src\document_upload\personal_documentation_assistant_scripts\upload_with_pipeline.py "C:\Documentation" --verbose
+python src\document_upload\personal_documentation_assistant_scripts\azure_cognitive_search_scripts\upload_with_pipeline.py "C:\Documentation" --verbose
 ```
 
 **For adding files to existing contexts:**
 
 ```bash
 # Just run regular upload - system detects new files automatically
-python src\document_upload\personal_documentation_assistant_scripts\upload_with_pipeline.py "C:\Documentation"
+python src\document_upload\personal_documentation_assistant_scripts\azure_cognitive_search_scripts\upload_with_pipeline.py "C:\Documentation"
 ```
 
 ### ✏️ Updating Existing Documentation
@@ -277,27 +277,27 @@ python src\document_upload\personal_documentation_assistant_scripts\upload_with_
 ```bash
 # 1. Edit your files in Documentation directory
 # 2. Run upload - system detects changes automatically
-python src\document_upload\personal_documentation_assistant_scripts\upload_with_pipeline.py "C:\Documentation"
+python src\document_upload\personal_documentation_assistant_scripts\azure_cognitive_search_scripts\upload_with_pipeline.py "C:\Documentation"
 ```
 
 **For major restructuring:**
 
 ```bash
 # Complete system refresh - deletes all documents and reprocesses everything
-python src\document_upload\personal_documentation_assistant_scripts\upload_with_pipeline.py "C:\Documentation" --force-reset
+python src\document_upload\personal_documentation_assistant_scripts\azure_cognitive_search_scripts\upload_with_pipeline.py "C:\Documentation" --force-reset
 ```
 
 **Delete specific context and reprocess:**
 
 ```bash
-python src\document_upload\personal_documentation_assistant_scripts\delete_by_context_and_filename.py "Project-A" "*" --force
-python src\document_upload\personal_documentation_assistant_scripts\upload_with_pipeline.py "C:\Documentation"
+python src\document_upload\personal_documentation_assistant_scripts\azure_cognitive_search_scripts\delete_by_context_and_filename.py "Project-A" "*" --force
+python src\document_upload\personal_documentation_assistant_scripts\azure_cognitive_search_scripts\upload_with_pipeline.py "C:\Documentation"
 ```
 
 **Complete system reset:**
 
 ```bash
-python src\document_upload\personal_documentation_assistant_scripts\upload_with_pipeline.py "C:\Documentation" --force-reset
+python src\document_upload\personal_documentation_assistant_scripts\azure_cognitive_search_scripts\upload_with_pipeline.py "C:\Documentation" --force-reset
 ```
 
 ## 🐛 Common Issues
@@ -328,8 +328,8 @@ python run_mcp_server.py
 - [ ] Azure OpenAI service created and embedding model deployed
 - [ ] Azure Cognitive Search service created (Basic tier+)
 - [ ] Environment variables configured in `.env`
-- [ ] Search index created successfully with `create_index.py`
-- [ ] Documents uploaded and indexed with `upload_with_pipeline.py`
+- [ ] Search index created successfully with `azure_cogntive_search_scripts\create_index.py`
+- [ ] Documents uploaded and indexed with `azure_cognitive_search_scripts\upload_with_pipeline.py`
 - [ ] MCP server can start and connect to services
 - [ ] Test searches return relevant results
 

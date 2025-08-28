@@ -13,7 +13,12 @@ Throughout this guide, `projectRoot` refers to the root directory of your Docume
 - Windows: `C:\path\to\your\DocumentationRetrievalMCPServer`
 - macOS/Linux: `/path/to/your/DocumentationRetrievalMCPServer`
 
-All script references use the full path structure of the DocumentationRetrievalMCPServer project, specifically the `upload_with_custom_metadata.py` script from the personal documentation assistant use case.
+All script references use the full path structure of the DocumentationRetrievalMCPServer project. The scripts are available in two subdirectories based on your vector search engine:
+
+- **`chroma_db_scripts/`** - For ChromaDB vector search (recommended default)
+- **`azure_cognitive_search_scripts/`** - For Azure Cognitive Search vector search
+
+**Most users should use ChromaDB scripts** as ChromaDB is the primary local vector search engine with better privacy, zero cloud costs, and excellent performance. Use Azure Cognitive Search scripts only if you specifically need enterprise Azure integration.
 
 ---
 
@@ -28,7 +33,7 @@ All script references use the full path structure of the DocumentationRetrievalM
 
 ### 2. Automated Upload Execution
 
-- **Custom metadata application** → Uses the `upload_with_custom_metadata.py` script from the personal documentation assistant use case of the DocumentationRetrievalMCPServer
+- **Custom metadata application** → Uses the `upload_with_custom_metadata.py` script from your chosen vector search engine subdirectory (chroma_db_scripts recommended)
 - **Search index integration** → Creates searchable chunks with embeddings
 - **Tracking and validation** → Ensures successful upload and indexing
 
@@ -42,7 +47,9 @@ All script references use the full path structure of the DocumentationRetrievalM
 
 - VS Code with GitHub Copilot enabled
 - Working DocumentationRetrievalMCPServer environment
-- Azure Cognitive Search and Azure OpenAI services configured
+- Vector search engine configured:
+  - **ChromaDB** (recommended): Local vector search with zero cloud costs
+  - **Azure Cognitive Search + Azure OpenAI**: Enterprise cloud solution
 
 #### Work Item Context
 
@@ -84,8 +91,11 @@ The agent will provide structured analysis like:
 📁 **Directory Context**: Located in 'future plans' indicating forward-looking architectural guidance...
 🏷️ **Functional Tags**: future-plans,architecture-principle,context-alignment,tool-design,processing-strategies
 📋 **Category**: Architecture Principle
-💻 **Upload Command**:
-python projectRoot/src/document_upload/personal_documentation_assistant_scripts/upload_with_custom_metadata.py "docs/future plans/CONTEXT_ALIGNMENT_PRINCIPLE.md" --metadata '{"title": "Context Alignment Principle for Documentation Processing", "tags": "future-plans,architecture-principle,context-alignment,tool-design,processing-strategies", "category": "Architecture Principle", "work_item_id": "DocumentationRetrievalMCPServer"}'
+💻 **Upload Command (ChromaDB - Recommended)**:
+python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/upload_with_custom_metadata.py "docs/future plans/CONTEXT_ALIGNMENT_PRINCIPLE.md" --metadata '{"title": "Context Alignment Principle for Documentation Processing", "tags": "future-plans,architecture-principle,context-alignment,tool-design,processing-strategies", "category": "Architecture Principle", "work_item_id": "DocumentationRetrievalMCPServer"}'
+
+💻 **Alternative (Azure Cognitive Search)**:
+python src/document_upload/personal_documentation_assistant_scripts/azure_cognitive_search_scripts/upload_with_custom_metadata.py "docs/future plans/CONTEXT_ALIGNMENT_PRINCIPLE.md" --metadata '{"title": "Context Alignment Principle for Documentation Processing", "tags": "future-plans,architecture-principle,context-alignment,tool-design,processing-strategies", "category": "Architecture Principle", "work_item_id": "DocumentationRetrievalMCPServer"}'
 ```
 
 #### Step 3: Metadata Validation (Optional)
@@ -151,13 +161,17 @@ Copy the generated command and run in terminal:
 ```bash
 cd projectRoot
 
-python projectRoot/src/document_upload/personal_documentation_assistant_scripts/upload_with_custom_metadata.py "docs/example/file.md" --metadata '{"title": "Generated Title", "tags": "directory-prefix,functional-tag-1,functional-tag-2", "category": "Document Type", "work_item_id": "Your Work Item"}'
+# ChromaDB (Recommended - Local, Private, Zero Cost)
+python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/upload_with_custom_metadata.py "docs/example/file.md" --metadata '{"title": "Generated Title", "tags": "directory-prefix,functional-tag-1,functional-tag-2", "category": "Document Type", "work_item_id": "Your Work Item"}'
+
+# Azure Cognitive Search (Alternative - Enterprise Cloud)
+python src/document_upload/personal_documentation_assistant_scripts/azure_cognitive_search_scripts/upload_with_custom_metadata.py "docs/example/file.md" --metadata '{"title": "Generated Title", "tags": "directory-prefix,functional-tag-1,functional-tag-2", "category": "Document Type", "work_item_id": "Your Work Item"}'
 ```
 
 #### Step 2: Validation Checklist
 
 ✅ **Metadata validation passed**  
-✅ **Azure Search connection established**  
+✅ **Vector search connection established**  
 ✅ **Document processed with chunks created**  
 ✅ **Embeddings generated successfully**  
 ✅ **Upload completed with success confirmation**  
@@ -184,13 +198,13 @@ Create reusable prompt templates for common scenarios:
 **Agent Prompt**:
 
 ```markdown
-Analyze the file authentication_guide.md in the api folder. Based on the content and directory context, generate optimal metadata for Azure Search indexing:
+Analyze the file authentication_guide.md in the api folder. Based on the content and directory context, generate optimal metadata for vector search indexing:
 
 1. **Content Analysis**: What is this document's primary purpose and technical focus?
 2. **Directory Context**: How does the folder location provide functional context?
 3. **Functional Tags**: Generate 4-5 searchable tags combining directory context + content themes
 4. **Category Classification**: Assign appropriate category (Technical Plan, Implementation Guide, etc.)
-5. **Upload Command**: Provide complete upload_with_custom_metadata.py command
+5. **Upload Command**: Provide complete upload_with_custom_metadata.py command (ChromaDB preferred)
 
 File: docs/api/authentication_guide.md
 Work Item ID: "API-DOCS-2024"
@@ -199,7 +213,11 @@ Work Item ID: "API-DOCS-2024"
 **Expected Output**:
 
 ```bash
-python projectRoot/src/document_upload/personal_documentation_assistant_scripts/upload_with_custom_metadata.py "docs/api/authentication_guide.md" --metadata '{"title": "API Authentication Implementation Guide", "tags": "api-docs,authentication,security,implementation-guide,oauth", "category": "Technical Guide", "work_item_id": "API-DOCS-2024"}'
+# ChromaDB (Recommended)
+python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/upload_with_custom_metadata.py "docs/api/authentication_guide.md" --metadata '{"title": "API Authentication Implementation Guide", "tags": "api-docs,authentication,security,implementation-guide,oauth", "category": "Technical Guide", "work_item_id": "API-DOCS-2024"}'
+
+# Azure Alternative
+python src/document_upload/personal_documentation_assistant_scripts/azure_cognitive_search_scripts/upload_with_custom_metadata.py "docs/api/authentication_guide.md" --metadata '{"title": "API Authentication Implementation Guide", "tags": "api-docs,authentication,security,implementation-guide,oauth", "category": "Technical Guide", "work_item_id": "API-DOCS-2024"}'
 ```
 
 ### Use Case 2: Architecture Documentation
@@ -209,13 +227,13 @@ python projectRoot/src/document_upload/personal_documentation_assistant_scripts/
 **Agent Prompt**:
 
 ```markdown
-Analyze the file microservices_design.md in the architecture folder. Based on the content and directory context, generate optimal metadata for Azure Search indexing:
+Analyze the file microservices_design.md in the architecture folder. Based on the content and directory context, generate optimal metadata for vector search indexing:
 
 1. **Content Analysis**: What is this document's primary purpose and technical focus?
 2. **Directory Context**: How does the folder location provide functional context?
 3. **Functional Tags**: Generate 4-5 searchable tags combining directory context + content themes
 4. **Category Classification**: Assign appropriate category (Technical Plan, Implementation Guide, etc.)
-5. **Upload Command**: Provide complete upload_with_custom_metadata.py command
+5. **Upload Command**: Provide complete upload_with_custom_metadata.py command (ChromaDB preferred)
 
 File: docs/architecture/microservices_design.md
 Work Item ID: "ARCHITECTURE-2024"
@@ -224,7 +242,11 @@ Work Item ID: "ARCHITECTURE-2024"
 **Expected Output**:
 
 ```bash
-python projectRoot/src/document_upload/personal_documentation_assistant_scripts/upload_with_custom_metadata.py "docs/architecture/microservices_design.md" --metadata '{"title": "Microservices Architecture Design", "tags": "architecture,microservices,system-design,scalability,integration", "category": "Architecture Document", "work_item_id": "ARCHITECTURE-2024"}'
+# ChromaDB (Recommended)
+python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/upload_with_custom_metadata.py "docs/architecture/microservices_design.md" --metadata '{"title": "Microservices Architecture Design", "tags": "architecture,microservices,system-design,scalability,integration", "category": "Architecture Document", "work_item_id": "ARCHITECTURE-2024"}'
+
+# Azure Alternative
+python src/document_upload/personal_documentation_assistant_scripts/azure_cognitive_search_scripts/upload_with_custom_metadata.py "docs/architecture/microservices_design.md" --metadata '{"title": "Microservices Architecture Design", "tags": "architecture,microservices,system-design,scalability,integration", "category": "Architecture Document", "work_item_id": "ARCHITECTURE-2024"}'
 ```
 
 ### Use Case 3: Troubleshooting Documentation
@@ -234,7 +256,7 @@ python projectRoot/src/document_upload/personal_documentation_assistant_scripts/
 **Agent Prompt**:
 
 ```markdown
-Analyze the file database_performance_issues.md in the troubleshooting folder. Based on the content and directory context, generate optimal metadata for Azure Search indexing:
+Analyze the file database_performance_issues.md in the troubleshooting folder. Based on the content and directory context, generate optimal metadata for vector search indexing:
 
 1. **Content Analysis**: What is this document's primary purpose and technical focus?
 2. **Directory Context**: How does the folder location provide functional context?
@@ -246,7 +268,22 @@ File: docs/troubleshooting/database_performance_issues.md
 Work Item ID: "SUPPORT-DOCS-2024"
 ```
 
+5. **Upload Command**: Provide complete upload_with_custom_metadata.py command (ChromaDB preferred)
+
+File: docs/troubleshooting/database_performance_issues.md
+Work Item ID: "SUPPORT-DOCS-2024"
+
+````
+
 **Expected Output**:
+
+```bash
+# ChromaDB (Recommended)
+python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/upload_with_custom_metadata.py "docs/troubleshooting/database_performance_issues.md" --metadata '{"title": "Database Performance Troubleshooting Guide", "tags": "troubleshooting,database,performance,optimization,diagnostics", "category": "Troubleshooting Guide", "work_item_id": "SUPPORT-DOCS-2024"}'
+
+# Azure Alternative
+python src/document_upload/personal_documentation_assistant_scripts/azure_cognitive_search_scripts/upload_with_custom_metadata.py "docs/troubleshooting/database_performance_issues.md" --metadata '{"title": "Database Performance Troubleshooting Guide", "tags": "troubleshooting,database,performance,optimization,diagnostics", "category": "Troubleshooting Guide", "work_item_id": "SUPPORT-DOCS-2024"}'
+````
 
 ---
 
@@ -348,7 +385,11 @@ Test that uploaded documents are searchable:
 If you need to remove documents from the search index, use the deletion script:
 
 ```bash
-python projectRoot/src/document_upload/personal_documentation_assistant_scripts/delete_by_context_and_filename.py
+# ChromaDB (Recommended)
+python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/delete_by_context_and_filename.py
+
+# Azure Cognitive Search (Alternative)
+python src/document_upload/personal_documentation_assistant_scripts/azure_cognitive_search_scripts/delete_by_context_and_filename.py
 ```
 
 **Features**:
@@ -424,7 +465,7 @@ python projectRoot/src/document_upload/personal_documentation_assistant_scripts/
 **Troubleshooting**:
 
 - **No documents found**: Check context and filename spelling
-- **Connection errors**: Verify Azure Search service is accessible
+- **Connection errors**: Verify your vector search service (ChromaDB or Azure Search) is accessible
 - **Multiple matches**: Use more specific filename or exact matching
 - **Partial deletion**: Some chunks may remain if deletion fails - rerun script
 
@@ -439,8 +480,8 @@ This section documents a practical example of when and how to use the deletion s
 1. **Initial Upload**: Documentation was uploaded with these parameters:
 
    ```bash
-   # Original upload command
-   python projectRoot/src/document_upload/personal_documentation_assistant_scripts/upload_with_custom_metadata.py "docs/INTELLIGENT_DOCUMENT_UPLOAD_WITH_VSCODE_AGENT.md" --metadata '{"title": "Intelligent Document Upload Using VS Code Agent Mode", "tags": "documentation,vscode-agent,ai-powered,metadata-generation,upload-workflow,intelligent-tagging,process-guide", "category": "Process Guide", "work_item_id": "DocumentationRetrievalMCPServer"}'
+   # Original upload command (ChromaDB - Recommended)
+   python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/upload_with_custom_metadata.py "docs/INTELLIGENT_DOCUMENT_UPLOAD_WITH_VSCODE_AGENT.md" --metadata '{"title": "Intelligent Document Upload Using VS Code Agent Mode", "tags": "documentation,vscode-agent,ai-powered,metadata-generation,upload-workflow,intelligent-tagging,process-guide", "category": "Process Guide", "work_item_id": "DocumentationRetrievalMCPServer"}'
 
    # Result: 5 chunks created and indexed
    ```
@@ -455,7 +496,7 @@ This section documents a practical example of when and how to use the deletion s
 3. **Preview Deletion** (Always do this first):
 
    ```bash
-   python projectRoot/src/document_upload/personal_documentation_assistant_scripts/delete_by_context_and_filename.py "DocumentationRetrievalMCPServer" "INTELLIGENT_DOCUMENT_UPLOAD_WITH_VSCODE_AGENT.md" --preview
+   python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/delete_by_context_and_filename.py "DocumentationRetrievalMCPServer" "INTELLIGENT_DOCUMENT_UPLOAD_WITH_VSCODE_AGENT.md" --preview
 
    # Output showed:
    # ✅ Search completed: 5 chunks in 1 files
@@ -467,7 +508,7 @@ This section documents a practical example of when and how to use the deletion s
 4. **Execute Deletion**:
 
    ```bash
-   python projectRoot/src/document_upload/personal_documentation_assistant_scripts/delete_by_context_and_filename.py "DocumentationRetrievalMCPServer" "INTELLIGENT_DOCUMENT_UPLOAD_WITH_VSCODE_AGENT.md"
+   python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/delete_by_context_and_filename.py "DocumentationRetrievalMCPServer" "INTELLIGENT_DOCUMENT_UPLOAD_WITH_VSCODE_AGENT.md"
 
    # Results:
    # ✅ Successfully deleted: 5 chunks

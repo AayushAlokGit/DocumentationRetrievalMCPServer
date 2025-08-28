@@ -73,8 +73,8 @@ async def force_reset_chromadb_and_tracker() -> bool:
         
         # 2. Clear tracker state completely
         print("   🔄 Clearing document processing tracker...")
-        cleared_files = tracker.clear_all_tracked_files()
-        print(f"   ✅ Document tracker cleared ({cleared_files} files)")
+        tracker.clear()
+        print("   ✅ Document tracker cleared")
         
         # 3. Test connection to verify ChromaDB is accessible
         try:

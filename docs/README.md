@@ -1,6 +1,6 @@
 # Personal Documentation Assistant MCP Server
 
-A powerful AI-enhanced document retrieval system using Azure Cognitive Search with vector embeddings and Model Context Protocol (MCP) integration for VS Code.
+A powerful AI-enhanced document retrieval system with local ChromaDB vector search and Model Context Protocol (MCP) integration for VS Code.
 
 ## 🎯 Project Overview
 
@@ -8,10 +8,13 @@ This project provides **intelligent document search and retrieval** for your doc
 
 ### 📄 Document Processing & Upload System
 
-- **Purpose**: Processes and indexes your documentation into Azure Cognitive Search
+- **Purpose**: Processes and indexes your documentation into your chosen vector search engine
+- **Vector Search Options**:
+  - **ChromaDB** (recommended): Local vector search with zero cloud costs and complete privacy
+  - **Azure Cognitive Search**: Enterprise cloud search with Azure integration
 - **Features**: Smart chunking, vector embeddings, idempotent processing, batch uploads
 - **Usage**: Run periodically to maintain your searchable document index
-- **Key Scripts**: `upload_with_pipeline.py`, `upload_with_custom_metadata.py`, `create_index.py`
+- **Key Scripts**: `upload_with_pipeline.py`, `upload_with_custom_metadata.py`
 
 ### 🔌 MCP Server for VS Code Integration
 
@@ -26,11 +29,12 @@ This project provides **intelligent document search and retrieval** for your doc
 
 ### Document Processing
 
-- **🧠 Vector Embeddings**: Uses Azure OpenAI text-embedding-ada-002 for semantic understanding
+- **🧠 Vector Embeddings**: Local embeddings with ChromaDB or Azure OpenAI text-embedding-ada-002
 - **📊 Smart Chunking**: Intelligent text segmentation for optimal search performance
 - **🔄 Idempotent Processing**: File signature tracking prevents duplicate processing
 - **📁 Flexible Structure**: Seamless integration with any documentation organization
 - **🏷️ Metadata Support**: Full frontmatter parsing for titles, tags, and context information
+- **🔒 Privacy Options**: Choose between local ChromaDB (private) or cloud Azure (enterprise)
 
 ### Search Capabilities
 
@@ -59,35 +63,44 @@ DocumentationRetrievalMCPServer/
 ├──
 ├── src/                               # Core application code
 │   ├── common/                        # 🔌📄 Shared services
-│   │   ├── azure_cognitive_search.py # Azure Search service
-│   │   ├── embedding_service.py      # Embedding generation
-│   │   └── openai_service.py         # OpenAI integration
+│   │   ├── vector_search_services/   # Vector search engine abstraction
+│   │   │   ├── chromadb_service.py   # ChromaDB implementation (recommended)
+│   │   │   ├── azure_cognitive_search.py # Azure Search implementation
+│   │   │   └── vector_search_service_factory.py # Auto-detection
+│   │   ├── embedding_services/       # Embedding generation services
+│   │   └── openai_service.py         # OpenAI integration (for Azure option)
 │   ├──
 │   ├── mcp_server/                    # 🔌 MCP Server components
 │   │   ├── server.py                 # MCP Server implementation
 │   │   └── tools/                    # Universal MCP tools
 │   │       ├── tool_router.py        # Tool dispatch routing
-│   │       ├── universal_tools.py    # Universal tool implementations
-│   │       ├── tool_schemas.py       # Tool schema definitions
-│   │       └── work_item_tools.py    # Legacy compatibility tools
+│   │       ├── chroma_db/            # ChromaDB-specific tools
+│   │       └── azure_cognitive_search/ # Azure-specific tools
 │   ├──
 │   ├── document_upload/               # 📄 Document upload system
 │   │   ├── document_processing_pipeline.py # Document processing pipeline
 │   │   ├── discovery_strategies.py   # Document discovery strategies
 │   │   ├── processing_strategies.py  # Document processing strategies
-│   │   ├── file_tracker.py           # File processing tracking
+│   │   ├── document_processing_tracker.py # File processing tracking
 │   │   ├── common_scripts/           # Common utility scripts
-│   │   │   └── create_index.py       # Index creation script
+│   │   │   └── azure_cogntive_search_scripts/ # Azure index creation
 │   │   └── personal_documentation_assistant_scripts/ # Main upload scripts
-│   │       ├── upload_with_pipeline.py # Main upload script
-│   │       ├── upload_with_custom_metadata.py # Custom metadata upload
-│   │       └── delete_by_context_and_filename.py # Context-based deletion
+│   │       ├── chroma_db_scripts/    # ChromaDB upload scripts (recommended)
+│   │       │   ├── upload_with_pipeline.py
+│   │       │   ├── upload_with_custom_metadata.py
+│   │       │   └── delete_by_context_and_filename.py
+│   │       └── azure_cognitive_search_scripts/ # Azure upload scripts
+│   │           ├── upload_with_pipeline.py
+│   │           ├── upload_with_custom_metadata.py
+│   │           └── delete_by_context_and_filename.py
 │   └──
 │   └── tests/                         # Test files
 ├──
 └── docs/                              # Documentation
-    ├── 01-Architecture-Simplified.md # System architecture overview
-    ├── DOCUMENT_UPLOAD_SETUP.md      # Document upload setup guide
+    ├── 02-Architecture-with-chromadb-local-embeddings.md # ChromaDB architecture
+    ├── 01-Architecture-with-azure-cognitive-search.md # Azure architecture
+    ├── DOCUMENT_UPLOAD_SETUP_FOR_CHROMADB.md # ChromaDB setup (recommended)
+    ├── DOCUMENT_UPLOAD_SETUP_FOR_AZURE_COGNTIVE_SEARCH.md # Azure setup
     └── MCP_SERVER_SETUP.md           # MCP server setup guide
 ```
 
@@ -95,14 +108,26 @@ DocumentationRetrievalMCPServer/
 
 ## 🛠️ Setup
 
-This project has **two separate setup processes** for each component:
+This project has **two setup paths** based on your preferred vector search engine:
 
-### 📄 Document Upload System Setup
+### 🎯 Recommended Path: ChromaDB (Local & Private)
+
+1. **📄 Document Upload System**: [DOCUMENT_UPLOAD_SETUP_FOR_CHROMADB.md](DOCUMENT_UPLOAD_SETUP_FOR_CHROMADB.md)
+2. **🔌 MCP Server Setup**: [MCP_SERVER_SETUP.md](MCP_SERVER_SETUP.md)
+
+**Benefits**: Zero cloud costs, complete privacy, local processing, works offline
+
+### 🏢 Enterprise Path: Azure Cognitive Search
+
+1. **📄 Document Upload System**: [DOCUMENT_UPLOAD_SETUP_FOR_AZURE_COGNTIVE_SEARCH.md](DOCUMENT_UPLOAD_SETUP_FOR_AZURE_COGNTIVE_SEARCH.md)
+2. **🔌 MCP Server Setup**: [MCP_SERVER_SETUP.md](MCP_SERVER_SETUP.md)
+
+**Benefits**: Enterprise scale, cloud integration, Azure ecosystem
 
 **Complete this FIRST** - Sets up document processing and search index:
 
-- 📖 **[DOCUMENT_UPLOAD_SETUP.md](DOCUMENT_UPLOAD_SETUP.md)** - Complete setup guide
-- Includes Azure services setup, environment configuration, and document indexing
+- 📖 **[DOCUMENT_UPLOAD_SETUP_FOR_CHROMADB.md](DOCUMENT_UPLOAD_SETUP_FOR_CHROMADB.md)** - ChromaDB setup (recommended)
+- 📖 **[DOCUMENT_UPLOAD_SETUP_FOR_AZURE_COGNTIVE_SEARCH.md](DOCUMENT_UPLOAD_SETUP_FOR_AZURE_COGNTIVE_SEARCH.md)** - Azure setup (enterprise)
 
 ### 🔌 MCP Server Setup
 
@@ -113,6 +138,14 @@ This project has **two separate setup processes** for each component:
 
 ### Quick Prerequisites Check
 
+**For ChromaDB (Recommended):**
+
+- Python 3.8+
+- Documentation directory with files organized by context
+- VS Code (for MCP integration)
+
+**For Azure Cognitive Search (Enterprise):**
+
 - Python 3.8+
 - Azure Cognitive Search service (Basic tier+)
 - Azure OpenAI service with text-embedding-ada-002
@@ -121,16 +154,22 @@ This project has **two separate setup processes** for each component:
 
 ### Installation
 
-**Follow the component-specific setup guides:**
+**Choose your vector search engine and follow the appropriate setup guide:**
 
-1. **📄 Document Upload System**: See [DOCUMENT_UPLOAD_SETUP.md](DOCUMENT_UPLOAD_SETUP.md)
+1. **📄 ChromaDB Document Upload** (Recommended): See [DOCUMENT_UPLOAD_SETUP_FOR_CHROMADB.md](DOCUMENT_UPLOAD_SETUP_FOR_CHROMADB.md)
+
+   - Local vector search setup
+   - Environment configuration
+   - Document indexing with zero cloud costs
+
+2. **📄 Azure Document Upload** (Enterprise): See [DOCUMENT_UPLOAD_SETUP_FOR_AZURE_COGNTIVE_SEARCH.md](DOCUMENT_UPLOAD_SETUP_FOR_AZURE_COGNTIVE_SEARCH.md)
 
    - Azure services setup
-   - Environment configuration
-   - Document indexing
+   - Cloud environment configuration
+   - Enterprise document indexing
 
-2. **🔌 MCP Server Integration**: See [MCP_SERVER_SETUP.md](MCP_SERVER_SETUP.md)
-   - VS Code MCP configuration
+3. **🔌 MCP Server Integration**: See [MCP_SERVER_SETUP.md](MCP_SERVER_SETUP.md)
+   - VS Code MCP configuration (works with either vector search engine)
    - Server integration
    - Testing and usage
 
@@ -140,16 +179,24 @@ This project has **two separate setup processes** for each component:
 
 **First, set up your search index and upload documents:**
 
+**For ChromaDB (Recommended):**
+
+1. **Upload your documents:**
+   ```bash
+   python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/upload_with_pipeline.py
+   ```
+
+**For Azure Cognitive Search (Enterprise):**
+
 1. **Set up the search index:**
 
    ```bash
-   python src/document_upload/common_scripts/create_index.py
+   python src/document_upload/common_scripts/azure_cogntive_search_scripts/create_index.py
    ```
 
 2. **Upload your documents:**
-
    ```bash
-   python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py
+   python src/document_upload/personal_documentation_assistant_scripts/azure_cognitive_search_scripts/upload_with_pipeline.py
    ```
 
 ### Part 2: MCP Server for VS Code
@@ -169,24 +216,35 @@ This project has **two separate setup processes** for each component:
 
 #### Document Upload Commands (📄)
 
-**System Setup & Verification:**
-
-- `python src/document_upload/common_scripts/create_index.py` - Create Azure Search index with vector capabilities
+**ChromaDB Commands (Recommended):**
 
 **Document Processing:**
 
-- `python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py <path>` - Process and index all documentation from specified path
-- `python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py <path> --dry-run` - Preview what will be processed without uploading
-- `python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py <path> --force-reset` - Delete all documents and tracker, then reprocess everything
-- `python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py <path> --stats` - Show detailed processing statistics after completion
-- `python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py <path> --verbose` - Enable verbose logging for debugging
-- `python src/document_upload/personal_documentation_assistant_scripts/upload_with_custom_metadata.py <path> --metadata '{"title": "Custom Title", "tags": "tag1,tag2", "category": "reference", "work_item_id": "PROJ-123"}'` - Upload with custom metadata override
-- `python src/document_upload/personal_documentation_assistant_scripts/upload_with_custom_metadata.py <path> --metadata '{...}' --validate-only` - Validate metadata without uploading
+- `python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/upload_with_pipeline.py <path>` - Process and index all documentation from specified path
+- `python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/upload_with_pipeline.py <path> --dry-run` - Preview what will be processed without uploading
+- `python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/upload_with_pipeline.py <path> --force-reset` - Delete all documents and tracker, then reprocess everything
+- `python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/upload_with_custom_metadata.py <path> --metadata '{"title": "Custom Title", "tags": "tag1,tag2", "category": "reference", "work_item_id": "PROJ-123"}'` - Upload with custom metadata override
 
 **Document Management:**
 
-- `python src/document_upload/personal_documentation_assistant_scripts/delete_by_context_and_filename.py <context_name>` - Delete all documents for a specific context
-- `python src/document_upload/personal_documentation_assistant_scripts/delete_by_context_and_filename.py <context_name> --no-confirm` - Delete without confirmation
+- `python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/delete_by_context_and_filename.py <context_name>` - Delete all documents for a specific context
+
+**Azure Cognitive Search Commands (Enterprise):**
+
+**System Setup & Verification:**
+
+- `python src/document_upload/common_scripts/azure_cogntive_search_scripts/create_index.py` - Create Azure Search index with vector capabilities
+
+**Document Processing:**
+
+- `python src/document_upload/personal_documentation_assistant_scripts/azure_cognitive_search_scripts/upload_with_pipeline.py <path>` - Process and index all documentation from specified path
+- `python src/document_upload/personal_documentation_assistant_scripts/azure_cognitive_search_scripts/upload_with_pipeline.py <path> --dry-run` - Preview what will be processed without uploading
+- `python src/document_upload/personal_documentation_assistant_scripts/azure_cognitive_search_scripts/upload_with_pipeline.py <path> --force-reset` - Delete all documents and tracker, then reprocess everything
+- `python src/document_upload/personal_documentation_assistant_scripts/azure_cognitive_search_scripts/upload_with_custom_metadata.py <path> --metadata '{"title": "Custom Title", "tags": "tag1,tag2", "category": "reference", "work_item_id": "PROJ-123"}'` - Upload with custom metadata override
+
+**Document Management:**
+
+- `python src/document_upload/personal_documentation_assistant_scripts/azure_cognitive_search_scripts/delete_by_context_and_filename.py <context_name>` - Delete all documents for a specific context
 
 **Testing:**
 
@@ -249,6 +307,21 @@ Test your configuration by running document processing in dry-run mode and start
 
 The system uses environment variables for configuration. Create a `.env` file in the project root:
 
+**For ChromaDB (Recommended - Minimal Configuration):**
+
+```env
+# Required: Local Documentation Path
+PERSONAL_DOCUMENTATION_ROOT_DIRECTORY=C:\Users\YourName\Desktop\Documentation
+
+# Optional: ChromaDB Configuration
+CHROMADB_PATH=./chromadb_data
+EMBEDDING_MODEL=all-MiniLM-L6-v2
+MAX_CHUNK_SIZE=1000
+CHUNK_OVERLAP=200
+```
+
+**For Azure Cognitive Search (Enterprise):**
+
 ```env
 # Required: Azure OpenAI Configuration
 AZURE_OPENAI_ENDPOINT=https://your-openai-service.openai.azure.com/
@@ -272,6 +345,14 @@ CHUNK_OVERLAP=200
 
 ### Environment Setup Tips
 
+**For ChromaDB:**
+
+1. **Documentation Path**: Use absolute path with proper Windows path format
+2. **ChromaDB Path**: Default `./chromadb_data` works well, no changes needed
+3. **Embedding Model**: Local Sentence Transformers model, downloaded automatically
+
+**For Azure:**
+
 1. **Azure OpenAI**: Ensure your deployment name matches `EMBEDDING_DEPLOYMENT`
 2. **Search Service**: Use the admin key (not query key) for document uploads
 3. **Documentation Path**: Use absolute path with proper Windows path format
@@ -281,12 +362,21 @@ CHUNK_OVERLAP=200
 
 ### Test Document Upload System (📄)
 
+**For ChromaDB (Recommended):**
+
+```bash
+# Test document processing with pipeline
+python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/upload_with_pipeline.py "path/to/your/docs" --dry-run
+```
+
+**For Azure Cognitive Search (Enterprise):**
+
 ```bash
 # Create the search index
-python src/document_upload/common_scripts/create_index.py
+python src/document_upload/common_scripts/azure_cogntive_search_scripts/create_index.py
 
 # Test document processing with pipeline
-python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py "path/to/your/docs" --dry-run
+python src/document_upload/personal_documentation_assistant_scripts/azure_cognitive_search_scripts/upload_with_pipeline.py "path/to/your/docs" --dry-run
 ```
 
 ### Test MCP Server Integration (🔌)
@@ -308,22 +398,24 @@ The system consists of two main parts working together:
 1. **Document Discovery**: Scans documentation directory structure
 2. **Content Processing**: Extracts content and metadata from various file types
 3. **Text Chunking**: Splits documents into searchable chunks
-4. **Embedding Generation**: Creates vector embeddings using Azure OpenAI
-5. **Index Storage**: Stores documents and vectors in Azure Cognitive Search
+4. **Embedding Generation**: Creates vector embeddings using:
+   - **ChromaDB**: Local Sentence Transformers (all-MiniLM-L6-v2)
+   - **Azure**: Azure OpenAI (text-embedding-ada-002)
+5. **Index Storage**: Stores documents and vectors in chosen search engine
 6. **File Tracking**: Uses `DocumentProcessingTracker` for idempotent processing
 
 ### Part 2: MCP Server for VS Code (🔌)
 
 1. **MCP Protocol**: Provides Model Context Protocol interface for VS Code
-2. **Search Engine**: Handles text, vector, and hybrid search queries
+2. **Search Engine**: Handles text, vector, and hybrid search queries (auto-detects ChromaDB vs Azure)
 3. **Context Retrieval**: Finds relevant documentation for AI assistant
 4. **Tool Exposure**: Exposes search tools to VS Code agent mode
 5. **Result Formatting**: Formats search results for optimal AI consumption
 
 ### Shared Components
 
-- **Azure OpenAI Service**: Used by both parts for embeddings and chat
-- **Azure Cognitive Search**: Central search index used by both parts
+- **Vector Search Services**: Abstracted interface supporting both ChromaDB and Azure
+- **Embedding Services**: Local or cloud embedding generation
 - **Configuration Management**: Shared environment and settings
 - **DocumentProcessingTracker**: Idempotent file processing with direct signature tracking
 
@@ -420,31 +512,45 @@ The system includes comprehensive error handling:
 
 ### Common Issues
 
-- **"Failed to connect to Azure OpenAI"**: Check your Azure OpenAI endpoint and key
-- **"Search service connection failed"**: Verify Azure Search service name and key
+- **"Failed to connect to ChromaDB"**: Check ChromaDB installation and `CHROMADB_PATH`
+- **"Failed to connect to Azure OpenAI"**: Check your Azure OpenAI endpoint and key (Azure users only)
+- **"Search service connection failed"**: Verify Azure Search service name and key (Azure users only)
 - **"No documentation found"**: Ensure PERSONAL_DOCUMENTATION_ROOT_DIRECTORY points to correct directory
 - **"MCP server not connecting"**: Check VS Code MCP configuration paths
-- **"Force reprocessing not working"**: Use `--force --context <NAME>` for targeted reprocessing
-- **"Documents not deleted"**: Use delete utility scripts for manual cleanup
+- **"Embedding model download failed"**: Check internet connection for initial local model download (ChromaDB)
 
 ### Document Management
 
 Use the utility scripts for document lifecycle management:
 
+**For ChromaDB:**
+
 ```bash
 # Check what documents exist for a context
-python src/document_upload/personal_documentation_assistant_scripts/delete_by_context_and_filename.py <context_name> --dry-run
+python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/delete_by_context_and_filename.py <context_name> --dry-run
 
 # Clean up specific context documents
-python src/document_upload/personal_documentation_assistant_scripts/delete_by_context_and_filename.py <context_name>
+python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/delete_by_context_and_filename.py <context_name>
+```
+
+**For Azure:**
+
+```bash
+# Check what documents exist for a context
+python src/document_upload/personal_documentation_assistant_scripts/azure_cognitive_search_scripts/delete_by_context_and_filename.py <context_name> --dry-run
+
+# Clean up specific context documents
+python src/document_upload/personal_documentation_assistant_scripts/azure_cognitive_search_scripts/delete_by_context_and_filename.py <context_name>
 ```
 
 ### Get Help
 
-1. Check Azure service connections in your `.env` file
-2. Use `--dry-run` flag with upload scripts to test configuration
-3. Review log files for detailed error messages
-4. Use the `create_index.py` script to recreate the search index if needed
+1. **For ChromaDB issues**: Check local ChromaDB installation and embedding model downloads
+2. **For Azure issues**: Check Azure service connections in your `.env` file
+3. Use `--dry-run` flag with upload scripts to test configuration
+4. Review log files for detailed error messages
+5. **ChromaDB**: No index creation needed - documents are stored automatically
+6. **Azure**: Use the `create_index.py` script to recreate the search index if needed
 
 ## 📝 License
 
