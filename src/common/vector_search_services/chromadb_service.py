@@ -302,47 +302,6 @@ class ChromaDBService(IVectorSearchService):
             return 0
 
     # ===== SEARCH OPERATIONS =====
-
-    def get_documents_by_filter(self, filters: Dict[str, Any]) -> List[Dict]:
-        """Get documents matching filter criteria without vector search"""
-        try:
-            # Convert filters to ChromaDB format
-            chromadb_filters = self._convert_filters_to_chromadb(filters) if filters else None
-
-            # Get documents using ChromaDB collection get method
-            results = self.collection.get(
-                where=chromadb_filters,
-                include=['metadatas', 'documents']
-            )
-
-            # Format results to match expected structure
-            formatted_results = []
-            if results and 'ids' in results:
-                for i, doc_id in enumerate(results['ids']):
-                    doc_data = {
-                        'id': doc_id,
-                        'content': results['documents'][i] if i < len(results['documents']) else '',
-                        'metadata': results['metadatas'][i] if i < len(results['metadatas']) else {}
-                    }
-                    
-                    # Extract common metadata fields
-                    metadata = doc_data['metadata']
-                    doc_data.update({
-                        'file_name': metadata.get('file_name', ''),
-                        'context_name': metadata.get('context_name', ''),
-                        'file_path': metadata.get('file_path', ''),
-                        'title': metadata.get('title', ''),
-                        'chunk_index': metadata.get('chunk_index', 0)
-                    })
-                    
-                    formatted_results.append(doc_data)
-
-            return formatted_results
-
-        except Exception as e:
-            print(f"[ERROR] Get documents by filter failed: {e}")
-            return []
-
     async def get_documents_by_filter_async(self, filters: Dict[str, Any] = None, limit: int = None) -> List[Dict]:
         """
         Async version of get_documents_by_filter with optional limit
@@ -385,6 +344,45 @@ class ChromaDBService(IVectorSearchService):
 
         except Exception as e:
             print(f"[ERROR] Get documents by filter async failed: {e}")
+            return []
+
+    async def get_documents_by_ids_async(self, document_ids: List[str]) -> List[Dict]:
+        """
+        Get documents by specific IDs
+        """
+        try:
+            # Get documents using ChromaDB collection get method
+            results = self.collection.get(
+                ids=document_ids,
+                include=['metadatas', 'documents']
+            )
+
+            # Format results to match expected structure
+            formatted_results = []
+            if results and 'ids' in results:
+                for i, doc_id in enumerate(results['ids']):
+                    doc_data = {
+                        'id': doc_id,
+                        'content': results['documents'][i] if i < len(results['documents']) else '',
+                        'metadata': results['metadatas'][i] if i < len(results['metadatas']) else {}
+                    }
+                    
+                    # Extract common metadata fields
+                    metadata = doc_data['metadata']
+                    doc_data.update({
+                        'file_name': metadata.get('file_name', ''),
+                        'context_name': metadata.get('context_name', ''),
+                        'file_path': metadata.get('file_path', ''),
+                        'title': metadata.get('title', ''),
+                        'chunk_index': metadata.get('chunk_index', 0)
+                    })
+                    
+                    formatted_results.append(doc_data)
+
+            return formatted_results
+
+        except Exception as e:
+            print(f"[ERROR] Get documents by IDs async failed: {e}")
             return []
 
     async def vector_search(self, query: str, filters: Optional[Dict[str, Any]] = None, top: int = 5) -> List[Dict]:

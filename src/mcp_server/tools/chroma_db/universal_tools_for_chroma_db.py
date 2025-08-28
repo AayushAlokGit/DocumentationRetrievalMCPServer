@@ -77,8 +77,8 @@ async def handle_get_document_content(search_service: ChromaDBService, arguments
 
             logger.info(f"[CONTENT] Getting documents by context/file: {filters}")
 
-            # Use vector search with empty query to get all matching documents
-            results = await search_service.vector_search("", filters, 50)  # Get more results for content
+            # Use filter-based document retrieval instead of vector search for content fetching
+            results = await search_service.get_documents_by_filter_async(filters, 50)  # Get more results for content
 
         elif document_ids:
             # Get specific documents by ID
@@ -87,17 +87,8 @@ async def handle_get_document_content(search_service: ChromaDBService, arguments
 
             logger.info(f"[CONTENT] Getting documents by IDs: {document_ids}")
 
-            # ChromaDB get by IDs - use collection directly
-            try:
-                chromadb_results = search_service.collection.get(ids=document_ids)
-                results = search_service._format_search_results({
-                    'ids': [chromadb_results['ids']] if chromadb_results['ids'] else [[]],
-                    'documents': [chromadb_results['documents']] if chromadb_results['documents'] else [[]],
-                    'metadatas': [chromadb_results['metadatas']] if chromadb_results['metadatas'] else [[]],
-                    'distances': [[0.0] * len(chromadb_results['ids'])] if chromadb_results['ids'] else [[]]
-                })
-            except Exception as e:
-                return [types.TextContent(type="text", text=f"[ERROR] Failed to get documents by ID: {e}")]
+            # Use proper service method for document ID retrieval
+            results = await search_service.get_documents_by_ids_async(document_ids)
         else:
             return [types.TextContent(
                 type="text",
