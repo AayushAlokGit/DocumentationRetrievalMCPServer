@@ -29,6 +29,9 @@ from dotenv import load_dotenv
 import sys
 sys.path.append(str(Path(__file__).parent.parent))
 
+# Import chunking strategies
+from chunking_strategies import SimpleChunkingStrategy, ChunkingConfig
+
 # File type specific parsing libraries
 try:
     from docx import Document
@@ -139,72 +142,6 @@ def _extract_docx_content(file_path: Path) -> Optional[str]:
         return None
 
 
-def _simple_chunk_text(content: str, max_chunk_size: int = 4000, overlap: int = 200) -> List[str]:
-    """
-    Split text into chunks with simple sentence-based splitting.
-    
-    Args:
-        content: Text content to chunk
-        max_chunk_size: Maximum characters per chunk
-        overlap: Number of overlapping characters between chunks
-        
-    Returns:
-        List[str]: List of text chunks
-    """
-    if not content or len(content) <= max_chunk_size:
-        return [content] if content else []
-    
-    chunks = []
-    sentences = content.split('. ')
-    
-    current_chunk = ""
-    for sentence in sentences:
-        sentence = sentence.strip()
-        if not sentence:
-            continue
-            
-        # Add period back if it was removed by split (except for last sentence)
-        if not sentence.endswith('.') and not sentence.endswith('!') and not sentence.endswith('?'):
-            sentence += '.'
-        
-        # Check if adding this sentence would exceed the limit
-        test_chunk = current_chunk + " " + sentence if current_chunk else sentence
-        
-        if len(test_chunk) <= max_chunk_size:
-            current_chunk = test_chunk
-        else:
-            # Save current chunk and start new one
-            if current_chunk:
-                chunks.append(current_chunk.strip())
-            current_chunk = sentence
-    
-    # Add the last chunk
-    if current_chunk:
-        chunks.append(current_chunk.strip())
-    
-    # If we still have chunks that are too long, split them more aggressively
-    final_chunks = []
-    for chunk in chunks:
-        if len(chunk) <= max_chunk_size:
-            final_chunks.append(chunk)
-        else:
-            # Split by words if sentences are too long
-            words = chunk.split()
-            current_word_chunk = ""
-            for word in words:
-                test_chunk = current_word_chunk + " " + word if current_word_chunk else word
-                if len(test_chunk) <= max_chunk_size:
-                    current_word_chunk = test_chunk
-                else:
-                    if current_word_chunk:
-                        final_chunks.append(current_word_chunk.strip())
-                    current_word_chunk = word
-            if current_word_chunk:
-                final_chunks.append(current_word_chunk.strip())
-    
-    return final_chunks
-
-
 @dataclass
 class ProcessedDocument:
     """A document that has been processed and is ready for search index upload."""
@@ -294,6 +231,15 @@ class DocumentProcessingStrategy(ABC):
     2. Generate Azure Cognitive Search index objects
     3. Handle strategy-specific metadata and indexing requirements
     """
+    
+    def __init__(self, chunking_config: Optional[ChunkingConfig] = None):
+        """
+        Initialize the processing strategy with optional chunking configuration.
+        
+        Args:
+            chunking_config: Configuration for chunking strategy
+        """
+        self.chunking_strategy = SimpleChunkingStrategy(chunking_config)
     
     @abstractmethod
     def get_strategy_name(self) -> str:
@@ -417,6 +363,10 @@ class PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy(Docum
     for work item-based document querying and retrieval.
     """
     
+    def __init__(self, chunking_config: Optional[ChunkingConfig] = None):
+        """Initialize the Azure Cognitive Search processing strategy."""
+        super().__init__(chunking_config)
+    
     def get_strategy_name(self) -> str:
         return "PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy"
     
@@ -441,8 +391,8 @@ class PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy(Docum
         # Extract metadata using strategy-specific logic
         metadata = self.extract_metadata(content, file_path)
         
-        # Generate chunks using strategy-specific chunking
-        chunks = self.chunk_document_content(content) if hasattr(self, 'chunk_document_content') else _simple_chunk_text(content)
+        # Generate chunks using the chunking strategy
+        chunks = self.chunking_strategy.chunk_content(content)
         
         # Map metadata to search index fields
         context_name = self.extract_context_info(metadata)
@@ -689,22 +639,6 @@ class PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy(Docum
             'extraction_error': error_message
         }
     
-    def chunk_document_content(self, content: str, max_chunk_size: int = 4000) -> List[str]:
-        """
-        Chunk document content into manageable pieces for embedding generation.
-        
-        This method provides strategy-specific chunking that can be optimized
-        for the Personal Documentation Assistant use case.
-        
-        Args:
-            content: Full document content to chunk
-            max_chunk_size: Maximum size per chunk in characters
-            
-        Returns:
-            List[str]: List of content chunks ready for embedding generation
-        """
-        return _simple_chunk_text(content, max_chunk_size)
-    
     async def generate_chunk_embeddings(self, chunks: List[str]) -> List[List[float]]:
         """
         Generate embeddings for document chunks using Azure OpenAI.
@@ -836,6 +770,10 @@ class PersonalDocumentationAssistantChromaDBProcessingStrategy(DocumentProcessin
     with local embeddings. Metadata is flattened to meet ChromaDB constraints.
     """
     
+    def __init__(self, chunking_config: Optional[ChunkingConfig] = None):
+        """Initialize the ChromaDB processing strategy."""
+        super().__init__(chunking_config)
+    
     def get_strategy_name(self) -> str:
         return "PersonalDocumentationAssistant_ChromaDB"
     
@@ -860,8 +798,8 @@ class PersonalDocumentationAssistantChromaDBProcessingStrategy(DocumentProcessin
         # Extract metadata using strategy-specific logic
         metadata = self.extract_metadata(content, file_path)
         
-        # Generate chunks using strategy-specific chunking
-        chunks = self.chunk_document_content(content) if hasattr(self, 'chunk_document_content') else _simple_chunk_text(content)
+        # Generate chunks using the chunking strategy
+        chunks = self.chunking_strategy.chunk_content(content)
         
         # Map metadata to search index fields
         context_name = self.extract_context_info(metadata)
@@ -1059,10 +997,6 @@ class PersonalDocumentationAssistantChromaDBProcessingStrategy(DocumentProcessin
             'last_modified': datetime.now().isoformat() + 'Z',
             'extraction_error': error_message
         }
-    
-    def chunk_document_content(self, content: str, max_chunk_size: int = 4000) -> List[str]:
-        """Chunk document content for ChromaDB processing."""
-        return _simple_chunk_text(content, max_chunk_size)
     
     async def generate_chunk_embeddings(self, chunks: List[str]) -> List[List[float]]:
         """

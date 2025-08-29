@@ -10,7 +10,6 @@ import os
 from typing import List
 from dotenv import load_dotenv
 
-from src.common.embedding_services.embedding_service_factory import _get_local_embedding_generator
 from src.common.vector_search_services.azure_cognitive_search import get_azure_search_service
 from src.common.vector_search_services.chromadb_service import get_chromadb_service
 from src.common.vector_search_services.vector_search_interface import IVectorSearchService

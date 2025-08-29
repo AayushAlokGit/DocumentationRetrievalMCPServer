@@ -372,7 +372,7 @@ class ChromaDBDocumentUploadStrategy(DocumentUploadStrategy):
                 print(f"📄 Document {doc_idx}/{len(processed_documents)}: {processed_doc.file_name}")
                 
                 # Create search index objects for this document
-                print(f"🔄 Creating ChromaDB search objects with local embeddings...")
+                print(f"🔄 Creating ChromaDB search objects ...")
                 
                 # Collect search objects for this document
                 doc_search_objects = []
