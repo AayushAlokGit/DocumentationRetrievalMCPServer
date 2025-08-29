@@ -49,13 +49,14 @@ from src.document_upload.document_processing_tracker import DocumentProcessingTr
 load_dotenv()
 
 
-def find_matching_documents(chromadb_service, context_name: str, file_name: str) -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
+async def find_matching_documents(chromadb_service, context_name: str, file_name: str, mode: str = "delete") -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     """
     Simple search for documents with exact context and filename match
     """
     print(f"🔍 Searching for documents...")
     print(f"   📝 Context: '{context_name}'")
     print(f"   📄 File: '{file_name}'")
+    print(f"   🔧 Mode: '{mode}'")
     
     try:
         # Build filters for exact matching
@@ -64,8 +65,8 @@ def find_matching_documents(chromadb_service, context_name: str, file_name: str)
             'file_name': file_name
         }
         
-        # Search using ChromaDB service
-        matching_docs = chromadb_service.get_documents_by_filter(filters)
+        # Search using ChromaDB service async method
+        matching_docs = await chromadb_service.get_documents_by_filter_async(filters)
         
         # Generate statistics
         files_found = {}
@@ -79,6 +80,8 @@ def find_matching_documents(chromadb_service, context_name: str, file_name: str)
             'total_matches': len(matching_docs),
             'unique_files': len(files_found),
             'chunk_count': len(matching_docs),
+            'contexts_found': len(set(doc.get('context_name', '') for doc in matching_docs)),
+            'matching_mode_used': mode,
             'files_breakdown': files_found
         }
         
@@ -91,6 +94,7 @@ def find_matching_documents(chromadb_service, context_name: str, file_name: str)
             'total_matches': 0, 
             'unique_files': 0, 
             'chunk_count': 0, 
+            'contexts_found': 0,
             'files_breakdown': {},
             'error': str(e)
         }
@@ -521,7 +525,7 @@ Examples:
             return 1
 
         # Perform search
-        matching_docs, search_stats = find_matching_documents(
+        matching_docs, search_stats = await find_matching_documents(
             chromadb_service, args.context_name, args.file_name, args.mode
         )
 

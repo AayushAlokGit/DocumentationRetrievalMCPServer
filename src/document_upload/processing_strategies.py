@@ -30,7 +30,7 @@ import sys
 sys.path.append(str(Path(__file__).parent.parent))
 
 # Import chunking strategies
-from chunking_strategies import SimpleChunkingStrategy, ChunkingConfig
+from .chunking_strategies import SimpleChunkingStrategy, ChunkingConfig
 
 # File type specific parsing libraries
 try:
@@ -918,9 +918,6 @@ class PersonalDocumentationAssistantChromaDBProcessingStrategy(DocumentProcessin
             work_item_id = self._extract_work_item_id(file_path)
             metadata['work_item_id'] = work_item_id
             metadata['file_type'] = file_type
-            
-            # Add the cleaned content to metadata
-            metadata['content'] = clean_content
             
             # Extract title using strategy priority
             metadata['title'] = self._extract_title(clean_content, file_path, metadata, file_type)
