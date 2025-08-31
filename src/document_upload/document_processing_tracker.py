@@ -157,14 +157,14 @@ class DocumentProcessingTracker:
         while currently using the PERSONAL_DOCUMENTATION_ROOT_DIRECTORY environment variable.
         """
         # Primary tracking source: PERSONAL_DOCUMENTATION_ROOT_DIRECTORY environment variable
-        PERSONAL_DOCUMENTATION_ROOT_DIRECTORY = os.getenv('PERSONAL_DOCUMENTATION_ROOT_DIRECTORY')
+        FILE_TRACKING_DIRECTORY = os.getenv('FILE_TRACKING_DIRECTORY')
         
-        if not PERSONAL_DOCUMENTATION_ROOT_DIRECTORY:
-            raise EnvironmentError("PERSONAL_DOCUMENTATION_ROOT_DIRECTORY environment variable is required but not set")
+        if not FILE_TRACKING_DIRECTORY:
+            raise EnvironmentError("FILE_TRACKING_DIRECTORY environment variable is required but not set")
         
-        work_items_dir = Path(PERSONAL_DOCUMENTATION_ROOT_DIRECTORY)
+        work_items_dir = Path(FILE_TRACKING_DIRECTORY)
         if not work_items_dir.exists():
-            raise FileNotFoundError(f"PERSONAL_DOCUMENTATION_ROOT_DIRECTORY directory not found: {PERSONAL_DOCUMENTATION_ROOT_DIRECTORY}")
+            raise FileNotFoundError(f"FILE_TRACKING_DIRECTORY directory not found: {FILE_TRACKING_DIRECTORY}")
         
         # Use work items directory as tracking source
         self.tracking_source = work_items_dir

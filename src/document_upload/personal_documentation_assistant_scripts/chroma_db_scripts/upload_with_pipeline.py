@@ -47,13 +47,29 @@ from src.document_upload.document_processing_tracker import DocumentProcessingTr
 from src.document_upload.document_processing_pipeline import DocumentProcessingPipeline
 from src.document_upload.processing_strategies import PersonalDocumentationAssistantChromaDBProcessingStrategy
 
+# Import logging utilities
+sys.path.append(str(current_dir))
+from logging_utils import setup_script_logging
+
 # Load environment variables
 load_dotenv()
+
+# Global logger instance
+_script_logger = None
+
+def print_and_log(message: str, end: str = '\n'):
+    """
+    Helper function to print to console and optionally log to file.
+    Uses the global logger instance if available.
+    """
+    print(message, end=end)
+    if _script_logger:
+        _script_logger.log(message, end=end)
 
 
 async def force_reset_chromadb_and_tracker() -> bool:
     """Complete ChromaDB reset and tracker cleanup with comprehensive validation"""
-    print("🗑️  Performing complete force reset...")
+    print_and_log("🗑️  Performing complete force reset...")
     
     try:
         # Initialize ChromaDB service and tracker
@@ -63,32 +79,32 @@ async def force_reset_chromadb_and_tracker() -> bool:
         upload_strategy = ChromaDBDocumentUploadStrategy(processing_strategy=processing_strategy)
         
         # 1. Delete all documents from ChromaDB
-        print("   🔄 Deleting all documents from ChromaDB...")
+        print_and_log("   🔄 Deleting all documents from ChromaDB...")
         deleted_count = await upload_strategy.delete_all_documents_from_service()
         
         if deleted_count >= 0:
-            print(f"   ✅ Successfully deleted {deleted_count} documents from ChromaDB")
+            print_and_log(f"   ✅ Successfully deleted {deleted_count} documents from ChromaDB")
         else:
-            print("   ⚠️ Document deletion may have failed")
+            print_and_log("   ⚠️ Document deletion may have failed")
         
         # 2. Clear tracker state completely
-        print("   🔄 Clearing document processing tracker...")
+        print_and_log("   🔄 Clearing document processing tracker...")
         tracker.clear()
-        print("   ✅ Document tracker cleared")
+        print_and_log("   ✅ Document tracker cleared")
         
         # 3. Test connection to verify ChromaDB is accessible
         try:
             await chromadb_service.test_connection()
-            print("   ✅ ChromaDB connection verified")
+            print_and_log("   ✅ ChromaDB connection verified")
         except Exception as e:
-            print(f"   ⚠️ ChromaDB connection test failed: {e}")
+            print_and_log(f"   ⚠️ ChromaDB connection test failed: {e}")
         
-        print("   ✅ Force reset completed successfully")
+        print_and_log("   ✅ Force reset completed successfully")
         return True
         
     except Exception as e:
-        print(f"   ❌ Error during force reset: {str(e)}")
-        print("   💡 Try running the script again or check ChromaDB connectivity")
+        print_and_log(f"   ❌ Error during force reset: {str(e)}")
+        print_and_log("   💡 Try running the script again or check ChromaDB connectivity")
         return False
 
 
@@ -119,7 +135,7 @@ async def process_path_with_chromadb_pipeline(target_path: str, dry_run: bool = 
     # Validate path exists
     target_path_obj = Path(target_path)
     if not target_path_obj.exists():
-        print(f"❌ Error: Path does not exist: {target_path}")
+        print_and_log(f"❌ Error: Path does not exist: {target_path}")
         return False
     
     # Load environment
@@ -129,15 +145,15 @@ async def process_path_with_chromadb_pipeline(target_path: str, dry_run: bool = 
     pipeline = create_configured_pipeline()
 
     try:
-        print(f"🚀 Starting ChromaDB pipeline processing...")
-        print(f"   📍 Target path: {target_path}")
-        print(f"   🔍 Dry run: {dry_run}")
-        print(f"   📊 Vector service: ChromaDB (local)")
-        print(f"   🤖 Embedding service: Local (sentence-transformers)")
+        print_and_log(f"🚀 Starting ChromaDB pipeline processing...")
+        print_and_log(f"   📍 Target path: {target_path}")
+        print_and_log(f"   🔍 Dry run: {dry_run}")
+        print_and_log(f"   📊 Vector service: ChromaDB (local)")
+        print_and_log(f"   🤖 Embedding service: Local (sentence-transformers)")
         
         if dry_run:
             # Show discovery preview without processing
-            print(f"\n🔍 DRY RUN: Discovery Preview")
+            print_and_log(f"\n🔍 DRY RUN: Discovery Preview")
             discovery_result = pipeline.discovery_phase.discover_documents(str(target_path_obj))
             pipeline.discovery_phase.print_discovery_summary(discovery_result)
             
@@ -147,26 +163,26 @@ async def process_path_with_chromadb_pipeline(target_path: str, dry_run: bool = 
                     discovery_result.discovered_files
                 )
                 
-                print(f"\n📊 Processing Preview:")
-                print(f"   📁 Total files found: {total_discovered}")
-                print(f"   ⏭️  Already processed: {already_processed}")
-                print(f"   🔄 Would process: {len(unprocessed_files)}")
+                print_and_log(f"\n📊 Processing Preview:")
+                print_and_log(f"   📁 Total files found: {total_discovered}")
+                print_and_log(f"   ⏭️  Already processed: {already_processed}")
+                print_and_log(f"   🔄 Would process: {len(unprocessed_files)}")
                 
                 if unprocessed_files:
-                    print(f"\n📄 Files that would be processed:")
+                    print_and_log(f"\n📄 Files that would be processed:")
                     for i, file_path in enumerate(unprocessed_files[:10], 1):  # Show first 10 files
-                        print(f"   {i}. {file_path.name}")
+                        print_and_log(f"   {i}. {file_path.name}")
                     if len(unprocessed_files) > 10:
-                        print(f"   ... and {len(unprocessed_files) - 10} more files")
+                        print_and_log(f"   ... and {len(unprocessed_files) - 10} more files")
                 
-                print(f"\n� Run without --dry-run to perform actual processing")
+                print_and_log(f"\n💡 Run without --dry-run to perform actual processing")
             else:
-                print(f"\n� No files found to process in: {target_path}")
+                print_and_log(f"\n💡 No files found to process in: {target_path}")
             
             return True
         
         # Execute complete pipeline
-        print(f"\n🚀 Executing complete ChromaDB pipeline...")
+        print_and_log(f"\n🚀 Executing complete ChromaDB pipeline...")
         discovery_result, processing_result, upload_result = await pipeline.run_complete_pipeline(
             root_directory=str(target_path_obj)
         )
@@ -179,64 +195,64 @@ async def process_path_with_chromadb_pipeline(target_path: str, dry_run: bool = 
                   processing_result.successfully_processed == 0)
         
         if success:
-            print(f"\n✅ ChromaDB pipeline execution completed successfully")
+            print_and_log(f"\n✅ ChromaDB pipeline execution completed successfully")
         else:
-            print(f"\n⚠️  ChromaDB pipeline execution completed with issues")
+            print_and_log(f"\n⚠️  ChromaDB pipeline execution completed with issues")
             
         return success
         
     except Exception as e:
-        print(f"❌ ChromaDB pipeline execution failed: {str(e)}")
-        print("💡 Check ChromaDB service connectivity and configuration")
+        print_and_log(f"❌ ChromaDB pipeline execution failed: {str(e)}")
+        print_and_log("💡 Check ChromaDB service connectivity and configuration")
         return False
 
 
 def print_chromadb_pipeline_statistics(discovery_result, processing_result, upload_result):
     """Enhanced statistics reporting for ChromaDB pipeline"""
-    print("\n" + "="*60)
-    print("📊 CHROMADB PIPELINE EXECUTION STATISTICS")
-    print("="*60)
+    print_and_log("\n" + "="*60)
+    print_and_log("📊 CHROMADB PIPELINE EXECUTION STATISTICS")
+    print_and_log("="*60)
     
     # Discovery Phase Stats
-    print(f"\n� Discovery Phase:")
-    print(f"   Total files discovered: {discovery_result.total_files}")
+    print_and_log(f"\n📁 Discovery Phase:")
+    print_and_log(f"   Total files discovered: {discovery_result.total_files}")
     if hasattr(discovery_result, 'files_by_type') and discovery_result.files_by_type:
-        print(f"   Files by type: {discovery_result.files_by_type}")
+        print_and_log(f"   Files by type: {discovery_result.files_by_type}")
     if hasattr(discovery_result, 'skipped_files'):
-        print(f"   Files skipped: {len(discovery_result.skipped_files)}")
+        print_and_log(f"   Files skipped: {len(discovery_result.skipped_files)}")
     
     # Processing Phase Stats  
-    print(f"\n⚙️  Processing Phase:")
-    print(f"   Successfully processed: {processing_result.successfully_processed}")
-    print(f"   Failed processing: {processing_result.failed_documents}")
-    print(f"   Processing time: {processing_result.processing_time:.2f}s")
-    print(f"   Strategy used: {processing_result.strategy_name}")
+    print_and_log(f"\n⚙️  Processing Phase:")
+    print_and_log(f"   Successfully processed: {processing_result.successfully_processed}")
+    print_and_log(f"   Failed processing: {processing_result.failed_documents}")
+    print_and_log(f"   Processing time: {processing_result.processing_time:.2f}s")
+    print_and_log(f"   Strategy used: {processing_result.strategy_name}")
     
     # Strategy-specific metadata
     if hasattr(processing_result, 'strategy_metadata') and processing_result.strategy_metadata:
         metadata = processing_result.strategy_metadata
         work_items_count = metadata.get('work_items_count', 0)
         if work_items_count > 0:
-            print(f"   Work items found: {work_items_count}")
+            print_and_log(f"   Work items found: {work_items_count}")
             work_items = metadata.get('work_items_found', [])
             if work_items:
-                print(f"   Work items: {', '.join(work_items[:5])}")
+                print_and_log(f"   Work items: {', '.join(work_items[:5])}")
                 if len(work_items) > 5:
-                    print(f"   (and {len(work_items) - 5} more)")
+                    print_and_log(f"   (and {len(work_items) - 5} more)")
     
     # Upload Phase Stats
-    print(f"\n📤 Upload Phase:")
-    print(f"   Search objects uploaded: {upload_result.successfully_uploaded}")
-    print(f"   Failed uploads: {upload_result.failed_uploads}")
-    print(f"   Upload time: {upload_result.upload_time:.2f}s")
+    print_and_log(f"\n📤 Upload Phase:")
+    print_and_log(f"   Search objects uploaded: {upload_result.successfully_uploaded}")
+    print_and_log(f"   Failed uploads: {upload_result.failed_uploads}")
+    print_and_log(f"   Upload time: {upload_result.upload_time:.2f}s")
     
     # Overall Pipeline Stats
     discovery_time = getattr(discovery_result, 'discovery_time', 0)
     total_time = discovery_time + processing_result.processing_time + upload_result.upload_time
-    print(f"\n📈 Overall Pipeline:")
-    print(f"   Total execution time: {total_time:.2f}s")
-    print(f"   Vector service: ChromaDB (local)")
-    print(f"   Embedding service: Local sentence-transformers")
+    print_and_log(f"\n📈 Overall Pipeline:")
+    print_and_log(f"   Total execution time: {total_time:.2f}s")
+    print_and_log(f"   Vector service: ChromaDB (local)")
+    print_and_log(f"   Embedding service: Local sentence-transformers")
     
     # Error Summary
     all_errors = []
@@ -248,14 +264,14 @@ def print_chromadb_pipeline_statistics(discovery_result, processing_result, uplo
         all_errors.extend(upload_result.errors)
     
     if all_errors:
-        print(f"\n⚠️  Errors encountered: {len(all_errors)}")
+        print_and_log(f"\n⚠️  Errors encountered: {len(all_errors)}")
         # Show first few errors
         for error in all_errors[:3]:
-            print(f"   • {error}")
+            print_and_log(f"   • {error}")
         if len(all_errors) > 3:
-            print(f"   • ... and {len(all_errors) - 3} more errors")
+            print_and_log(f"   • ... and {len(all_errors) - 3} more errors")
     
-    print("="*60)
+    print_and_log("="*60)
 
 
 async def run_main():
@@ -269,6 +285,8 @@ Examples:
   %(prog)s "/path/to/work-items/" 
   %(prog)s "/path/to/docs/" --force-reset
   %(prog)s "/path/to/docs/" --dry-run
+  %(prog)s "/path/to/docs/" --log-file "upload_session.log"
+  %(prog)s "/path/to/docs/" --log-file "/absolute/path/to/logs/upload.log"
         """
     )
     
@@ -289,32 +307,55 @@ Examples:
         help='Preview what would be processed without making changes'
     )
     
+    parser.add_argument(
+        '--log-file',
+        type=str,
+        help='Path to log file for capturing script output (relative to FILE_TRACKING_DIRECTORY/logs/ or absolute path)'
+    )
+    
     args = parser.parse_args()
+    
+    # Initialize logger if log file is specified, or auto-generate if enabled
+    global _script_logger
+    if args.log_file:
+        # User specified a log file
+        _script_logger = setup_script_logging(log_file=args.log_file, script_path=__file__)
+    else:
+        # Auto-generate log file based on script path and IST timestamp
+        _script_logger = setup_script_logging(script_path=__file__)
     
     try:
         # Validate input path
         input_path = Path(args.input_path).resolve()
         if not input_path.exists():
-            print(f"❌ Input path does not exist: {input_path}")
+            print_and_log(f"❌ Input path does not exist: {input_path}")
             return 1
         
         # Handle force reset if requested
         if args.force_reset:
             if not await force_reset_chromadb_and_tracker():
-                print("❌ Force reset failed")
+                print_and_log("❌ Force reset failed")
                 return 1
         
         # Process the path with ChromaDB pipeline
         success = await process_path_with_chromadb_pipeline(str(input_path), args.dry_run)
         
+        # Close log file if logger was used
+        if _script_logger:
+            _script_logger.close_log()
+        
         # Return appropriate exit code
         return 0 if success else 1
         
     except KeyboardInterrupt:
-        print("\n⚠️ Operation cancelled by user")
+        print_and_log("\n⚠️ Operation cancelled by user")
+        if _script_logger:
+            _script_logger.close_log()
         return 1
     except Exception as e:
-        print(f"❌ Script execution failed: {e}")
+        print_and_log(f"❌ Script execution failed: {e}")
+        if _script_logger:
+            _script_logger.close_log()
         return 1
 
 

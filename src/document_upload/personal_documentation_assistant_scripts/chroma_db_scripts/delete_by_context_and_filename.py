@@ -45,18 +45,34 @@ sys.path.insert(0, str(project_root))
 from src.common.vector_search_services.chromadb_service import get_chromadb_service, ChromaDBFilterBuilder
 from src.document_upload.document_processing_tracker import DocumentProcessingTracker
 
+# Import logging utilities
+sys.path.append(str(current_dir))
+from logging_utils import setup_script_logging
+
 # Load environment variables
 load_dotenv()
+
+# Global logger instance
+_script_logger = None
+
+def print_and_log(message: str, end: str = '\n'):
+    """
+    Helper function to print to console and optionally log to file.
+    Uses the global logger instance if available.
+    """
+    print(message, end=end)
+    if _script_logger:
+        _script_logger.log(message, end=end)
 
 
 async def find_matching_documents(chromadb_service, context_name: str, file_name: str, mode: str = "delete") -> Tuple[List[Dict[str, Any]], Dict[str, Any]]:
     """
     Simple search for documents with exact context and filename match
     """
-    print(f"🔍 Searching for documents...")
-    print(f"   📝 Context: '{context_name}'")
-    print(f"   📄 File: '{file_name}'")
-    print(f"   🔧 Mode: '{mode}'")
+    print_and_log(f"🔍 Searching for documents...")
+    print_and_log(f"   📝 Context: '{context_name}'")
+    print_and_log(f"   📄 File: '{file_name}'")
+    print_and_log(f"   🔧 Mode: '{mode}'")
     
     try:
         # Build filters for exact matching
@@ -85,11 +101,11 @@ async def find_matching_documents(chromadb_service, context_name: str, file_name
             'files_breakdown': files_found
         }
         
-        print(f"   ✅ Search completed: {stats['total_matches']} chunks in {stats['unique_files']} files")
+        print_and_log(f"   ✅ Search completed: {stats['total_matches']} chunks in {stats['unique_files']} files")
         return matching_docs, stats
         
     except Exception as e:
-        print(f"   ❌ Search failed: {str(e)}")
+        print_and_log(f"   ❌ Search failed: {str(e)}")
         return [], {
             'total_matches': 0, 
             'unique_files': 0, 
@@ -99,10 +115,10 @@ async def find_matching_documents(chromadb_service, context_name: str, file_name
             'error': str(e)
         }
     
-    print(f"🔍 Searching for documents...")
-    print(f"   📝 Context: '{context_name}'")
-    print(f"   📄 File: '{file_name}'")
-    print(f"   🎯 Mode: {matching_mode}")
+    print_and_log(f"🔍 Searching for documents...")
+    print_and_log(f"   📝 Context: '{context_name}'")
+    print_and_log(f"   📄 File: '{file_name}'")
+    print_and_log(f"   🎯 Mode: {matching_mode}")
     
     try:
         # Build filters based on matching mode using ChromaDBFilterBuilder
@@ -143,7 +159,7 @@ async def find_matching_documents(chromadb_service, context_name: str, file_name
         
         # If flexible mode and no exact matches, try contains matching
         if matching_mode == 'flexible' and not matching_docs:
-            print("   🔄 No exact matches found, trying flexible matching...")
+            print_and_log("   🔄 No exact matches found, trying flexible matching...")
             
             # Get all documents with exact context match
             context_filter = {'context_name': context_name}
@@ -173,11 +189,11 @@ async def find_matching_documents(chromadb_service, context_name: str, file_name
             'matching_mode_used': matching_mode
         }
         
-        print(f"   ✅ Search completed: {stats['total_matches']} chunks in {stats['unique_files']} files")
+        print_and_log(f"   ✅ Search completed: {stats['total_matches']} chunks in {stats['unique_files']} files")
         return matching_docs, stats
         
     except Exception as e:
-        print(f"   ❌ Search failed: {str(e)}")
+        print_and_log(f"   ❌ Search failed: {str(e)}")
         return [], {
             'total_matches': 0, 
             'unique_files': 0, 
@@ -196,56 +212,56 @@ def preview_deletion_impact(matching_docs: List[Dict[str, Any]], search_stats: D
     """
     
     if not matching_docs:
-        print("\\n🔍 No matching documents found.")
-        print("💡 Try using different matching mode:")
-        print("   --mode exact     (exact context + filename match)")  
-        print("   --mode contains  (exact context + filename contains)")
-        print("   --mode flexible  (exact context + flexible filename)")
+        print_and_log("\\n🔍 No matching documents found.")
+        print_and_log("💡 Try using different matching mode:")
+        print_and_log("   --mode exact     (exact context + filename match)")  
+        print_and_log("   --mode contains  (exact context + filename contains)")
+        print_and_log("   --mode flexible  (exact context + flexible filename)")
         
         if 'error' in search_stats:
-            print(f"⚠️  Search error: {search_stats['error']}")
+            print_and_log(f"⚠️  Search error: {search_stats['error']}")
         
         return False
     
-    print(f"\\n📋 DELETION IMPACT ANALYSIS")
-    print("="*50)
+    print_and_log(f"\\n📋 DELETION IMPACT ANALYSIS")
+    print_and_log("="*50)
     
     # High-level summary
     total_chunks = search_stats['total_matches'] 
     unique_files = search_stats['unique_files']
     contexts = search_stats['contexts_found']
     
-    print(f"📊 Overview:")
-    print(f"   🧩 Total chunks to delete: {total_chunks}")
-    print(f"   📄 Unique files affected: {unique_files}")
-    print(f"   🏷️  Contexts involved: {contexts}")
-    print(f"   🎯 Matching mode: {search_stats['matching_mode_used']}")
+    print_and_log(f"📊 Overview:")
+    print_and_log(f"   🧩 Total chunks to delete: {total_chunks}")
+    print_and_log(f"   📄 Unique files affected: {unique_files}")
+    print_and_log(f"   🏷️  Contexts involved: {contexts}")
+    print_and_log(f"   🎯 Matching mode: {search_stats['matching_mode_used']}")
     
     if show_details and 'files_breakdown' in search_stats:
-        print(f"\\n📁 Files and Chunks Breakdown:")
+        print_and_log(f"\\n📁 Files and Chunks Breakdown:")
         
         for file_path, chunks in search_stats['files_breakdown'].items():
             file_name = Path(file_path).name if file_path != 'Unknown' else 'Unknown'
             context_name = chunks[0].get('context_name', 'N/A') if chunks else 'N/A'
             
-            print(f"\\n   📄 {file_name}")
-            print(f"      📍 Path: {file_path}")
-            print(f"      🏷️  Context: {context_name}")
-            print(f"      🧩 Chunks: {len(chunks)}")
+            print_and_log(f"\\n   📄 {file_name}")
+            print_and_log(f"      📍 Path: {file_path}")
+            print_and_log(f"      🏷️  Context: {context_name}")
+            print_and_log(f"      🧩 Chunks: {len(chunks)}")
             
             # Show first few chunks with available metadata
             for i, chunk in enumerate(chunks[:3], 1):
                 chunk_id = chunk.get('id', 'N/A')
                 title = chunk.get('title', 'No title')[:50]
-                print(f"         {i}. ID {chunk_id}: {title}...")
+                print_and_log(f"         {i}. ID {chunk_id}: {title}...")
             
             if len(chunks) > 3:
-                print(f"         ... and {len(chunks) - 3} more chunks")
+                print_and_log(f"         ... and {len(chunks) - 3} more chunks")
     
     # Warning for large deletions
     if total_chunks > 10:
-        print(f"\\n⚠️  WARNING: This will delete {total_chunks} document chunks!")
-        print("   This action cannot be undone.")
+        print_and_log(f"\\n⚠️  WARNING: This will delete {total_chunks} document chunks!")
+        print_and_log("   This action cannot be undone.")
         
     return True
 
@@ -254,30 +270,30 @@ def get_user_confirmation(matching_docs: List[Dict[str, Any]], force: bool = Fal
     """Enhanced confirmation system with safety checks"""
     
     if force:
-        print("🚀 Force mode enabled - proceeding without confirmation")
+        print_and_log("🚀 Force mode enabled - proceeding without confirmation")
         return True
     
     total_chunks = len(matching_docs)
     
     # Extra confirmation for large deletions
     if total_chunks > 20:
-        print(f"\\n🛑 LARGE DELETION WARNING")
-        print(f"   You are about to delete {total_chunks} document chunks!")
-        print("   This is a large operation that cannot be undone.")
+        print_and_log(f"\\n🛑 LARGE DELETION WARNING")
+        print_and_log(f"   You are about to delete {total_chunks} document chunks!")
+        print_and_log("   This is a large operation that cannot be undone.")
         
         first_confirm = input("\\n   Type 'CONFIRM' to proceed with large deletion: ").strip()
         if first_confirm != 'CONFIRM':
-            print("   Operation cancelled - confirmation not received")
+            print_and_log("   Operation cancelled - confirmation not received")
             return False
     
     # Standard confirmation
     confirm = input(f"\\n❓ Delete {total_chunks} document chunks? (y/N): ").lower().strip()
     
     if confirm in ['y', 'yes']:
-        print("✅ Deletion confirmed")
+        print_and_log("✅ Deletion confirmed")
         return True
     else:
-        print("❌ Operation cancelled")
+        print_and_log("❌ Operation cancelled")
         return False
 
 
@@ -295,7 +311,7 @@ async def delete_documents_and_cleanup_tracker(chromadb_service, tracker: Docume
     """
     
     if dry_run:
-        print(f"\\n🔍 DRY RUN: Would delete {len(matching_docs)} document chunks")
+        print_and_log(f"\\n🔍 DRY RUN: Would delete {len(matching_docs)} document chunks")
         unique_files = len(set(doc.get('file_path') for doc in matching_docs if doc.get('file_path')))
         return len(matching_docs), 0, [], {
             'operation': 'dry_run', 
@@ -303,7 +319,7 @@ async def delete_documents_and_cleanup_tracker(chromadb_service, tracker: Docume
             'files_would_untrack': unique_files
         }
     
-    print(f"\\n🗑️  Starting deletion of {len(matching_docs)} document chunks...")
+    print_and_log(f"\\n🗑️  Starting deletion of {len(matching_docs)} document chunks...")
     
     start_time = time.time()
     
@@ -317,7 +333,7 @@ async def delete_documents_and_cleanup_tracker(chromadb_service, tracker: Docume
         doc_ids = [doc.get('id') for doc in matching_docs if doc.get('id')]
         
         if not doc_ids:
-            print("   ⚠️ No valid document IDs found")
+            print_and_log("   ⚠️ No valid document IDs found")
             return 0, len(matching_docs), ["No valid document IDs found"], {
                 'operation': 'delete',
                 'duration': 0,
@@ -327,14 +343,14 @@ async def delete_documents_and_cleanup_tracker(chromadb_service, tracker: Docume
                 'success_rate': 0
             }
         
-        print(f"   📋 Collected {len(doc_ids)} document IDs for deletion")
+        print_and_log(f"   📋 Collected {len(doc_ids)} document IDs for deletion")
         
         # Perform batch deletion using ChromaDB service
         deleted_count = await chromadb_service.delete_documents(doc_ids)
         
         if deleted_count > 0:
             successful_deletes = deleted_count
-            print(f"   ✅ Successfully deleted {deleted_count} document chunks")
+            print_and_log(f"   ✅ Successfully deleted {deleted_count} document chunks")
             
             # Collect file paths for tracker cleanup
             for doc in matching_docs:
@@ -344,38 +360,38 @@ async def delete_documents_and_cleanup_tracker(chromadb_service, tracker: Docume
         else:
             failed_deletes = len(matching_docs)
             error_messages.append("Batch deletion returned 0 deletions")
-            print("   ❌ Batch deletion failed or returned 0 deletions")
+            print_and_log("   ❌ Batch deletion failed or returned 0 deletions")
             
     except Exception as e:
         failed_deletes = len(matching_docs)
         error_msg = f"Batch deletion failed: {str(e)}"
         error_messages.append(error_msg)
-        print(f"   ❌ Error during batch deletion: {error_msg}")
+        print_and_log(f"   ❌ Error during batch deletion: {error_msg}")
     
     # Cleanup tracker for successfully deleted files (using verified method)
     tracker_cleanup_count = 0
     if file_paths_to_untrack and successful_deletes > 0:
-        print(f"\\n📋 Cleaning up document tracker for {len(file_paths_to_untrack)} files...")
+        print_and_log(f"\\n📋 Cleaning up document tracker for {len(file_paths_to_untrack)} files...")
         
         for file_path in file_paths_to_untrack:
             try:
                 # Use actual mark_unprocessed method (verified in codebase)
                 tracker.mark_unprocessed(file_path)
                 tracker_cleanup_count += 1
-                print(f"   🧹 Unmarked: {file_path.name}")
+                print_and_log(f"   🧹 Unmarked: {file_path.name}")
             except Exception as e:
                 error_msg = f"Failed to untrack {file_path}: {str(e)}"
                 error_messages.append(error_msg)
-                print(f"   ⚠️  Warning: {error_msg}")
+                print_and_log(f"   ⚠️  Warning: {error_msg}")
         
         # Save tracker state (using verified method)
         try:
             tracker.save()
-            print(f"   ✅ Tracker saved with {tracker_cleanup_count} files unmarked")
+            print_and_log(f"   ✅ Tracker saved with {tracker_cleanup_count} files unmarked")
         except Exception as e:
             error_msg = f"Failed to save tracker: {str(e)}"
             error_messages.append(error_msg)
-            print(f"   ❌ Error saving tracker: {error_msg}")
+            print_and_log(f"   ❌ Error saving tracker: {error_msg}")
     
     # Calculate operation statistics
     end_time = time.time()
@@ -399,38 +415,38 @@ def print_deletion_results(successful: int, failed: int, errors: List[str],
                          stats: Dict[str, Any], show_detailed_stats: bool):
     """Enhanced results reporting"""
     
-    print(f"\\n📊 DELETION RESULTS")
-    print("="*40)
-    print(f"✅ Successfully deleted: {successful}")
-    print(f"❌ Failed deletions: {failed}")
-    print(f"⏱️  Operation time: {stats.get('duration', 0):.2f}s")
+    print_and_log(f"\\n📊 DELETION RESULTS")
+    print_and_log("="*40)
+    print_and_log(f"✅ Successfully deleted: {successful}")
+    print_and_log(f"❌ Failed deletions: {failed}")
+    print_and_log(f"⏱️  Operation time: {stats.get('duration', 0):.2f}s")
     
     if successful > 0:
         success_rate = stats.get('success_rate', 0)
-        print(f"📈 Success rate: {success_rate:.1f}%")
+        print_and_log(f"📈 Success rate: {success_rate:.1f}%")
         
         tracker_cleanups = stats.get('tracker_cleanups', 0)
         files_untracked = stats.get('files_untracked', 0)
         if tracker_cleanups > 0:
-            print(f"📋 Tracker files cleaned: {tracker_cleanups}/{files_untracked}")
+            print_and_log(f"📋 Tracker files cleaned: {tracker_cleanups}/{files_untracked}")
 
     # Show errors summary
     if errors:
-        print(f"\\n⚠️  Errors encountered ({len(errors)}):")
+        print_and_log(f"\\n⚠️  Errors encountered ({len(errors)}):")
         for i, error in enumerate(errors[:3], 1):  # Show first 3
-            print(f"   {i}. {error}")
+            print_and_log(f"   {i}. {error}")
         if len(errors) > 3:
-            print(f"   ... and {len(errors) - 3} more errors")
+            print_and_log(f"   ... and {len(errors) - 3} more errors")
 
     if show_detailed_stats:
-        print(f"\\n📈 Detailed Statistics:")
-        print(f"   Total documents processed: {stats.get('total_processed', 0)}")
-        print(f"   Operation type: {stats.get('operation', 'unknown')}")
+        print_and_log(f"\\n📈 Detailed Statistics:")
+        print_and_log(f"   Total documents processed: {stats.get('total_processed', 0)}")
+        print_and_log(f"   Operation type: {stats.get('operation', 'unknown')}")
         if stats.get('operation') == 'dry_run':
-            print("   💡 This was a dry run - no actual changes were made")
+            print_and_log("   💡 This was a dry run - no actual changes were made")
             files_would_untrack = stats.get('files_would_untrack', 0)
             if files_would_untrack > 0:
-                print(f"   📋 Would untrack {files_would_untrack} files from tracker")
+                print_and_log(f"   📋 Would untrack {files_would_untrack} files from tracker")
 
 
 async def main():
@@ -481,6 +497,10 @@ Examples:
 
     parser.add_argument("--detailed", action="store_true",
                        help="Show detailed chunk information in preview")
+    
+    parser.add_argument("--log-file",
+                       type=str,
+                       help="Path to log file for capturing script output (relative to ScriptExecutionLogs/ or absolute path)")
 
     parser.add_argument("--stats", action="store_true",
                        help="Show comprehensive operation statistics")
@@ -490,13 +510,22 @@ Examples:
 
     args = parser.parse_args()
 
+    # Initialize logger
+    global _script_logger
+    if args.log_file:
+        # User specified a log file
+        _script_logger = setup_script_logging(log_file=args.log_file, script_path=__file__)
+    else:
+        # Auto-generate log file based on script path and IST timestamp
+        _script_logger = setup_script_logging(script_path=__file__)
+
     # Configure logging
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
 
     # Validate mutually exclusive options
     if args.preview and args.dry_run:
-        print("💡 Note: --preview and --dry-run are similar. Using --dry-run behavior.")
+        print_and_log("💡 Note: --preview and --dry-run are similar. Using --dry-run behavior.")
         args.preview = False
 
     try:
@@ -508,20 +537,20 @@ Examples:
         missing_vars = [var for var in required_vars if not os.getenv(var)]
         
         if missing_vars:
-            print("⚠️ Missing ChromaDB environment variables (using defaults):")
+            print_and_log("⚠️ Missing ChromaDB environment variables (using defaults):")
             for var in missing_vars:
-                print(f"   - {var}")
-            print("\\n💡 ChromaDB will use default configuration")
+                print_and_log(f"   - {var}")
+            print_and_log("\\n💡 ChromaDB will use default configuration")
 
         # Initialize services
-        print("🔧 Initializing ChromaDB services...")
+        print_and_log("🔧 Initializing ChromaDB services...")
         try:
             chromadb_service = get_chromadb_service()
             tracker = DocumentProcessingTracker()
-            print("   ✅ Services initialized successfully")
+            print_and_log("   ✅ Services initialized successfully")
         except Exception as e:
-            print(f"   ❌ Failed to initialize services: {str(e)}")
-            print("   💡 Check your ChromaDB configuration and connectivity")
+            print_and_log(f"   ❌ Failed to initialize services: {str(e)}")
+            print_and_log("   💡 Check your ChromaDB configuration and connectivity")
             return 1
 
         # Perform search
@@ -539,7 +568,7 @@ Examples:
 
         # Handle preview-only mode
         if args.preview:
-            print("\\n💡 Preview complete. Use without --preview to perform deletion.")
+            print_and_log("\\n💡 Preview complete. Use without --preview to perform deletion.")
             return 0
 
         # Get confirmation (unless dry run)
@@ -559,10 +588,10 @@ Examples:
         return 0 if failed == 0 else 1
 
     except KeyboardInterrupt:
-        print("\\n⏹️  Operation interrupted by user")
+        print_and_log("\\n⏹️  Operation interrupted by user")
         return 1
     except Exception as e:
-        print(f"❌ Unexpected error: {str(e)}")
+        print_and_log(f"❌ Unexpected error: {str(e)}")
         if args.verbose:
             import traceback
             traceback.print_exc()

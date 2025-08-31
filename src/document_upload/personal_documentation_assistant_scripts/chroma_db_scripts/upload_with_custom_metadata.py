@@ -43,9 +43,24 @@ from src.document_upload.processing_strategies import (
 )
 from src.document_upload.discovery_strategies import GeneralDocumentDiscoveryStrategy
 
+# Import logging utilities
+sys.path.append(str(current_dir))
+from logging_utils import setup_script_logging
+
 # Load environment variables
 load_dotenv()
 
+# Global logger instance
+_script_logger = None
+
+def print_and_log(message: str, end: str = '\n'):
+    """
+    Helper function to print to console and optionally log to file.
+    Uses the global logger instance if available.
+    """
+    print(message, end=end)
+    if _script_logger:
+        _script_logger.log(message, end=end)
 
 # ChromaDB document fields (based on ChromaDB processing strategy)
 CHROMADB_DOCUMENT_FIELDS = {
@@ -231,7 +246,7 @@ async def upload_document_to_chromadb(processed_doc: ProcessedDocument,
         Dict with upload results: {'success': bool, 'uploaded': int, 'failed': int, 'total': int, 'error': str}
     """
     try:
-        print(f"      🔄 Creating ChromaDB search objects with local embeddings...")
+        print_and_log(f"      🔄 Creating ChromaDB search objects with local embeddings...")
         
         # Collect search objects for this document
         doc_search_objects = []
@@ -239,15 +254,15 @@ async def upload_document_to_chromadb(processed_doc: ProcessedDocument,
             doc_search_objects.append(search_object)
         
         doc_total_objects = len(doc_search_objects)
-        print(f"      📊 Generated {doc_total_objects} ChromaDB search objects")
+        print_and_log(f"      📊 Generated {doc_total_objects} ChromaDB search objects")
         
         if doc_search_objects:
-            print(f"      📤 Uploading {doc_total_objects} objects to ChromaDB...", end=" ")
+            print_and_log(f"      📤 Uploading {doc_total_objects} objects to ChromaDB...", end=" ")
             
             successful, failed = chromadb_service.upload_search_objects_batch(doc_search_objects)
             
             if failed > 0:
-                print(f"⚠️  ({successful} succeeded, {failed} failed)")
+                print_and_log(f"⚠️  ({successful} succeeded, {failed} failed)")
                 return {
                     'success': False,
                     'uploaded': successful,
@@ -256,7 +271,7 @@ async def upload_document_to_chromadb(processed_doc: ProcessedDocument,
                     'error': f"{failed}/{doc_total_objects} objects failed to upload"
                 }
             else:
-                print("✅")
+                print_and_log("✅")
                 return {
                     'success': True,
                     'uploaded': successful,
@@ -265,7 +280,7 @@ async def upload_document_to_chromadb(processed_doc: ProcessedDocument,
                     'error': None
                 }
         else:
-            print(f"      ❌ No search objects generated")
+            print_and_log(f"      ❌ No search objects generated")
             return {
                 'success': False,
                 'uploaded': 0,
@@ -276,7 +291,7 @@ async def upload_document_to_chromadb(processed_doc: ProcessedDocument,
             
     except Exception as e:
         error_msg = f"Upload error - {str(e)}"
-        print(f"      ❌ {error_msg}")
+        print_and_log(f"      ❌ {error_msg}")
         return {
             'success': False,
             'uploaded': 0,
@@ -297,71 +312,71 @@ async def process_and_upload(target_path: Path, metadata: Dict[str, Any],
     """
     
     # Validate metadata first
-    print("🔍 Validating metadata schema...")
+    print_and_log("🔍 Validating metadata schema...")
     is_valid, errors = validate_metadata_schema(metadata)
     
     if not is_valid:
-        print("❌ Metadata validation failed:")
+        print_and_log("❌ Metadata validation failed:")
         for error in errors:
-            print(f"   - {error}")
-        print("\nRequired fields: title, tags, category, work_item_id")
-        print("Optional fields: file_type, last_modified, metadata_json")
+            print_and_log(f"   - {error}")
+        print_and_log("\nRequired fields: title, tags, category, work_item_id")
+        print_and_log("Optional fields: file_type, last_modified, metadata_json")
         return
     
-    print("✅ Metadata validation passed")
+    print_and_log("✅ Metadata validation passed")
     
     # Discover files to process
-    print(f"📁 Discovering files at: {target_path}")
+    print_and_log(f"📁 Discovering files at: {target_path}")
     try:
         files_to_process = process_target_path(target_path, metadata)
-        print(f"   Found {len(files_to_process)} supported files")
+        print_and_log(f"   Found {len(files_to_process)} supported files")
         
         # Show discovered files
         for i, file_path in enumerate(files_to_process, 1):
-            print(f"   {i:2d}. {file_path.name}")
+            print_and_log(f"   {i:2d}. {file_path.name}")
     
     except Exception as e:
-        print(f"❌ File discovery failed: {str(e)}")
+        print_and_log(f"❌ File discovery failed: {str(e)}")
         return
     
     if validate_only:
-        print(f"✅ Validation complete: {len(files_to_process)} files ready for processing")
+        print_and_log(f"✅ Validation complete: {len(files_to_process)} files ready for processing")
         return
     
     # Initialize ChromaDB service
-    print("🔗 Initializing ChromaDB connection...")
+    print_and_log("🔗 Initializing ChromaDB connection...")
     try:
         chromadb_service = get_chromadb_service()
-        print("✅ ChromaDB connection established")
+        print_and_log("✅ ChromaDB connection established")
         
     except Exception as e:
-        print(f"❌ Failed to initialize ChromaDB service: {str(e)}")
+        print_and_log(f"❌ Failed to initialize ChromaDB service: {str(e)}")
         return
     
     # Initialize tracker
-    print("📋 Initializing Document Processing Tracker...")
+    print_and_log("📋 Initializing Document Processing Tracker...")
     tracker = DocumentProcessingTracker()
-    print("✅ Tracker initialized")
+    print_and_log("✅ Tracker initialized")
     
     # Process each discovered file
-    print(f"\n⚙️  Processing {len(files_to_process)} files with custom metadata...")
+    print_and_log(f"\n⚙️  Processing {len(files_to_process)} files with custom metadata...")
     successfully_uploaded_files = []
     failed_files = []
     
     for i, file_path in enumerate(files_to_process, 1):
         try:
-            print(f"\n📄 File {i}/{len(files_to_process)}: {file_path.name}")
+            print_and_log(f"\n📄 File {i}/{len(files_to_process)}: {file_path.name}")
             
             # Create DirectMetadataProcessingStrategy with custom metadata
             processing_strategy = DirectMetadataProcessingStrategy(metadata)
             
             # Process the single file through the processing strategy
-            print(f"   🔄 Processing document...")
+            print_and_log(f"   🔄 Processing document...")
             processing_result = processing_strategy.process_documents([file_path])
             
             if processing_result.processed_documents:
                 processed_doc = processing_result.processed_documents[0]
-                print(f"   ✅ Document processed: {processed_doc.chunk_count} chunks created")
+                print_and_log(f"   ✅ Document processed: {processed_doc.chunk_count} chunks created")
                 
                 # Upload processed document to ChromaDB
                 upload_result = await upload_document_to_chromadb(
@@ -374,41 +389,41 @@ async def process_and_upload(target_path: Path, metadata: Dict[str, Any],
                     # Mark file as processed in tracker
                     tracker.mark_processed(file_path, metadata)
                     successfully_uploaded_files.append(file_path)
-                    print(f"   📋 Marked as processed in tracker")
+                    print_and_log(f"   📋 Marked as processed in tracker")
                 else:
                     failed_files.append(file_path)
-                    print(f"   ❌ Upload failed: {upload_result['error']}")
+                    print_and_log(f"   ❌ Upload failed: {upload_result['error']}")
             else:
                 failed_files.append(file_path)
-                print(f"   ❌ Document processing failed")
+                print_and_log(f"   ❌ Document processing failed")
                 
         except Exception as e:
             failed_files.append(file_path)
-            print(f"   ❌ Error processing {file_path.name}: {str(e)}")
+            print_and_log(f"   ❌ Error processing {file_path.name}: {str(e)}")
     
     # Save tracker after all processing
     if successfully_uploaded_files:
         tracker.save()
-        print(f"\n📋 Saved tracker with {len(successfully_uploaded_files)} successfully processed files")
+        print_and_log(f"\n📋 Saved tracker with {len(successfully_uploaded_files)} successfully processed files")
     
     # Final summary
-    print(f"\n📊 Processing Summary:")
-    print(f"   Total files discovered: {len(files_to_process)}")
-    print(f"   Successfully uploaded: {len(successfully_uploaded_files)}")
-    print(f"   Failed uploads: {len(failed_files)}")
+    print_and_log(f"\n📊 Processing Summary:")
+    print_and_log(f"   Total files discovered: {len(files_to_process)}")
+    print_and_log(f"   Successfully uploaded: {len(successfully_uploaded_files)}")
+    print_and_log(f"   Failed uploads: {len(failed_files)}")
     
     if successfully_uploaded_files:
-        print(f"\n✅ Successfully uploaded files:")
+        print_and_log(f"\n✅ Successfully uploaded files:")
         for file_path in successfully_uploaded_files:
-            print(f"   - {file_path.name}")
+            print_and_log(f"   - {file_path.name}")
     
     if failed_files:
-        print(f"\n❌ Failed files:")
+        print_and_log(f"\n❌ Failed files:")
         for file_path in failed_files:
-            print(f"   - {file_path.name}")
+            print_and_log(f"   - {file_path.name}")
     
     success_rate = (len(successfully_uploaded_files) / len(files_to_process) * 100) if files_to_process else 0
-    print(f"\n🎯 Success rate: {success_rate:.1f}%")
+    print_and_log(f"\n🎯 Success rate: {success_rate:.1f}%")
     
     # Return True if all files were successfully uploaded
     return len(failed_files) == 0
@@ -463,44 +478,59 @@ Optional metadata fields:
         action="store_true", 
         help="Only validate metadata and discover files without uploading"
     )
+
+    parser.add_argument(
+        '--log-file',
+        type=str,
+        help='Path to log file for capturing script output (relative to FILE_TRACKING_DIRECTORY/logs/ or absolute path)'
+    )
     
     args = parser.parse_args()
+
+    # Initialize logger if log file is specified, or auto-generate if enabled
+    global _script_logger
+    if args.log_file:
+        # User specified a log file
+        _script_logger = setup_script_logging(log_file=args.log_file, script_path=__file__)
+    else:
+        # Auto-generate log file based on script path and IST timestamp
+        _script_logger = setup_script_logging(script_path=__file__)
     
     # Parse target path
     target_path = Path(args.path).resolve()
     if not target_path.exists():
-        print(f"❌ Error: Path does not exist: {target_path}")
+        print_and_log(f"❌ Error: Path does not exist: {target_path}")
         return 1
     
     # Parse metadata JSON
     try:
         metadata = json.loads(args.metadata)
         if not isinstance(metadata, dict):
-            print("❌ Error: Metadata must be a JSON object")
+            print_and_log("❌ Error: Metadata must be a JSON object")
             return 1
     except json.JSONDecodeError as e:
-        print(f"❌ Error: Invalid JSON in metadata: {str(e)}")
+        print_and_log(f"❌ Error: Invalid JSON in metadata: {str(e)}")
         return 1
     
     # Show configuration
-    print("🚀 Direct Metadata Upload Script - ChromaDB")
-    print("=" * 50)
-    print(f"Target path: {target_path}")
-    print(f"Metadata fields: {', '.join(metadata.keys())}")
+    print_and_log("🚀 Direct Metadata Upload Script - ChromaDB")
+    print_and_log("=" * 50)
+    print_and_log(f"Target path: {target_path}")
+    print_and_log(f"Metadata fields: {', '.join(metadata.keys())}")
     if args.validate_only:
-        print("Mode: Validation only (no upload)")
+        print_and_log("Mode: Validation only (no upload)")
     else:
-        print("Mode: Process and upload")
+        print_and_log("Mode: Process and upload")
     
     # Run the processing
     try:
         asyncio.run(process_and_upload(target_path, metadata, args.validate_only))
         return 0
     except KeyboardInterrupt:
-        print("\n⚠️  Process interrupted by user")
+        print_and_log("\n⚠️  Process interrupted by user")
         return 1
     except Exception as e:
-        print(f"\n❌ Unexpected error: {str(e)}")
+        print_and_log(f"\n❌ Unexpected error: {str(e)}")
         return 1
 
 

@@ -62,3 +62,5 @@ logs/
 
 #Local Chroma DB
 chromadb_data/
+
+ScriptExecutionLogs/
