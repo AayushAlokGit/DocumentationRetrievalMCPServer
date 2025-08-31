@@ -69,10 +69,10 @@ async def find_matching_documents(chromadb_service, context_name: str, file_name
     """
     Simple search for documents with exact context and filename match
     """
-    print_and_log(f"🔍 Searching for documents...")
-    print_and_log(f"   📝 Context: '{context_name}'")
-    print_and_log(f"   📄 File: '{file_name}'")
-    print_and_log(f"   🔧 Mode: '{mode}'")
+    print_and_log(f"[SEARCH] Searching for documents...")
+    print_and_log(f"   [CONTEXT] Context: '{context_name}'")
+    print_and_log(f"   [FILE] File: '{file_name}'")
+    print_and_log(f"   [MODE] Mode: '{mode}'")
     
     try:
         # Build filters for exact matching
@@ -115,10 +115,10 @@ async def find_matching_documents(chromadb_service, context_name: str, file_name
             'error': str(e)
         }
     
-    print_and_log(f"🔍 Searching for documents...")
-    print_and_log(f"   📝 Context: '{context_name}'")
-    print_and_log(f"   📄 File: '{file_name}'")
-    print_and_log(f"   🎯 Mode: {matching_mode}")
+    print_and_log(f"[SEARCH] Searching for documents...")
+    print_and_log(f"   [CONTEXT] Context: '{context_name}'")
+    print_and_log(f"   [FILE] File: '{file_name}'")
+    print_and_log(f"   [TARGET] Mode: {matching_mode}")
     
     try:
         # Build filters based on matching mode using ChromaDBFilterBuilder
@@ -159,7 +159,7 @@ async def find_matching_documents(chromadb_service, context_name: str, file_name
         
         # If flexible mode and no exact matches, try contains matching
         if matching_mode == 'flexible' and not matching_docs:
-            print_and_log("   🔄 No exact matches found, trying flexible matching...")
+            print_and_log("   [PROCESSING] No exact matches found, trying flexible matching...")
             
             # Get all documents with exact context match
             context_filter = {'context_name': context_name}
@@ -518,6 +518,9 @@ Examples:
     else:
         # Auto-generate log file based on script path and IST timestamp
         _script_logger = setup_script_logging(script_path=__file__)
+    
+    print_and_log(f"The arguments passed to script are: {args}")
+
 
     # Configure logging
     if args.verbose:

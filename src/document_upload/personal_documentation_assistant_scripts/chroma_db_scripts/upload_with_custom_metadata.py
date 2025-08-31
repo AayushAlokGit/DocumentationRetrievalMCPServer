@@ -531,7 +531,9 @@ Optional metadata fields:
     else:
         # Auto-generate log file based on script path and IST timestamp
         _script_logger = setup_script_logging(script_path=__file__)
-    
+
+    print_and_log(f"The arguments passed to script are: {args}")
+
     # Parse target path
     target_path = Path(args.path).resolve()
     if not target_path.exists():
