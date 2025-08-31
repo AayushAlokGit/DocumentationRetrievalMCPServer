@@ -47,6 +47,9 @@ class ScriptLogger:
             script_path: Path to the script that's being logged (for auto-generated log names).
         """
         if log_file is None and script_path:
+            # Ensure the default log directory exists
+            Path(DEFAULT_LOG_DIRECTORY).mkdir(parents=True, exist_ok=True)
+            
             # Auto-generate log file name based on script path and IST timestamp
             ist_time = datetime.now(IST)
             timestamp = ist_time.strftime('%Y%m%d_%H%M%S_IST')
@@ -63,6 +66,7 @@ class ScriptLogger:
         # Create log file if specified
         if self.log_file:
             log_path = Path(self.log_file)
+            # Ensure parent directory exists (including DEFAULT_LOG_DIRECTORY)
             log_path.parent.mkdir(parents=True, exist_ok=True)
             
             # Write header to log file
@@ -155,6 +159,8 @@ def setup_script_logging(log_file: Optional[str] = None, script_path: Optional[s
     
     # If log_file is provided and relative, make it relative to DEFAULT_LOG_DIRECTORY
     if log_file and not Path(log_file).is_absolute():
+        # Ensure the default log directory exists
+        Path(DEFAULT_LOG_DIRECTORY).mkdir(parents=True, exist_ok=True)
         log_file = str(Path(DEFAULT_LOG_DIRECTORY) / log_file)
     
     return ScriptLogger(log_file=log_file, script_path=script_path)
