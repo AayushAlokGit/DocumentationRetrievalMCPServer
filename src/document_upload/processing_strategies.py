@@ -428,7 +428,7 @@ class PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy(Docum
         # Track work item statistics
         work_items_found = set()
         
-        print(f"      🔄 Processing {len(discovered_files)} discovered documents individually...")
+        print(f"      [PROCESSING] Processing {len(discovered_files)} discovered documents individually...")
         
         for i, file_path in enumerate(discovered_files, 1):
             try:
@@ -443,16 +443,16 @@ class PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy(Docum
                     if processed_doc.context_name:
                         work_items_found.add(processed_doc.context_name)
                     
-                    print(f"✅ ({processed_doc.chunk_count} chunks)")
+                    print(f"[SUCCESS] ({processed_doc.chunk_count} chunks)")
                 else:
                     failed_documents += 1
                     errors.append(f"Failed to process: {file_path}")
-                    print("❌ Failed to process")
+                    print("[ERROR] Failed to process")
                     
             except Exception as e:
                 failed_documents += 1
                 errors.append(f"Error processing {file_path}: {str(e)}")
-                print(f"❌ Error: {str(e)}")
+                print(f"[ERROR] Error: {str(e)}")
         
         processing_time = (datetime.now() - start_time).total_seconds()
         
@@ -832,7 +832,7 @@ class PersonalDocumentationAssistantChromaDBProcessingStrategy(DocumentProcessin
         # Track work item statistics
         work_items_found = set()
         
-        print(f"      🔄 Processing {len(discovered_files)} discovered documents for ChromaDB...")
+        print(f"      [PROCESSING] Processing {len(discovered_files)} discovered documents for ChromaDB...")
         
         for i, file_path in enumerate(discovered_files, 1):
             try:
@@ -847,16 +847,16 @@ class PersonalDocumentationAssistantChromaDBProcessingStrategy(DocumentProcessin
                     if processed_doc.context_name:
                         work_items_found.add(processed_doc.context_name)
                     
-                    print(f"✅ ({processed_doc.chunk_count} chunks)")
+                    print(f"[SUCCESS] ({processed_doc.chunk_count} chunks)")
                 else:
                     failed_documents += 1
                     errors.append(f"Failed to process: {file_path}")
-                    print("❌ Failed to process")
+                    print("[ERROR] Failed to process")
                     
             except Exception as e:
                 failed_documents += 1
                 errors.append(f"Error processing {file_path}: {str(e)}")
-                print(f"❌ Error: {str(e)}")
+                print(f"[ERROR] Error: {str(e)}")
         
         processing_time = (datetime.now() - start_time).total_seconds()
         
