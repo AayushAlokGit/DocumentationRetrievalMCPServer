@@ -116,6 +116,25 @@ python src/document_upload/personal_documentation_assistant_scripts/upload_with_
 python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py "docs/" --force-reset --dry-run
 ```
 
+#### File Logging for Operations Tracking
+
+```bash
+# Auto-generated log file with IST timestamp
+python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py "docs/" --log-file
+
+# Custom log file name (relative to ScriptExecutionLogs/)
+python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py "docs/" --log-file "weekly_upload.log"
+
+# Absolute path for custom location
+python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py "docs/" --log-file "C:\CustomLogs\upload.log"
+
+# Combined: verbose output with logging
+python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py "docs/" --verbose --log-file
+
+# Dry-run with logging for audit trail
+python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py "docs/" --dry-run --log-file "preview_audit.log"
+```
+
 #### Statistics and Monitoring
 
 ```bash
@@ -160,6 +179,22 @@ python src/document_upload/personal_documentation_assistant_scripts/delete_by_co
 
 # Preview what would be deleted (recommended first step)
 python src/document_upload/personal_documentation_assistant_scripts/delete_by_context_and_filename.py "PROJECT-123" "readme.md" --preview
+```
+
+### Deletion with Logging
+
+```bash
+# Delete with auto-generated log file (IST timestamp)
+python src/document_upload/personal_documentation_assistant_scripts/delete_by_context_and_filename.py "PROJECT-123" "readme.md" --log-file
+
+# Delete with custom log file name
+python src/document_upload/personal_documentation_assistant_scripts/delete_by_context_and_filename.py "PROJECT-123" "readme.md" --log-file "deletion_audit.log"
+
+# Preview with logging for audit trail
+python src/document_upload/personal_documentation_assistant_scripts/delete_by_context_and_filename.py "PROJECT-123" "readme.md" --preview --log-file "preview_deletion.log"
+
+# Dry-run with logging (same as preview)
+python src/document_upload/personal_documentation_assistant_scripts/delete_by_context_and_filename.py "PROJECT-123" "readme.md" --dry-run --log-file
 ```
 
 ### Matching Modes
@@ -348,6 +383,60 @@ python src/document_upload/personal_documentation_assistant_scripts/upload_with_
 # 2. Perform complete reset and reprocessing
 python src/document_upload/personal_documentation_assistant_scripts/upload_with_pipeline.py "all-docs/" --force-reset --verbose --stats
 ```
+
+---
+
+## 📋 Logging and Audit Trail
+
+### Enable Script Logging
+
+All ChromaDB scripts support comprehensive logging for operations tracking and audit trails:
+
+#### Automatic Logging (Recommended)
+
+```bash
+# Upload with auto-generated IST timestamp log file
+python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/upload_with_pipeline.py "docs/" --log-file
+
+# Delete with auto-generated IST timestamp log file
+python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/delete_by_context_and_filename.py "PROJECT-123" "readme.md" --log-file
+```
+
+#### Custom Log Files
+
+```bash
+# Upload with custom log file name (relative to ScriptExecutionLogs/)
+python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/upload_with_pipeline.py "docs/" --log-file "weekly_batch.log"
+
+# Delete with custom log file (absolute path)
+python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/delete_by_context_and_filename.py "PROJECT-123" "readme.md" --log-file "C:\Audits\deletion_log.log"
+```
+
+### Logging Features
+
+- **📁 Auto-Directory Creation**: `ScriptExecutionLogs/` created automatically if missing
+- **🕐 IST Timestamps**: All operations timestamped with India Standard Time
+- **📊 Dual Output**: Simultaneous console and file logging
+- **🔍 Complete Tracking**: Full operation history with timing, errors, and success rates
+- **📝 Smart Naming**: Auto-generated files: `{script}_{YYYYMMDD}_{HHMMSS}_IST.log`
+
+### Log File Structure
+
+```
+ScriptExecutionLogs/
+├── upload_with_pipeline_20250831_143022_IST.log     # Auto-generated upload log
+├── delete_by_context_and_filename_20250831_143125_IST.log  # Auto-generated deletion log
+├── weekly_batch.log                                 # Custom named log
+└── audit_trail.log                                  # Custom operation log
+```
+
+### Production Best Practices
+
+1. **Always Use Logging in Production**: Add `--log-file` to all production operations
+2. **Custom Names for Important Operations**: Use descriptive log names for major operations
+3. **Review Log Files**: Check logs for errors and performance insights
+4. **Archive Old Logs**: Periodically archive logs to maintain disk space
+5. **Audit Trail**: Use logging for compliance and troubleshooting
 
 ---
 

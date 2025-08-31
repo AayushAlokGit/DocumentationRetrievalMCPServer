@@ -302,13 +302,14 @@ async def upload_document_to_chromadb(processed_doc: ProcessedDocument,
 
 
 async def process_and_upload(target_path: Path, metadata: Dict[str, Any], 
-                           validate_only: bool = False) -> None:
+                           validate_only: bool = False, dry_run: bool = False) -> None:
     """Main processing flow with tracker integration
     
     Args:
         target_path: Path to file or directory to process
         metadata: Custom metadata dictionary
         validate_only: If True, only validate metadata without processing
+        dry_run: If True, process documents but skip actual upload to ChromaDB
     """
     
     # Validate metadata first
@@ -343,15 +344,23 @@ async def process_and_upload(target_path: Path, metadata: Dict[str, Any],
         print_and_log(f"✅ Validation complete: {len(files_to_process)} files ready for processing")
         return
     
-    # Initialize ChromaDB service
-    print_and_log("🔗 Initializing ChromaDB connection...")
-    try:
-        chromadb_service = get_chromadb_service()
-        print_and_log("✅ ChromaDB connection established")
-        
-    except Exception as e:
-        print_and_log(f"❌ Failed to initialize ChromaDB service: {str(e)}")
-        return
+    if dry_run:
+        print_and_log(f"🔍 DRY RUN MODE: Processing {len(files_to_process)} files without uploading")
+    else:
+        print_and_log(f"⚙️  Processing {len(files_to_process)} files with custom metadata...")
+    
+    # Initialize ChromaDB service only if not in dry run mode
+    chromadb_service = None
+    if not dry_run:
+        print_and_log("🔗 Initializing ChromaDB connection...")
+        try:
+            chromadb_service = get_chromadb_service()
+            print_and_log("✅ ChromaDB connection established")
+        except Exception as e:
+            print_and_log(f"❌ Failed to initialize ChromaDB service: {str(e)}")
+            return
+    else:
+        print_and_log("🔍 Skipping ChromaDB connection (dry run mode)")
     
     # Initialize tracker
     print_and_log("📋 Initializing Document Processing Tracker...")
@@ -378,21 +387,27 @@ async def process_and_upload(target_path: Path, metadata: Dict[str, Any],
                 processed_doc = processing_result.processed_documents[0]
                 print_and_log(f"   ✅ Document processed: {processed_doc.chunk_count} chunks created")
                 
-                # Upload processed document to ChromaDB
-                upload_result = await upload_document_to_chromadb(
-                    processed_doc, 
-                    processing_strategy,
-                    chromadb_service
-                )
-                
-                if upload_result['success']:
-                    # Mark file as processed in tracker
-                    tracker.mark_processed(file_path, metadata)
+                if dry_run:
+                    # In dry run mode, just show what would be uploaded
+                    print_and_log(f"   🔍 DRY RUN: Would upload {processed_doc.chunk_count} chunks to ChromaDB")
                     successfully_uploaded_files.append(file_path)
-                    print_and_log(f"   📋 Marked as processed in tracker")
+                    print_and_log(f"   🔍 DRY RUN: Would mark as processed in tracker")
                 else:
-                    failed_files.append(file_path)
-                    print_and_log(f"   ❌ Upload failed: {upload_result['error']}")
+                    # Upload processed document to ChromaDB
+                    upload_result = await upload_document_to_chromadb(
+                        processed_doc, 
+                        processing_strategy,
+                        chromadb_service
+                    )
+                    
+                    if upload_result['success']:
+                        # Mark file as processed in tracker
+                        tracker.mark_processed(file_path, metadata)
+                        successfully_uploaded_files.append(file_path)
+                        print_and_log(f"   📋 Marked as processed in tracker")
+                    else:
+                        failed_files.append(file_path)
+                        print_and_log(f"   ❌ Upload failed: {upload_result['error']}")
             else:
                 failed_files.append(file_path)
                 print_and_log(f"   ❌ Document processing failed")
@@ -401,19 +416,29 @@ async def process_and_upload(target_path: Path, metadata: Dict[str, Any],
             failed_files.append(file_path)
             print_and_log(f"   ❌ Error processing {file_path.name}: {str(e)}")
     
-    # Save tracker after all processing
-    if successfully_uploaded_files:
+    # Save tracker after all processing (skip in dry run mode)
+    if successfully_uploaded_files and not dry_run:
         tracker.save()
         print_and_log(f"\n📋 Saved tracker with {len(successfully_uploaded_files)} successfully processed files")
+    elif dry_run and successfully_uploaded_files:
+        print_and_log(f"\n🔍 DRY RUN: Would save tracker with {len(successfully_uploaded_files)} successfully processed files")
     
     # Final summary
-    print_and_log(f"\n📊 Processing Summary:")
+    mode_prefix = "🔍 DRY RUN: " if dry_run else ""
+    summary_title = f"{mode_prefix}Processing Summary:"
+    print_and_log(f"\n📊 {summary_title}")
     print_and_log(f"   Total files discovered: {len(files_to_process)}")
-    print_and_log(f"   Successfully uploaded: {len(successfully_uploaded_files)}")
-    print_and_log(f"   Failed uploads: {len(failed_files)}")
+    
+    if dry_run:
+        print_and_log(f"   Would be uploaded: {len(successfully_uploaded_files)}")
+        print_and_log(f"   Processing failures: {len(failed_files)}")
+    else:
+        print_and_log(f"   Successfully uploaded: {len(successfully_uploaded_files)}")
+        print_and_log(f"   Failed uploads: {len(failed_files)}")
     
     if successfully_uploaded_files:
-        print_and_log(f"\n✅ Successfully uploaded files:")
+        result_title = f"{mode_prefix}Successfully {'processed' if dry_run else 'uploaded'} files:"
+        print_and_log(f"\n✅ {result_title}")
         for file_path in successfully_uploaded_files:
             print_and_log(f"   - {file_path.name}")
     
@@ -451,6 +476,11 @@ Examples:
     --metadata '{"title": "Test", "tags": "test", "category": "test", "work_item_id": "TEST-1"}' \\
     --validate-only
 
+  # Dry run - process documents but don't upload
+  python upload_with_custom_metadata.py /path/to/docs \\
+    --metadata '{"title": "Test", "tags": "test", "category": "test", "work_item_id": "TEST-1"}' \\
+    --dry-run
+
 Required metadata fields:
   - title: Document title (string)
   - tags: Document tags (string or list)
@@ -477,6 +507,12 @@ Optional metadata fields:
         "--validate-only", 
         action="store_true", 
         help="Only validate metadata and discover files without uploading"
+    )
+
+    parser.add_argument(
+        "--dry-run", 
+        action="store_true", 
+        help="Show what would be uploaded without actually uploading (includes document processing)"
     )
 
     parser.add_argument(
@@ -519,12 +555,14 @@ Optional metadata fields:
     print_and_log(f"Metadata fields: {', '.join(metadata.keys())}")
     if args.validate_only:
         print_and_log("Mode: Validation only (no upload)")
+    elif args.dry_run:
+        print_and_log("Mode: Dry run (process documents but no upload)")
     else:
         print_and_log("Mode: Process and upload")
     
     # Run the processing
     try:
-        asyncio.run(process_and_upload(target_path, metadata, args.validate_only))
+        asyncio.run(process_and_upload(target_path, metadata, args.validate_only, args.dry_run))
         return 0
     except KeyboardInterrupt:
         print_and_log("\n⚠️  Process interrupted by user")

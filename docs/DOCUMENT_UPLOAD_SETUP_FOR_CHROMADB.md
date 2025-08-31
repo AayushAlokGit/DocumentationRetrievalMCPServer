@@ -154,6 +154,64 @@ python src\document_upload\personal_documentation_assistant_scripts\chroma_db_sc
 python src\document_upload\personal_documentation_assistant_scripts\chroma_db_scripts\upload_with_pipeline.py "C:\path\to\documentation" --force-reset
 ```
 
+### 📋 Advanced Options with Logging
+
+**Enable File Logging (Recommended for Production):**
+
+```bash
+# Auto-generated log file with IST timestamp in ScriptExecutionLogs/
+python src\document_upload\personal_documentation_assistant_scripts\chroma_db_scripts\upload_with_pipeline.py "C:\docs" --log-file
+
+# Custom log file name (also in ScriptExecutionLogs/)
+python src\document_upload\personal_documentation_assistant_scripts\chroma_db_scripts\upload_with_pipeline.py "C:\docs" --log-file "my_upload.log"
+
+# Absolute path log file (custom location)
+python src\document_upload\personal_documentation_assistant_scripts\chroma_db_scripts\upload_with_pipeline.py "C:\docs" --log-file "C:\Logs\upload_session.log"
+```
+
+**Combined Logging and Processing Options:**
+
+```bash
+# Verbose upload with automatic logging
+python src\document_upload\personal_documentation_assistant_scripts\chroma_db_scripts\upload_with_pipeline.py "C:\docs" --verbose --log-file
+
+# Dry-run with logging to preview operations
+python src\document_upload\personal_documentation_assistant_scripts\chroma_db_scripts\upload_with_pipeline.py "C:\docs" --dry-run --log-file "preview_run.log"
+
+# Force reset with logging for audit trail
+python src\document_upload\personal_documentation_assistant_scripts\chroma_db_scripts\upload_with_pipeline.py "C:\docs" --force-reset --log-file "reset_operation.log"
+```
+
+**Delete Operations with Logging:**
+
+```bash
+# Delete with automatic logging
+python src\document_upload\personal_documentation_assistant_scripts\chroma_db_scripts\delete_by_context_and_filename.py "ProjectName" "filename.md" --log-file
+
+# Delete with custom log file
+python src\document_upload\personal_documentation_assistant_scripts\chroma_db_scripts\delete_by_context_and_filename.py "ProjectName" "filename.md" --log-file "deletion_audit.log"
+
+# Dry-run deletion with logging for audit purposes
+python src\document_upload\personal_documentation_assistant_scripts\chroma_db_scripts\delete_by_context_and_filename.py "ProjectName" "filename.md" --dry-run --log-file
+```
+
+#### Logging Features
+
+- **📁 Automatic Directory Creation**: `ScriptExecutionLogs/` directory is created automatically
+- **🕐 IST Timestamps**: All log files include India Standard Time timestamps
+- **📊 Dual Output**: Operations logged to both console and file simultaneously
+- **🔍 Detailed Tracking**: Complete operation history with timing and error details
+- **📝 Auto-naming**: Default log files use format: `{script_name}_{YYYYMMDD}_{HHMMSS}_IST.log`
+
+Example log file structure:
+
+```
+ScriptExecutionLogs/
+├── upload_with_pipeline_20250831_143022_IST.log
+├── delete_by_context_and_filename_20250831_143125_IST.log
+└── custom_operation.log
+```
+
 **Custom Metadata Upload:**
 
 ```bash

@@ -35,6 +35,7 @@ This project provides **intelligent document search and retrieval** for your doc
 - **📁 Flexible Structure**: Seamless integration with any documentation organization
 - **🏷️ Metadata Support**: Full frontmatter parsing for titles, tags, and context information
 - **🔒 Privacy Options**: Choose between local ChromaDB (private) or cloud Azure (enterprise)
+- **📋 Comprehensive Logging**: IST-timestamped audit trails with automatic directory creation and dual console+file output
 
 ### Search Capabilities
 
@@ -225,9 +226,18 @@ This project has **two setup paths** based on your preferred vector search engin
 - `python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/upload_with_pipeline.py <path> --force-reset` - Delete all documents and tracker, then reprocess everything
 - `python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/upload_with_custom_metadata.py <path> --metadata '{"title": "Custom Title", "tags": "tag1,tag2", "category": "reference", "work_item_id": "PROJ-123"}'` - Upload with custom metadata override
 
+**Document Processing with Logging:**
+
+- `python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/upload_with_pipeline.py <path> --log-file` - Upload with auto-generated IST timestamp log file
+- `python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/upload_with_pipeline.py <path> --log-file "custom.log"` - Upload with custom log file name
+- `python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/upload_with_pipeline.py <path> --verbose --log-file` - Verbose upload with comprehensive logging
+
 **Document Management:**
 
 - `python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/delete_by_context_and_filename.py <context_name>` - Delete all documents for a specific context
+- `python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/delete_by_context_and_filename.py <context_name> <filename> --preview` - Preview deletion before execution
+- `python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/delete_by_context_and_filename.py <context_name> <filename> --log-file` - Delete with auto-generated audit log
+- `python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/delete_by_context_and_filename.py <context_name> <filename> --dry-run --log-file "audit.log"` - Preview deletion with custom audit log
 
 **Azure Cognitive Search Commands (Enterprise):**
 
@@ -347,6 +357,57 @@ PERSONAL_DOCUMENTATION_ROOT_DIRECTORY=C:\Users\YourName\Desktop\Documentation
 2. **Search Service**: Use the admin key (not query key) for document uploads
 3. **Documentation Path**: Use absolute path with proper Windows path format
 4. **Index Name**: Will be created automatically if it doesn't exist
+
+## 📋 Script Logging and Audit Trail
+
+### Comprehensive Operation Logging
+
+All ChromaDB scripts now support detailed logging for operations tracking, compliance, and troubleshooting:
+
+#### Automatic Logging with IST Timestamps
+
+```bash
+# Upload with auto-generated log file (IST timestamp)
+python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/upload_with_pipeline.py "docs/" --log-file
+
+# Delete with auto-generated log file (IST timestamp)
+python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/delete_by_context_and_filename.py "PROJECT-123" "file.md" --log-file
+```
+
+#### Custom Log Files
+
+```bash
+# Upload with custom log file name (stored in ScriptExecutionLogs/)
+python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/upload_with_pipeline.py "docs/" --log-file "weekly_batch.log"
+
+# Absolute path for custom log location
+python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/upload_with_pipeline.py "docs/" --log-file "C:\Logs\production.log"
+```
+
+#### Production-Ready Logging Features
+
+- **📁 Auto-Directory Creation**: `ScriptExecutionLogs/` directory created automatically
+- **🕐 IST Timestamps**: All operations timestamped with India Standard Time
+- **📊 Dual Output**: Simultaneous console and file logging for immediate feedback
+- **🔍 Complete Audit Trail**: Full operation history with timing, success rates, and error details
+- **📝 Smart Naming**: Auto-generated files use format: `{script}_{YYYYMMDD}_{HHMMSS}_IST.log`
+
+#### Log File Examples
+
+```
+ScriptExecutionLogs/
+├── upload_with_pipeline_20250831_143022_IST.log        # Auto-generated upload log
+├── delete_by_context_and_filename_20250831_143125_IST.log  # Auto-generated deletion log
+├── weekly_batch.log                                    # Custom named log
+└── production_audit.log                                # Custom operation log
+```
+
+**Best Practices for Production Use:**
+
+- Always use `--log-file` for production operations
+- Use descriptive custom log names for important operations
+- Review logs for performance insights and error patterns
+- Archive old logs periodically to maintain disk space
 
 ## 🧪 Testing
 
@@ -490,6 +551,7 @@ The system includes comprehensive error handling:
 - **Chunking Strategy**: Smart text splitting for better search granularity
 - **Enhanced Force Reprocessing**: Properly deletes existing documents before re-upload
 - **Document Management**: Utility scripts for targeted cleanup and maintenance
+- **📋 Operation Logging**: Complete audit trails with IST timestamps for production monitoring and compliance
 
 ## 🤝 Contributing
 

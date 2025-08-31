@@ -237,6 +237,41 @@ Each script includes comprehensive local testing:
 
 **Total Test Coverage**: 36/36 tests passing (100% success rate across all local scripts)
 
+### Script Logging and Audit Features
+
+All ChromaDB scripts include comprehensive logging capabilities for operations tracking:
+
+#### Logging Infrastructure
+
+- **📁 Automatic Directory Creation**: `ScriptExecutionLogs/` directory created automatically
+- **🕐 IST Timestamps**: All operations timestamped with India Standard Time
+- **📊 Dual Output**: Simultaneous console and file logging
+- **🔍 Complete Audit Trail**: Full operation history with timing, errors, and success metrics
+- **📝 Smart File Naming**: Auto-generated format: `{script}_{YYYYMMDD}_{HHMMSS}_IST.log`
+
+#### Usage Examples with Logging
+
+```bash
+# Upload with auto-generated log file
+python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/upload_with_pipeline.py "docs/" --log-file
+
+# Delete with custom log name
+python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/delete_by_context_and_filename.py "PROJECT-123" "readme.md" --log-file "audit_deletion.log"
+
+# Force reset with logging for compliance
+python src/document_upload/personal_documentation_assistant_scripts/chroma_db_scripts/upload_with_pipeline.py "docs/" --force-reset --log-file "system_reset.log"
+```
+
+#### Log File Structure
+
+```
+ScriptExecutionLogs/
+├── upload_with_pipeline_20250831_143022_IST.log
+├── delete_by_context_and_filename_20250831_143125_IST.log
+├── audit_deletion.log
+└── system_reset.log
+```
+
 ---
 
 ## Local Configuration & Setup
