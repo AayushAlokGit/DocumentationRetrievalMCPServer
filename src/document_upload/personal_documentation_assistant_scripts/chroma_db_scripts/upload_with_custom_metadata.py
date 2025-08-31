@@ -371,10 +371,17 @@ async def process_and_upload(target_path: Path, metadata: Dict[str, Any],
     print_and_log(f"\n[PROCESSING] Processing {len(files_to_process)} files with custom metadata...")
     successfully_uploaded_files = []
     failed_files = []
+    skipped_files = []
     
     for i, file_path in enumerate(files_to_process, 1):
         try:
             print_and_log(f"\n[FILE] File {i}/{len(files_to_process)}: {file_path.name}")
+            
+            # Check if file is already processed in tracker
+            if tracker.is_processed(file_path):
+                print_and_log(f"   [TRACKER] File already processed - skipping")
+                skipped_files.append(file_path)
+                continue
             
             # Create DirectMetadataProcessingStrategy with custom metadata
             processing_strategy = DirectMetadataProcessingStrategy(metadata)
@@ -428,6 +435,7 @@ async def process_and_upload(target_path: Path, metadata: Dict[str, Any],
     summary_title = f"{mode_prefix}Processing Summary:"
     print_and_log(f"\n[STATS] {summary_title}")
     print_and_log(f"   Total files discovered: {len(files_to_process)}")
+    print_and_log(f"   Already processed (skipped): {len(skipped_files)}")
     
     if dry_run:
         print_and_log(f"   Would be uploaded: {len(successfully_uploaded_files)}")
@@ -435,6 +443,11 @@ async def process_and_upload(target_path: Path, metadata: Dict[str, Any],
     else:
         print_and_log(f"   Successfully uploaded: {len(successfully_uploaded_files)}")
         print_and_log(f"   Failed uploads: {len(failed_files)}")
+    
+    if skipped_files:
+        print_and_log(f"\n[TRACKER] Already processed files (skipped):")
+        for file_path in skipped_files:
+            print_and_log(f"   - {file_path.name}")
     
     if successfully_uploaded_files:
         result_title = f"{mode_prefix}Successfully {'processed' if dry_run else 'uploaded'} files:"
@@ -447,8 +460,9 @@ async def process_and_upload(target_path: Path, metadata: Dict[str, Any],
         for file_path in failed_files:
             print_and_log(f"   - {file_path.name}")
     
-    success_rate = (len(successfully_uploaded_files) / len(files_to_process) * 100) if files_to_process else 0
-    print_and_log(f"\n Success rate: {success_rate:.1f}%")
+    files_actually_processed = len(files_to_process) - len(skipped_files)
+    success_rate = (len(successfully_uploaded_files) / files_actually_processed * 100) if files_actually_processed > 0 else 0
+    print_and_log(f"\n[STATS] Success rate: {success_rate:.1f}% ({len(successfully_uploaded_files)}/{files_actually_processed} processed files)")
     
     # Return True if all files were successfully uploaded
     return len(failed_files) == 0
