@@ -196,10 +196,47 @@ async def handle_get_index_summary(search_service: ChromaDBService, arguments: d
         return [types.TextContent(type="text", text=f"[ERROR] Index summary failed: {e}")]
 
 def _format_search_results(results: list, include_content: bool, max_results: int) -> list[types.TextContent]:
-    """Format search results for MCP display"""
+    """Format search results for MCP display
+    
+    Filters out results with relevance scores below 0.1 to ensure only meaningfully
+    relevant documents are shown. Score 0.1 corresponds to ChromaDB distance ~0.9,
+    which represents the minimum useful semantic similarity threshold.
+    """
+    # Define minimum relevance threshold to filter out irrelevant results
+    # 0.1 = meaningful similarity (ChromaDB distance ~0.9)
+    # 0.05 = very low similarity (ChromaDB distance ~0.95) 
+    # 0.001 = almost no similarity (ChromaDB distance ~0.999)
+    MIN_RELEVANCE_THRESHOLD = 0.1
+    
+    # Filter results by relevance score first
+    relevant_results = []
+    filtered_count = 0
+    
+    for result in results:
+        score = result.get('@search.score', 0)
+        if score >= MIN_RELEVANCE_THRESHOLD:
+            relevant_results.append(result)
+        else:
+            filtered_count += 1
+    
+    # If no relevant results found, return appropriate message
+    if not relevant_results:
+        if filtered_count > 0:
+            return [types.TextContent(
+                type="text", 
+                text=f"[SEARCH] Found {filtered_count} results, but all had low relevance scores (< {MIN_RELEVANCE_THRESHOLD:.1f}). Try refining your search query for better matches."
+            )]
+        else:
+            return [types.TextContent(type="text", text="[SEARCH] No results found.")]
+    
     formatted_results = []
+    
+    # Show info about filtered results if any were filtered
+    if filtered_count > 0:
+        info_text = f"[INFO] Showing {min(len(relevant_results), max_results)} relevant results (score ≥ {MIN_RELEVANCE_THRESHOLD:.1f}). Filtered out {filtered_count} low-relevance results.\n\n"
+        formatted_results.append(types.TextContent(type="text", text=info_text))
 
-    for i, result in enumerate(results[:max_results], 1):
+    for i, result in enumerate(relevant_results[:max_results], 1):
         result_text = f"## Result {i}\n"
 
         # Core document identification
