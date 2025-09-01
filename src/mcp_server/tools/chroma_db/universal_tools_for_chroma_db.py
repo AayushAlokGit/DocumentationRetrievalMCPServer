@@ -203,10 +203,8 @@ def _format_search_results(results: list, include_content: bool, max_results: in
     which represents the minimum useful semantic similarity threshold.
     """
     # Define minimum relevance threshold to filter out irrelevant results
-    # 0.1 = meaningful similarity (ChromaDB distance ~0.9)
-    # 0.05 = very low similarity (ChromaDB distance ~0.95) 
-    # 0.001 = almost no similarity (ChromaDB distance ~0.999)
-    MIN_RELEVANCE_THRESHOLD = 0.1
+    # CUrrently chosen based on observation of scores
+    MIN_RELEVANCE_THRESHOLD = 0.01
     
     # Filter results by relevance score first
     relevant_results = []
