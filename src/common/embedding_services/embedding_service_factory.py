@@ -31,7 +31,7 @@ def get_embedding_generator(provider: str = None):
     """
     # Auto-detect provider if not specified
     if provider is None:
-        provider = os.getenv('EMBEDDING_PROVIDER_SERVICE', 'local')
+        provider = os.getenv('EMBEDDING_PROVIDER_SERVICE', 'azure_ai_foundry')
 
     print(f"[INFO] Using embedding provider: {provider}")
     
