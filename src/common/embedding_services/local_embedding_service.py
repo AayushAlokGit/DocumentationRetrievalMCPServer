@@ -147,5 +147,25 @@ EMBEDDING_MODELS = {
         'model': 'multi-qa-MiniLM-L6-cos-v1',
         'dimension': 384, 
         'description': 'Optimized for question-answering tasks'
+    },
+    'multilingual': {
+        'model': 'paraphrase-multilingual-MiniLM-L12-v2',
+        'dimension': 768,
+        'description': 'Supports multiple languages'
     }
 }
+
+def get_local_embedding_generator():
+    """Get local sentence transformers embedding generator"""
+    try:
+        from .local_embedding_service import LocalEmbeddingGenerator
+        
+        # Get model preference from environment
+        model_preference = os.getenv('LOCAL_EMBEDDING_MODEL', 'fast')
+        model_name = EMBEDDING_MODELS.get(model_preference)['model']
+        return LocalEmbeddingGenerator(model_name=model_name)
+        
+    except ImportError as e:
+        print(f"[ERROR] sentence-transformers not available: {e}")
+        print("       Install with: pip install sentence-transformers")
+        raise

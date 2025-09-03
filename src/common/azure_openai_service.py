@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-class OpenAIService:
+class AzureOpenAIService:
     """Centralized OpenAI service for embedding generation"""
     
     def __init__(self):
@@ -107,20 +107,20 @@ class OpenAIService:
 _openai_service = None
 
 
-def get_openai_service() -> OpenAIService:
-    """Get singleton OpenAI service instance"""
+def get_azure_openai_service() -> AzureOpenAIService:
+    """Get singleton Azure OpenAI service instance"""
     global _openai_service
     if _openai_service is None:
-        _openai_service = OpenAIService()
+        _openai_service = AzureOpenAIService()
     return _openai_service
 
 
 async def main():
-    """Test the OpenAI service"""
-    print("Testing OpenAI Service...")
+    """Test the Azure OpenAI service"""
+    print("Testing Azure OpenAI Service...")
     
     try:
-        service = get_openai_service()
+        service = get_azure_openai_service()
         
         # Test connection
         print("Testing connection...")

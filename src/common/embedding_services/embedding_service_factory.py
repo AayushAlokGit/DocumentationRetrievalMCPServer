@@ -10,6 +10,9 @@ import os
 from typing import List
 from dotenv import load_dotenv
 
+from src.common.embedding_services.azure_openai_embedding_service import get_azure_openai_embedding_generator
+from src.common.embedding_services.local_embedding_service import get_local_embedding_generator
+
 load_dotenv()
 
 
@@ -33,40 +36,10 @@ def get_embedding_generator(provider: str = None):
     print(f"[INFO] Using embedding provider: {provider}")
     
     if provider in ('local', 'sentence-transformers'):
-        return _get_local_embedding_generator()
+        return get_local_embedding_generator()
     elif provider == 'openai':
-        return _get_openai_embedding_generator()
+        return get_azure_openai_embedding_generator()
     else:
         raise ValueError(f"Unknown embedding provider: {provider}. Supported: 'local', 'openai'")
 
-def _get_local_embedding_generator():
-    """Get local sentence transformers embedding generator"""
-    try:
-        from .local_embedding_service import LocalEmbeddingGenerator
-        
-        # Get model preference from environment
-        model_preference = os.getenv('LOCAL_EMBEDDING_MODEL', 'fast')
-        model_map = {
-            'fast': 'all-MiniLM-L6-v2',
-            'quality': 'all-mpnet-base-v2',
-            'qa': 'multi-qa-MiniLM-L6-cos-v1',
-            'multilingual': 'paraphrase-multilingual-MiniLM-L12-v2'
-        }
-        
-        model_name = model_map.get(model_preference, model_preference)
-        return LocalEmbeddingGenerator(model_name=model_name)
-        
-    except ImportError as e:
-        print(f"[ERROR] sentence-transformers not available: {e}")
-        print("       Install with: pip install sentence-transformers")
-        raise
 
-def _get_openai_embedding_generator():
-    """Get OpenAI embedding generator"""
-    try:
-        from .openai_embedding_service import OpenAIEmbeddingGenerator
-        return OpenAIEmbeddingGenerator()
-    except ImportError as e:
-        print(f"[ERROR] OpenAI dependencies not available: {e}")
-        print("       Install with: pip install openai")
-        raise

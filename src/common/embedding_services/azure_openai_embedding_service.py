@@ -10,13 +10,13 @@ import os
 import asyncio
 from typing import List, Optional
 from dotenv import load_dotenv
-from ..openai_service import get_openai_service
+from ..azure_openai_service import get_azure_openai_service
 
 # Load environment variables
 load_dotenv()
 
 
-class OpenAIEmbeddingGenerator:
+class AzureOpenAIEmbeddingGenerator:
     """
     Service for generating embeddings using Azure OpenAI
     Supports both single queries and batch processing
@@ -32,11 +32,11 @@ class OpenAIEmbeddingGenerator:
         # Validate required environment variables
         if not all([self.azure_openai_endpoint, self.azure_openai_key]):
             raise ValueError("Missing required Azure OpenAI environment variables: AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_KEY")
-        
-        # Initialize OpenAI service
-        self.openai_service = get_openai_service()
-        
-        print(f"[INFO] OpenAIEmbeddingGenerator initialized:")
+
+        # Initialize Azure OpenAI service
+        self.azure_openai_service = get_azure_openai_service()
+
+        print(f"[INFO] AzureOpenAIEmbeddingGenerator initialized:")
         print(f"   - Endpoint: {self.azure_openai_endpoint}")
         print(f"   - Deployment: {self.embedding_deployment}")
         print(f"   - Dimension: {self.embedding_dimension}")
@@ -49,7 +49,7 @@ class OpenAIEmbeddingGenerator:
             True if connection is successful, False otherwise
         """
         try:
-            return self.openai_service.test_connection()
+            return self.azure_openai_service.test_connection()
         except Exception as e:
             print(f"[ERROR] OpenAIEmbeddingGenerator connection test failed: {e}")
             return False
@@ -65,7 +65,7 @@ class OpenAIEmbeddingGenerator:
             List of floats representing the embedding vector, or None if failed
         """
         try:
-            return await self.openai_service.generate_embedding(text)
+            return await self.azure_openai_service.generate_embedding(text)
         except Exception as e:
             print(f"Error generating embedding for query: {e}")
             return None
@@ -91,7 +91,7 @@ class OpenAIEmbeddingGenerator:
                 if i > 0:
                     await asyncio.sleep(1)  # 1 second between batches
 
-                batch_embeddings = await self.openai_service.generate_embeddings_batch(batch)
+                batch_embeddings = await self.azure_openai_service.generate_embeddings_batch(batch)
                 
                 # Handle None values from failed embeddings
                 processed_embeddings = []
@@ -156,9 +156,9 @@ class OpenAIEmbeddingGenerator:
 # Global instance for easy access
 _embedding_generator = None
 
-def get_openai_embedding_generator() -> OpenAIEmbeddingGenerator:
-    """Get a singleton instance of the OpenAIEmbeddingGenerator"""
+def get_azure_openai_embedding_generator() -> AzureOpenAIEmbeddingGenerator:
+    """Get a singleton instance of the AzureOpenAIEmbeddingGenerator"""
     global _embedding_generator
     if _embedding_generator is None:
-        _embedding_generator = OpenAIEmbeddingGenerator()
+        _embedding_generator = AzureOpenAIEmbeddingGenerator()
     return _embedding_generator
