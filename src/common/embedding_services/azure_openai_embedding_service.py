@@ -10,7 +10,6 @@ import os
 import asyncio
 from typing import List, Optional
 from dotenv import load_dotenv
-from ..azure_openai_service import get_azure_openai_service
 
 # Load environment variables
 load_dotenv()
@@ -23,23 +22,42 @@ class AzureOpenAIEmbeddingGenerator:
     """
     
     def __init__(self):
-        # Load configuration from environment
-        self.azure_openai_endpoint = os.getenv('AZURE_OPENAI_ENDPOINT')
-        self.azure_openai_key = os.getenv('AZURE_OPENAI_KEY')
-        self.embedding_deployment = os.getenv('EMBEDDING_DEPLOYMENT', 'text-embedding-ada-002')
-        self.embedding_dimension = 1536  # Dimension for text-embedding-ada-002
+        # Load configuration from environment - Azure AI Foundry
+        self.azure_ai_foundry_endpoint = os.getenv('AZURE_AI_FOUNDRY_ENDPOINT')
+        self.azure_ai_foundry_embedding_model_key = os.getenv('AZURE_AI_FOUNDRY_EMBEDDING_MODEL_KEY') 
+        self.embedding_deployment = os.getenv('EMBEDDING_DEPLOYMENT', 'text-embedding-3-large')
+        self.api_version = os.getenv('OPENAI_API_VERSION', '2024-05-01-preview')
+        
+        # Dynamic embedding dimensions based on model
+        embedding_dims = os.getenv('EMBEDDING_DIMENSIONS', '3072')
+        self.embedding_dimension = int(embedding_dims)
+        
+        # OpenAI client will be initialized on first use
+        self._client = None
         
         # Validate required environment variables
-        if not all([self.azure_openai_endpoint, self.azure_openai_key]):
-            raise ValueError("Missing required Azure OpenAI environment variables: AZURE_OPENAI_ENDPOINT, AZURE_OPENAI_KEY")
-
-        # Initialize Azure OpenAI service
-        self.azure_openai_service = get_azure_openai_service()
+        if not all([self.azure_ai_foundry_endpoint, self.azure_ai_foundry_embedding_model_key]):
+            raise ValueError("Missing required Azure AI Foundry environment variables: AZURE_AI_FOUNDRY_ENDPOINT, AZURE_AI_FOUNDRY_EMBEDDING_MODEL_KEY")
 
         print(f"[INFO] AzureOpenAIEmbeddingGenerator initialized:")
-        print(f"   - Endpoint: {self.azure_openai_endpoint}")
+        print(f"   - AI Foundry Endpoint: {self.azure_ai_foundry_endpoint}")
         print(f"   - Deployment: {self.embedding_deployment}")
         print(f"   - Dimension: {self.embedding_dimension}")
+    
+    def _get_client(self):
+        """Get or create OpenAI client with error handling"""
+        if self._client is None:
+            try:
+                from openai import AzureOpenAI
+                self._client = AzureOpenAI(
+                    azure_endpoint=self.azure_ai_foundry_endpoint,
+                    api_key=self.azure_ai_foundry_embedding_model_key,
+                    api_version=self.api_version
+                )
+            except ImportError as e:
+                print(f"Failed to import OpenAI library: {e}")
+                raise e
+        return self._client
     
     def test_connection(self) -> bool:
         """
@@ -49,9 +67,15 @@ class AzureOpenAIEmbeddingGenerator:
             True if connection is successful, False otherwise
         """
         try:
-            return self.azure_openai_service.test_connection()
+            client = self._get_client()
+            # Test with a simple embedding request
+            response = client.embeddings.create(
+                model=self.embedding_deployment,
+                input=["test connection"]
+            )
+            return response and len(response.data) > 0
         except Exception as e:
-            print(f"[ERROR] OpenAIEmbeddingGenerator connection test failed: {e}")
+            print(f"[ERROR] Connection test failed: {e}")
             return False
     
     async def generate_embedding(self, text: str) -> Optional[List[float]]:
@@ -65,9 +89,18 @@ class AzureOpenAIEmbeddingGenerator:
             List of floats representing the embedding vector, or None if failed
         """
         try:
-            return await self.azure_openai_service.generate_embedding(text)
+            client = self._get_client()
+            response = client.embeddings.create(
+                model=self.embedding_deployment,
+                input=[text]
+            )
+            
+            if response and response.data and len(response.data) > 0:
+                return response.data[0].embedding
+            return None
+            
         except Exception as e:
-            print(f"Error generating embedding for query: {e}")
+            print(f"Error generating embedding for text: {e}")
             return None
     
     async def generate_embeddings_batch(self, texts: List[str], batch_size: int = 16) -> List[List[float]]:
@@ -91,20 +124,28 @@ class AzureOpenAIEmbeddingGenerator:
                 if i > 0:
                     await asyncio.sleep(1)  # 1 second between batches
 
-                batch_embeddings = await self.azure_openai_service.generate_embeddings_batch(batch)
+                client = self._get_client()
+                response = client.embeddings.create(
+                    model=self.embedding_deployment,
+                    input=batch
+                )
                 
-                # Handle None values from failed embeddings
-                processed_embeddings = []
-                for embedding in batch_embeddings:
-                    if embedding is not None:
-                        processed_embeddings.append(embedding)
-                    else:
-                        # Add empty embedding for failed generation
-                        empty_embedding = [0.0] * self.embedding_dimension
-                        processed_embeddings.append(empty_embedding)
+                # Handle response and extract embeddings
+                batch_embeddings = []
+                if response and response.data:
+                    for embedding_data in response.data:
+                        if embedding_data and embedding_data.embedding:
+                            batch_embeddings.append(embedding_data.embedding)
+                        else:
+                            # Add empty embedding for failed generation
+                            empty_embedding = [0.0] * self.embedding_dimension
+                            batch_embeddings.append(empty_embedding)
+                else:
+                    # Add empty embeddings for failed batch
+                    empty_embedding = [0.0] * self.embedding_dimension
+                    batch_embeddings = [empty_embedding] * len(batch)
                 
-                all_embeddings.extend(processed_embeddings)
-
+                all_embeddings.extend(batch_embeddings)
                 print(f"Generated embeddings for batch {i//batch_size + 1}/{(len(texts) + batch_size - 1)//batch_size}")
 
             except Exception as e:

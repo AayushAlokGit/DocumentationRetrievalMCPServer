@@ -10,14 +10,11 @@ Includes Azure Cognitive Search integration, embedding services, and OpenAI serv
 from .vector_search_services.azure_cognitive_search import AzureCognitiveSearch, get_azure_search_service
 from .embedding_services.azure_openai_embedding_service import AzureOpenAIEmbeddingGenerator, get_azure_openai_embedding_generator
 from .embedding_services.embedding_service_factory import get_embedding_generator
-from .azure_openai_service import AzureOpenAIService, get_azure_openai_service
 
 __all__ = [
     'AzureCognitiveSearch',
     'get_azure_search_service', 
     'AzureOpenAIEmbeddingGenerator',
     'get_azure_openai_embedding_generator',
-    'get_embedding_generator',
-    'AzureOpenAIService',
-    'get_azure_openai_service'
+    'get_embedding_generator'
 ]

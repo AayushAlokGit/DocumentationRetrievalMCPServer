@@ -23,7 +23,7 @@ def get_embedding_generator(provider: str = None):
     Args:
         provider: Embedding provider to use. Options:
                  - 'local' or 'sentence-transformers': Local Sentence Transformers
-                 - 'openai': OpenAI public API  
+                 - 'azure_openai' or 'azure_ai_foundry': Azure OpenAI/AI Foundry
                  - None: Auto-detect based on environment
     
     Returns:
@@ -37,9 +37,9 @@ def get_embedding_generator(provider: str = None):
     
     if provider in ('local', 'sentence-transformers'):
         return get_local_embedding_generator()
-    elif provider == 'openai':
+    elif provider in ('azure_openai', 'azure_ai_foundry'):
         return get_azure_openai_embedding_generator()
     else:
-        raise ValueError(f"Unknown embedding provider: {provider}. Supported: 'local', 'openai'")
+        raise ValueError(f"Unknown embedding provider: {provider}. Supported: 'local', 'azure_openai', 'azure_ai_foundry'")
 
 
