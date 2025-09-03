@@ -173,7 +173,9 @@ Guidelines:
 - Focus on functional tags that reflect document purpose
 - Use lowercase, hyphen-separated format
 - Consider semantic search patterns for personal documentation
-- Balance specific technical terms with broader conceptual tags
+- Balance specific technical terms with broader conceptual tags.
+
+Review the final tags list to remove irrelevant tags.
 
 Return ONLY the JSON object, no additional text."""
 
