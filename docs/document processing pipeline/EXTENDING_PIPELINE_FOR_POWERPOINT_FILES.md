@@ -25,7 +25,6 @@ The processing phase uses a strategy pattern through the `DocumentProcessingStra
 1. **Slide Text Content** - Extract text from all slides
 2. **Speaker Notes** - Extract presenter notes if available
 3. **Metadata** - Extract presentation metadata (title, author, creation date, etc.)
-4. **Slide-based Chunking** - Option to chunk content by individual slides
 
 ### Content Handling Approach
 
@@ -34,6 +33,30 @@ The processing phase uses a strategy pattern through the `DocumentProcessingStra
 **Images and Media**: Images, charts, and other visual elements will be **ignored**. Only text-based content will be processed.
 
 ## Implementation Plan
+
+### Architectural Principle: Separation of Concerns
+
+This implementation follows a key architectural principle: **separation of content extraction from metadata processing**. This approach provides:
+
+1. **Cleaner Code Organization** - Content extraction functions focus solely on extracting text and structural data
+2. **Better Reusability** - Content extraction can be reused across different processing strategies
+3. **Strategy Flexibility** - Different processing strategies can interpret the same content differently
+4. **Easier Testing** - Content extraction and metadata processing can be tested independently
+5. **Maintainability** - Changes to metadata logic don't affect content extraction logic
+
+**Content Extraction Phase** (Strategy-Independent):
+
+- Extract text content from slides
+- Extract speaker notes
+- Extract basic structural information (slide count)
+- **No metadata interpretation** - just raw content
+
+**Document Processing Phase** (Strategy-Dependent):
+
+- Interpret content based on processing strategy context
+- Extract presentation metadata (title, author, dates)
+- Apply strategy-specific metadata enrichment
+- Handle context-specific processing needs
 
 ### Step 1: Add PowerPoint Parsing Library
 
@@ -95,23 +118,23 @@ Add `_extract_pptx_content` function:
 ```python
 def _extract_pptx_content(file_path: Path) -> Optional[Dict[str, Any]]:
     """
-    Extract text content and metadata from a PowerPoint file.
+    Extract text content from a PowerPoint file.
+
+    NOTE: This function focuses ONLY on content extraction. Metadata extraction
+    is handled separately in the document processing phase for better separation
+    of concerns and reusability across different processing strategies.
 
     Args:
         file_path: Path to the PPTX file
 
     Returns:
         Optional[Dict]: Dictionary containing:
-            - content: Full text content from all slides
-            - slides: List of individual slide content
-            - speaker_notes: Combined speaker notes
-            - metadata: Presentation metadata
+            - content: Full text content from all slides and speaker notes
     """
     try:
         prs = Presentation(file_path)
 
         # Extract slide content
-        slides_content = []
         all_text_parts = []
         speaker_notes = []
 
@@ -132,31 +155,17 @@ def _extract_pptx_content(file_path: Path) -> Optional[Dict[str, Any]]:
                 if notes_text_frame.text.strip():
                     speaker_notes.append(f"Slide {slide_num} Notes: {notes_text_frame.text.strip()}")
 
-            # Combine slide content
-            slide_content = "\n".join(slide_text_parts)
-            slides_content.append(slide_content)
+            # Add slide content to overall content
             all_text_parts.extend(slide_text_parts)
 
-        # Combine all content
+        # Combine all content including speaker notes
         full_content = "\n\n".join(all_text_parts)
-        combined_notes = "\n\n".join(speaker_notes) if speaker_notes else ""
-
-        # Extract presentation metadata
-        core_props = prs.core_properties
-        metadata = {
-            'title': core_props.title or '',
-            'author': core_props.author or '',
-            'created': core_props.created.isoformat() if core_props.created else '',
-            'modified': core_props.modified.isoformat() if core_props.modified else '',
-            'slide_count': len(prs.slides),
-            'has_notes': bool(speaker_notes)
-        }
+        if speaker_notes:
+            combined_notes = "\n\n".join(speaker_notes)
+            full_content += "\n\n=== Speaker Notes ===\n" + combined_notes
 
         return {
-            'content': full_content,
-            'slides': slides_content,
-            'speaker_notes': combined_notes,
-            'metadata': metadata
+            'content': full_content
         } if full_content.strip() else None
 
     except Exception as e:
@@ -207,13 +216,6 @@ def _read_document_file(file_path: Path) -> Optional[Dict]:
 
             # Use the full content for processing
             content = pptx_data['content']
-
-            # Store additional PowerPoint-specific data for metadata extraction
-            return {
-                'content': content.strip(),
-                'file_path': str(file_path),
-                'pptx_data': pptx_data  # Additional PowerPoint-specific information
-            }
 
         elif file_extension in ['.md', '.txt']:
             # Parse markdown and text files as UTF-8
@@ -285,6 +287,9 @@ def _extract_powerpoint_metadata(self, content: str, file_path: Path) -> Dict:
     """
     Extract metadata specific to PowerPoint presentations.
 
+    This method handles PowerPoint metadata extraction in the document processing phase,
+    maintaining separation of concerns by keeping metadata logic separate from content extraction.
+
     Args:
         content: Extracted text content from the presentation
         file_path: Path to the PowerPoint file
@@ -294,90 +299,65 @@ def _extract_powerpoint_metadata(self, content: str, file_path: Path) -> Dict:
     """
     metadata = {'content': content}
 
-    # Re-extract PowerPoint data for detailed metadata
-    pptx_data = _extract_pptx_content(file_path)
-    if pptx_data:
-        # Add PowerPoint-specific metadata
-        ppt_metadata = pptx_data['metadata']
+    # Extract PowerPoint metadata directly using python-pptx
+    try:
+        from pptx import Presentation
+        prs = Presentation(file_path)
+
+        # Extract presentation metadata
+        core_props = prs.core_properties
         metadata.update({
-            'slide_count': ppt_metadata.get('slide_count', 0),
-            'presentation_title': ppt_metadata.get('title', ''),
-            'presentation_author': ppt_metadata.get('author', ''),
-            'has_speaker_notes': ppt_metadata.get('has_notes', False),
-            'presentation_created': ppt_metadata.get('created', ''),
-            'presentation_modified': ppt_metadata.get('modified', ''),
+            'slide_count': len(prs.slides),
+            'presentation_title': core_props.title or '',
+            'presentation_author': core_props.author or '',
+            'presentation_created': core_props.created.isoformat() if core_props.created else '',
+            'presentation_modified': core_props.modified.isoformat() if core_props.modified else '',
         })
 
-        # Include speaker notes in content if available
-        if pptx_data['speaker_notes']:
-            metadata['speaker_notes'] = pptx_data['speaker_notes']
-            # Optionally combine with main content
-            metadata['content'] = content + "\n\n=== Speaker Notes ===\n" + pptx_data['speaker_notes']
+        # Check for speaker notes
+        has_notes = False
+        speaker_notes = []
+        for slide_num, slide in enumerate(prs.slides, 1):
+            if slide.has_notes_slide:
+                notes_slide = slide.notes_slide
+                notes_text_frame = notes_slide.notes_text_frame
+                if notes_text_frame.text.strip():
+                    has_notes = True
+                    speaker_notes.append(f"Slide {slide_num} Notes: {notes_text_frame.text.strip()}")
 
-        # Store individual slides for potential slide-based chunking
-        metadata['slides_content'] = pptx_data['slides']
+        metadata['has_speaker_notes'] = has_notes
+
+        # Include speaker notes in content if available
+        if speaker_notes:
+            combined_notes = "\n\n".join(speaker_notes)
+            metadata['speaker_notes'] = combined_notes
+            # Optionally combine with main content
+            metadata['content'] = content + "\n\n=== Speaker Notes ===\n" + combined_notes
+
+    except Exception as e:
+        print(f"Error extracting PowerPoint metadata from {file_path}: {e}")
+        # Continue with basic metadata if PowerPoint-specific extraction fails
+        metadata.update({
+            'slide_count': 0,
+            'presentation_title': '',
+            'presentation_author': '',
+            'has_speaker_notes': False,
+            'presentation_created': '',
+            'presentation_modified': '',
+        })
 
     return metadata
 ```
 
-### Step 5: Implement Slide-Based Chunking (Optional Enhancement)
+### Step 5: Update Processing Strategy
 
-Create a specialized chunking strategy for PowerPoint files:
-
-```python
-class PowerPointSlideChunkingStrategy:
-    """
-    Chunking strategy that treats each slide as a separate chunk.
-    Useful for PowerPoint presentations where each slide represents a distinct concept.
-    """
-
-    def __init__(self, include_speaker_notes: bool = True):
-        self.include_speaker_notes = include_speaker_notes
-
-    def chunk_powerpoint_content(self, pptx_data: Dict) -> List[str]:
-        """
-        Create chunks based on individual slides.
-
-        Args:
-            pptx_data: PowerPoint data from _extract_pptx_content
-
-        Returns:
-            List[str]: List of slide-based chunks
-        """
-        chunks = []
-
-        slides = pptx_data.get('slides', [])
-        speaker_notes = pptx_data.get('speaker_notes', '')
-
-        # Parse speaker notes by slide if available
-        notes_by_slide = {}
-        if speaker_notes and self.include_speaker_notes:
-            # Parse notes by slide using regex pattern
-            import re
-            # Pattern matches "Slide X Notes: content" and captures both slide number and content
-            note_matches = re.findall(r'Slide (\d+) Notes: (.*?)(?=Slide \d+ Notes:|$)', speaker_notes, re.DOTALL)
-            notes_by_slide = {int(slide_num): note.strip() for slide_num, note in note_matches}
-
-        for i, slide_content in enumerate(slides, 1):
-            chunk = slide_content
-
-            # Add speaker notes if available for this slide
-            if i in notes_by_slide:
-                chunk += f"\n\nSpeaker Notes: {notes_by_slide[i]}"
-
-            chunks.append(chunk)
-
-        return chunks if chunks else [pptx_data.get('content', '')]
-```
-
-### Step 6: Update Processing Strategy
-
-Modify the `process_single_document` method to use slide-based chunking for PowerPoint files:
+PowerPoint files will use the standard chunking strategy alongside other file types:
 
 ```python
 def process_single_document(self, file_path: Path) -> Optional[ProcessedDocument]:
     """
-    Process a single document file with enhanced PowerPoint support.
+    Process a single document file with PowerPoint support.
+    PowerPoint files use standard chunking like other document types.
     """
     # Read the document
     file_data = _read_document_file(file_path)
@@ -385,18 +365,12 @@ def process_single_document(self, file_path: Path) -> Optional[ProcessedDocument
         return None
 
     content = file_data['content']
-    file_extension = file_path.suffix.lower()
 
     # Extract metadata using strategy-specific logic
     metadata = self.extract_metadata(content, file_path)
 
-    # Generate chunks - use slide-based chunking for PowerPoint
-    if file_extension == '.pptx' and 'pptx_data' in file_data:
-        slide_chunker = PowerPointSlideChunkingStrategy()
-        chunks = slide_chunker.chunk_powerpoint_content(file_data['pptx_data'])
-    else:
-        # Use standard chunking strategy for other file types
-        chunks = self.chunking_strategy.chunk_content(content)
+    # Generate chunks using standard chunking strategy for all file types
+    chunks = self.chunking_strategy.chunk_content(content)
 
     # Continue with existing processing logic...
     context_name = self.extract_context_info(metadata)
@@ -422,7 +396,7 @@ def process_single_document(self, file_path: Path) -> Optional[ProcessedDocument
 
 ## Testing Strategy
 
-Create sample PowerPoint files and implement unit tests for content extraction, file reading, and chunking strategies.
+Create sample PowerPoint files and implement unit tests for content extraction and file reading.
 
 ## Error Handling
 
@@ -441,7 +415,24 @@ def _extract_pptx_content(file_path: Path) -> Optional[Dict[str, Any]]:
     try:
         from pptx.exc import PackageNotFoundError, InvalidXmlError
         prs = Presentation(file_path)
-        # ... existing extraction logic ...
+
+        # Extract content from all slides and speaker notes
+        all_text_parts = []
+        speaker_notes = []
+
+        for slide_num, slide in enumerate(prs.slides, 1):
+            # Extract slide text and notes...
+            pass
+
+        # Combine all content
+        full_content = "\n\n".join(all_text_parts)
+        if speaker_notes:
+            combined_notes = "\n\n".join(speaker_notes)
+            full_content += "\n\n=== Speaker Notes ===\n" + combined_notes
+
+        return {
+            'content': full_content
+        } if full_content.strip() else None
 
     except PackageNotFoundError:
         print(f"PowerPoint file not found: {file_path}")
@@ -475,4 +466,22 @@ Potential improvements include:
 
 ## Conclusion
 
-This implementation extends the document processing pipeline for PowerPoint files while maintaining consistency with existing file processing approaches.
+This implementation extends the document processing pipeline for PowerPoint files while maintaining consistency with existing file processing approaches and following key architectural principles:
+
+### Key Architectural Improvements
+
+1. **Separation of Concerns**: Content extraction is separated from metadata processing, creating cleaner, more maintainable code
+2. **Strategy Pattern Compliance**: PowerPoint processing follows the same strategy pattern as other file types
+3. **Reusability**: Content extraction functions can be reused across different processing strategies
+4. **Testability**: Content extraction and metadata processing can be tested independently
+5. **Extensibility**: New processing strategies can easily handle PowerPoint files with different metadata requirements
+
+### Implementation Benefits
+
+- **Consistent Architecture**: PowerPoint processing follows the same three-phase pipeline as other file types
+- **Error Isolation**: Content extraction errors are separate from metadata processing errors
+- **Performance Optimization**: Content is extracted once and reused for both chunking and metadata processing
+- **Memory Efficiency**: No redundant file parsing between content extraction and metadata phases
+- **Maintainability**: Changes to metadata logic don't require changes to content extraction logic
+
+This approach ensures that PowerPoint support integrates seamlessly with the existing document processing pipeline while providing a foundation for future enhancements and additional file type support.

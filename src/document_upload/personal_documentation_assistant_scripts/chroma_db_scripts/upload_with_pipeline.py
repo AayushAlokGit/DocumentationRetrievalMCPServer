@@ -78,14 +78,14 @@ async def force_reset_chromadb_and_tracker() -> bool:
         processing_strategy = PersonalDocumentationAssistantChromaDBProcessingStrategy()
         upload_strategy = ChromaDBDocumentUploadStrategy(processing_strategy=processing_strategy)
         
-        # 1. Delete all documents from ChromaDB
-        print_and_log("   🔄 Deleting all documents from ChromaDB...")
-        deleted_count = await upload_strategy.delete_all_documents_from_service()
+        # 1. Reset the entire ChromaDB collection (handles embedding dimension changes)
+        print_and_log("   🔄 Resetting ChromaDB collection...")
+        reset_success = chromadb_service.reset_collection()
         
-        if deleted_count >= 0:
-            print_and_log(f"   ✅ Successfully deleted {deleted_count} documents from ChromaDB")
+        if reset_success:
+            print_and_log("   ✅ Successfully reset ChromaDB collection")
         else:
-            print_and_log("   ⚠️ Document deletion may have failed")
+            print_and_log("   ⚠️ ChromaDB collection reset may have failed")
         
         # 2. Clear tracker state completely
         print_and_log("   🔄 Clearing document processing tracker...")
@@ -94,7 +94,7 @@ async def force_reset_chromadb_and_tracker() -> bool:
         
         # 3. Test connection to verify ChromaDB is accessible
         try:
-            await chromadb_service.test_connection()
+            chromadb_service.test_connection()
             print_and_log("   ✅ ChromaDB connection verified")
         except Exception as e:
             print_and_log(f"   ⚠️ ChromaDB connection test failed: {e}")

@@ -27,6 +27,8 @@ from dotenv import load_dotenv
 
 # Import our helper modules
 import sys
+
+from src.document_upload.ai_tag_generation.ai_tag_generator import AITagGenerator
 sys.path.append(str(Path(__file__).parent.parent))
 
 # Import chunking strategies
@@ -38,6 +40,12 @@ try:
     DOCX_AVAILABLE = True
 except ImportError:
     DOCX_AVAILABLE = False
+
+try:
+    from pptx import Presentation
+    PPTX_AVAILABLE = True
+except ImportError:
+    PPTX_AVAILABLE = False
 
 # Load environment variables
 load_dotenv()
@@ -55,7 +63,7 @@ def _read_document_file(file_path: Path) -> Optional[Dict]:
     Read and parse a document file with file-type specific parsing.
     Supports different file types with appropriate parsing libraries.
     
-    Supports: .md (markdown), .txt (text), .docx (Word documents)
+    Supports: .md (markdown), .txt (text), .docx (Word documents), .pptx (PowerPoint)
     
     Args:
         file_path: Path to the document file
@@ -75,6 +83,19 @@ def _read_document_file(file_path: Path) -> Optional[Dict]:
             content = _extract_docx_content(file_path)
             if not content:
                 return None
+                
+        elif file_extension == '.pptx':
+            # Parse PowerPoint files using python-pptx
+            if not PPTX_AVAILABLE:
+                print(f"Warning: python-pptx not available, cannot parse {file_path}")
+                return None
+
+            pptx_data = _extract_pptx_content(file_path)
+            if not pptx_data:
+                return None
+
+            # Use the full content for processing
+            content = pptx_data['content']
                 
         elif file_extension in ['.md', '.txt']:
             # Parse markdown and text files as UTF-8
@@ -139,6 +160,63 @@ def _extract_docx_content(file_path: Path) -> Optional[str]:
         
     except Exception as e:
         print(f"Error extracting DOCX content from {file_path}: {e}")
+        return None
+
+
+def _extract_pptx_content(file_path: Path) -> Optional[Dict[str, Any]]:
+    """
+    Extract text content from a PowerPoint file.
+
+    NOTE: This function focuses ONLY on content extraction. Metadata extraction
+    is handled separately in the document processing phase for better separation
+    of concerns and reusability across different processing strategies.
+
+    Args:
+        file_path: Path to the PPTX file
+
+    Returns:
+        Optional[Dict]: Dictionary containing:
+            - content: Full text content from all slides and speaker notes
+    """
+    try:
+        prs = Presentation(file_path)
+
+        # Extract slide content
+        all_text_parts = []
+        speaker_notes = []
+
+        for slide_num, slide in enumerate(prs.slides, 1):
+            slide_text_parts = []
+            slide_text_parts.append(f"=== Slide {slide_num} ===")
+
+            # Extract text from all shapes in the slide (ignoring images)
+            for shape in slide.shapes:
+                if hasattr(shape, "text") and shape.text.strip():
+                    slide_text_parts.append(shape.text.strip())
+                # Note: Images and embedded objects are ignored in this implementation
+
+            # Extract speaker notes if available
+            if slide.has_notes_slide:
+                notes_slide = slide.notes_slide
+                notes_text_frame = notes_slide.notes_text_frame
+                if notes_text_frame.text.strip():
+                    speaker_notes.append(f"Slide {slide_num} Notes: {notes_text_frame.text.strip()}")
+
+            # Add slide content to overall content
+            all_text_parts.extend(slide_text_parts)
+
+        # Combine all content including speaker notes
+        full_content = "\n\n".join(all_text_parts)
+        if speaker_notes:
+            combined_notes = "\n\n".join(speaker_notes)
+            full_content += "\n\n=== Speaker Notes ===\n" + combined_notes
+
+        return {
+            'content': full_content
+        } if full_content.strip() else None
+
+    except Exception as e:
+        print(f"Error extracting PowerPoint content from {file_path}: {e}")
         return None
 
 
@@ -523,7 +601,7 @@ class PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy(Docum
             metadata['title'] = self._extract_title(clean_content, file_path, metadata, file_type)
             
             # Extract tags/keywords using comprehensive strategy
-            metadata['tags'] = self._extract_tags(clean_content, file_path, metadata, file_type, work_item_id, post)
+            metadata['tags'] = self._extract_tags(clean_content, file_path, metadata, file_type, work_item_id)
             
             # Add file system metadata
             metadata.update(self._extract_file_system_metadata(file_path))
@@ -582,7 +660,7 @@ class PersonalDocumentationAssistantAzureCognitiveSearchProcessingStrategy(Docum
         return formatted_title
     
     def _extract_tags(self, content: str, file_path: Path, metadata: Dict, 
-                     file_type: str, work_item_id: str, post) -> list:
+                     file_type: str, work_item_id: str) -> list:
         """
         Extract tags/keywords using Personal Documentation Assistant strategy.
         
@@ -773,6 +851,12 @@ class PersonalDocumentationAssistantChromaDBProcessingStrategy(DocumentProcessin
     def __init__(self, chunking_config: Optional[ChunkingConfig] = None):
         """Initialize the ChromaDB processing strategy."""
         super().__init__(chunking_config)
+        
+        # Initialize AI tag generator if enabled
+        self.ai_tag_generator = None
+        if os.getenv('ENABLE_AI_TAG_GENERATION', 'false').lower() == 'true':
+            print("[INFO] AI tag generation enabled")
+            self.ai_tag_generator = AITagGenerator()
     
     def get_strategy_name(self) -> str:
         return "PersonalDocumentationAssistant_ChromaDB"
@@ -813,7 +897,7 @@ class PersonalDocumentationAssistantChromaDBProcessingStrategy(DocumentProcessin
             content=content,
             content_chunks=chunks,
             tags=metadata.get('tags', []),
-            category=metadata.get('category', metadata.get('document_category')),
+            category=metadata.get('category', ""),
             context_name=context_name,
             last_modified=metadata.get('last_modified', datetime.now().isoformat() + 'Z'),
             chunk_count=len(chunks),
@@ -869,7 +953,7 @@ class PersonalDocumentationAssistantChromaDBProcessingStrategy(DocumentProcessin
                 for work_item in work_items_found
             },
             "vector_service": "ChromaDB",
-            "embedding_service": "local"
+            "embedding_service": os.getenv("EMBEDDING_PROVIDER_SERVICE", "azure_ai_foundry")
         }
         
         return DocumentProcessingResult(
@@ -894,6 +978,7 @@ class PersonalDocumentationAssistantChromaDBProcessingStrategy(DocumentProcessin
         
         Reuses the same metadata extraction logic as Azure strategy but ensures
         all metadata values are ChromaDB-compatible (strings or numbers only).
+        Enhanced to support PowerPoint presentations.
         """
         try:
             # Determine file type
@@ -903,27 +988,30 @@ class PersonalDocumentationAssistantChromaDBProcessingStrategy(DocumentProcessin
             # Initialize metadata
             metadata = {}
             
-            # Extract frontmatter if markdown file
-            post = None
-            clean_content = content
-            if file_type == 'markdown':
-                try:
-                    post = frontmatter.loads(content)
-                    metadata = dict(post.metadata) if post.metadata else {}
-                    clean_content = post.content if post.metadata else content
-                except:
-                    pass  # If frontmatter parsing fails, use content as-is
-            
+            # Handle PowerPoint-specific metadata extraction
+            if file_type == 'presentation':
+                # PowerPoint files have additional structured data
+                metadata = self._extract_powerpoint_metadata(content, file_path)
+            else:
+                # Extract frontmatter if markdown file
+                post = None
+                clean_content = content
+                if file_type == 'markdown':
+                    try:
+                        post = frontmatter.loads(content)
+                        metadata = dict(post.metadata) if post.metadata else {}
+                    except:
+                        pass  # If frontmatter parsing fails, use content as-is            
             # Extract work item ID from directory structure (primary strategy)
             work_item_id = self._extract_work_item_id(file_path)
             metadata['work_item_id'] = work_item_id
             metadata['file_type'] = file_type
             
             # Extract title using strategy priority
-            metadata['title'] = self._extract_title(clean_content, file_path, metadata, file_type)
+            metadata['title'] = self._extract_title(content, file_path, metadata, file_type)
             
             # Extract tags/keywords using comprehensive strategy
-            metadata['tags'] = self._extract_tags(clean_content, file_path, metadata, file_type, work_item_id, post)
+            metadata['tags'] = self._extract_tags(content, file_path, metadata, file_type, work_item_id)
             
             # Add file system metadata
             metadata.update(self._extract_file_system_metadata(file_path))
@@ -939,7 +1027,8 @@ class PersonalDocumentationAssistantChromaDBProcessingStrategy(DocumentProcessin
         type_mapping = {
             '.md': 'markdown',
             '.txt': 'text', 
-            '.docx': 'document'
+            '.docx': 'document',
+            '.pptx': 'presentation'
         }
         return type_mapping.get(file_extension, 'unknown')
     
@@ -948,6 +1037,64 @@ class PersonalDocumentationAssistantChromaDBProcessingStrategy(DocumentProcessin
         work_item_dir = file_path.parent
         return work_item_dir.name
     
+    def _extract_powerpoint_metadata(self, content: str, file_path: Path) -> Dict:
+        """
+        Extract metadata specific to PowerPoint presentations.
+        
+        This method handles PowerPoint metadata extraction in the document processing phase,
+        maintaining separation of concerns by keeping metadata logic separate from content extraction.
+
+        Args:
+            content: Extracted text content from the presentation
+            file_path: Path to the PowerPoint file
+
+        Returns:
+            Dict: PowerPoint-specific metadata (without content)
+        """
+        metadata = {}
+
+        # Extract PowerPoint metadata directly using python-pptx
+        try:
+            prs = Presentation(file_path)
+            
+            # Extract presentation metadata
+            core_props = prs.core_properties
+            metadata.update({
+                'slide_count': len(prs.slides),
+                'presentation_title': core_props.title or '',
+                'presentation_author': core_props.author or '',
+            })
+
+            # Check for speaker notes
+            has_notes = False
+            speaker_notes = []
+            for slide_num, slide in enumerate(prs.slides, 1):
+                if slide.has_notes_slide:
+                    notes_slide = slide.notes_slide
+                    notes_text_frame = notes_slide.notes_text_frame
+                    if notes_text_frame.text.strip():
+                        has_notes = True
+                        speaker_notes.append(f"Slide {slide_num} Notes: {notes_text_frame.text.strip()}")
+
+            metadata['has_speaker_notes'] = has_notes
+            
+            # Include speaker notes in content if available
+            if speaker_notes:
+                combined_notes = "\n\n".join(speaker_notes)
+                metadata['speaker_notes'] = combined_notes
+                # Content was already combined in _extract_pptx_content, so no need to combine again
+
+        except Exception as e:
+            print(f"Error extracting PowerPoint metadata from {file_path}: {e}")
+            # Continue with basic metadata if PowerPoint-specific extraction fails
+            metadata.update({
+                'slide_count': 0,
+                'presentation_title': '',
+                'has_speaker_notes': False,
+            })
+
+        return metadata
+    
     def _extract_title(self, content: str, file_path: Path, metadata: Dict, file_type: str) -> str:
         """Extract title using Personal Documentation Assistant strategy."""
         filename_title = file_path.stem.replace('_', ' ').replace('-', ' ')
@@ -955,21 +1102,37 @@ class PersonalDocumentationAssistantChromaDBProcessingStrategy(DocumentProcessin
         return formatted_title
     
     def _extract_tags(self, content: str, file_path: Path, metadata: Dict, 
-                     file_type: str, work_item_id: str, post) -> list:
-        """Extract tags/keywords using Personal Documentation Assistant strategy."""
-        tags = set()
+                     file_type: str, work_item_id: str) -> list:
+        """Extract tags/keywords using Personal Documentation Assistant strategy with AI enhancement."""
+        # Keep existing basic tags for reliability
+        basic_tags = set()
         
         # Add work item ID as primary tag
-        tags.add(work_item_id.lower())
+        basic_tags.add(work_item_id.lower())
         
         # Add file type as tag
-        tags.add(file_type)
+        basic_tags.add(file_type)
         
         # Add filename (stem without extension) as tag for better searchability
         filename_tag = file_path.stem.lower().replace('_', '-').replace(' ', '-')
-        tags.add(filename_tag)
+        basic_tags.add(filename_tag)
         
-        return sorted(list(tags))
+        # Try AI tag generation if enabled
+        ai_tags = []
+        if self.ai_tag_generator:
+            try:
+                ai_tags = self.ai_tag_generator.generate_tags(content, file_path, metadata)
+                if ai_tags:
+                    print(f"[SUCCESS] Generated {len(ai_tags)} AI tags for {file_path.name}: {ai_tags}")
+                else:
+                    print(f"[INFO] No AI tags generated for {file_path.name}")
+            except Exception as e:
+                print(f"[ERROR] AI tag generation failed for {file_path.name}: {e}")
+        
+        # Combine basic and AI tags
+        all_tags = basic_tags.union(set(ai_tags))
+        
+        return sorted(list(all_tags))
     
     def _extract_file_system_metadata(self, file_path: Path) -> Dict:
         """Extract file system metadata."""

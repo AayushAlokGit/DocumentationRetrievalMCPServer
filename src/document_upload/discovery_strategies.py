@@ -145,7 +145,7 @@ class GeneralDocumentDiscoveryStrategy(DocumentDiscoveryStrategy):
             return self._extensions
         
         # Get from environment variable
-        extensions_str = os.getenv('SUPPORTED_FILE_EXTENSIONS', '.md,.txt,.docx')
+        extensions_str = os.getenv('SUPPORTED_FILE_EXTENSIONS', '.md,.txt,.docx,.pptx')
         extensions = [ext.strip() for ext in extensions_str.split(',')]
         # Ensure all extensions start with a dot
         extensions = [ext if ext.startswith('.') else f'.{ext}' for ext in extensions]

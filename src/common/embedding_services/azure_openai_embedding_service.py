@@ -25,7 +25,7 @@ class AzureOpenAIEmbeddingGenerator:
         # Load configuration from environment - Azure AI Foundry
         self.azure_ai_foundry_endpoint = os.getenv('AZURE_AI_FOUNDRY_ENDPOINT')
         self.azure_ai_foundry_embedding_model_key = os.getenv('AZURE_AI_FOUNDRY_EMBEDDING_MODEL_KEY') 
-        self.embedding_deployment = os.getenv('EMBEDDING_DEPLOYMENT', 'text-embedding-3-large')
+        self.embedding_model = os.getenv('EMBEDDING_MODEL', 'text-embedding-3-large')
         self.api_version = os.getenv('OPENAI_API_VERSION', '2024-05-01-preview')
         
         # Dynamic embedding dimensions based on model
@@ -41,7 +41,7 @@ class AzureOpenAIEmbeddingGenerator:
 
         print(f"[INFO] AzureOpenAIEmbeddingGenerator initialized:")
         print(f"   - AI Foundry Endpoint: {self.azure_ai_foundry_endpoint}")
-        print(f"   - Deployment: {self.embedding_deployment}")
+        print(f"   - Deployment: {self.embedding_model}")
         print(f"   - Dimension: {self.embedding_dimension}")
     
     def _get_client(self):
@@ -70,7 +70,7 @@ class AzureOpenAIEmbeddingGenerator:
             client = self._get_client()
             # Test with a simple embedding request
             response = client.embeddings.create(
-                model=self.embedding_deployment,
+                model=self.embedding_model,
                 input=["test connection"]
             )
             return response and len(response.data) > 0
@@ -91,7 +91,7 @@ class AzureOpenAIEmbeddingGenerator:
         try:
             client = self._get_client()
             response = client.embeddings.create(
-                model=self.embedding_deployment,
+                model=self.embedding_model,
                 input=[text]
             )
             
@@ -126,7 +126,7 @@ class AzureOpenAIEmbeddingGenerator:
 
                 client = self._get_client()
                 response = client.embeddings.create(
-                    model=self.embedding_deployment,
+                    model=self.embedding_model,
                     input=batch
                 )
                 

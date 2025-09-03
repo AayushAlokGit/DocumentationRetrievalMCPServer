@@ -64,3 +64,4 @@ logs/
 chromadb_data/
 
 ScriptExecutionLogs/
+testFiles/*

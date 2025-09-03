@@ -139,7 +139,7 @@ class ChromaDBService(IVectorSearchService):
     def embedding_generator(self):
         """Lazy initialization of embedding generator"""
         if self._embedding_generator is None:
-            self._embedding_generator = get_embedding_generator(provider="local")
+            self._embedding_generator = get_embedding_generator()  # Use environment configuration
         return self._embedding_generator
 
     def test_connection(self) -> bool:
@@ -151,6 +151,36 @@ class ChromaDBService(IVectorSearchService):
             return True
         except Exception as e:
             print(f"[ERROR] ChromaDB connection failed: {e}")
+            return False
+
+    def reset_collection(self) -> bool:
+        """
+        Reset the ChromaDB collection - delete existing and recreate.
+        This is useful when changing embedding dimensions.
+        
+        Returns:
+            bool: True if successful, False otherwise
+        """
+        try:
+            print(f"[INFO] Resetting ChromaDB collection: {self.collection_name}")
+            
+            # Delete existing collection if it exists
+            try:
+                self.client.delete_collection(name=self.collection_name)
+                print(f"[INFO] Deleted existing collection: {self.collection_name}")
+            except Exception as e:
+                print(f"[INFO] Collection {self.collection_name} did not exist or could not be deleted: {e}")
+            
+            # Create new collection
+            self.collection = self.client.create_collection(
+                name=self.collection_name,
+                metadata={"description": "Documentation retrieval collection"}
+            )
+            print(f"[INFO] Created new ChromaDB collection: {self.collection_name}")
+            return True
+            
+        except Exception as e:
+            print(f"[ERROR] Collection reset failed: {e}")
             return False
 
     def get_collection_stats(self) -> Dict[str, Any]:

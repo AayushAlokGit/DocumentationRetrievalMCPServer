@@ -441,7 +441,7 @@ class ChromaDBDocumentUploadStrategy(DocumentUploadStrategy):
             "documents_failed_upload": len(failed_upload_files),
             "chromadb_collection_name": self.collection_name,
             "chromadb_persist_directory": self.persist_directory,
-            "embedding_service": "local"
+            "embedding_service": os.getenv("EMBEDDING_PROVIDER_SERVICE", "azure_ai_foundry")
         }
         
         logger.info(f"Upload completed: {successfully_uploaded}/{total_search_objects} objects uploaded successfully")
