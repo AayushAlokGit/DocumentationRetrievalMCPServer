@@ -1,29 +1,29 @@
 # MCP Server Setup Guide 🔌
 
-Sets up Model Context Protocol (MCP) server integration with VS Code, enabling GitHub Copilot to access your documentation through 5 universal tools.
+Sets up Model Context Protocol (MCP) server integration with VS Code, enabling GitHub Copilot to access your documentation through **5 universal tools** with **100% local ChromaDB processing**.
 
 ## ⚠️ Prerequisites
 
-**Complete document upload setup first** - you need indexed documents in your chosen vector search engine.
+**Complete ChromaDB document upload setup first** - you need indexed documents in your local ChromaDB collection.
 
-**Vector Search Options:**
+**Current Architecture**: **ChromaDB + Local Embeddings (100% Local)**
 
-- **ChromaDB** (recommended): Local vector search - see [ChromaDB Setup](DOCUMENT_UPLOAD_SETUP_FOR_CHROMADB.md)
-- **Azure Cognitive Search**: Enterprise cloud search - see [Azure Setup](DOCUMENT_UPLOAD_SETUP_FOR_AZURE_COGNTIVE_SEARCH.md)
+- **Primary Setup**: [ChromaDB Setup](DOCUMENT_UPLOAD_SETUP_FOR_CHROMADB.md) - Complete privacy, zero costs, local processing
+- **Legacy Reference**: [Azure Setup](DOCUMENT_UPLOAD_SETUP_FOR_AZURE_COGNTIVE_SEARCH.md) - Deprecated, cloud-based
 
 **Required:**
 
-- Completed document upload setup with indexed documents
+- Completed ChromaDB document upload setup with indexed documents
 - VS Code with GitHub Copilot extension
-- Active virtual environment with dependencies installed
+- Active virtual environment with ChromaDB dependencies installed
 
-**Quick Verification:**
+**Quick Verification - ChromaDB Local Setup:**
 
 ```bash
-# Activate environment and verify documents are indexed
+# Activate environment and verify documents are indexed locally
 .venv\Scripts\activate
 
-# For ChromaDB (most common)
+# Check ChromaDB collection status
 python -c "
 from src.common.vector_search_services.chromadb_service import get_chromadb_service
 search_service = get_chromadb_service()
@@ -31,30 +31,34 @@ count = search_service.get_document_count()
 print('✅ Ready - ChromaDB with', count, 'documents' if count > 0 else '❌ No documents - run ChromaDB upload setup first')
 "
 
-# For Azure Cognitive Search (alternative)
+# Verify local embedding service
 python -c "
-from src.common.vector_search_services.azure_cognitive_search import get_azure_search_service
-search_service = get_azure_search_service()
-count = search_service.get_document_count()
-print('✅ Ready - Azure Search with', count, 'documents' if count > 0 else '❌ No documents - run Azure upload setup first')
+from src.common.embedding_services.embedding_service_factory import get_embedding_generator
+embedder = get_embedding_generator()
+if embedder.test_connection():
+    print('✅ Local embeddings ready')
+else:
+    print('❌ Embedding service issue')
 "
 ```
 
 ## 🚀 Setup Steps
 
-### 1. Test MCP Server
+### 1. Test MCP Server (ChromaDB Backend)
 
 ```bash
-# Test server startup
+# Test server startup with ChromaDB
 .venv\Scripts\activate
 python run_mcp_server.py
 
-# Expected output:
-# [START] Starting Documentation Retrieval MCP Server
-# [INFO] EmbeddingGenerator initialized (or warning - both acceptable)
-# [SUCCESS] Connected to search index: X documents, Y contexts
-# [TARGET] MCP Server ready for connections
-# Available tools: 5
+# Expected output for ChromaDB setup:
+# [START] Starting Documentation Retrieval MCP Server (ChromaDB)
+# [INFO] Using embedding provider: local
+# [INFO] Loading local embedding model: all-MiniLM-L6-v2
+# [SUCCESS] Local Embedding Service initialized: all-MiniLM-L6-v2
+# [SUCCESS] Connected to ChromaDB collection: X documents
+# [TARGET] MCP Server ready for VS Code integration
+# [READY] 5 ChromaDB tools available
 
 # Press Ctrl+C to stop
 ```
@@ -80,7 +84,7 @@ Create `.vscode/mcp.json` in your workspace:
 
 **Update all paths** to match your actual project location and Python environment (i.e the virtual env which has all the dependency packages installed, usually this would be in project root as the "venv" folder).
 
-**Note:** The MCP server automatically detects whether you're using ChromaDB or Azure Cognitive Search based on your environment configuration and available services.
+**Note:** The MCP server now runs exclusively on ChromaDB with local embeddings for complete privacy and zero cloud costs.
 
 ### 3. Verify Integration
 
@@ -94,41 +98,49 @@ Create `.vscode/mcp.json` in your workspace:
 In Copilot Chat, ask:
 
 ```
-"What documents are available in the documentation index?"
+"What documents are available in my local documentation index?"
 ```
 
-Expected response: List of contexts/documents found in your search index.
+Expected response: List of contexts/documents found in your ChromaDB collection.
 
-## 🔧 Available Tools
+## 🔧 Available Tools (5 Universal ChromaDB Tools)
 
-The MCP server provides 5 tools to GitHub Copilot:
+The MCP server provides 5 tools to GitHub Copilot for local document operations:
 
-1. **`search_documents`** - Search for relevant content using keywords or questions
-2. **`get_document_content`** - Retrieve full content of specific documents
-3. **`get_document_contexts`** - List all available document contexts/categories
-4. **`explore_document_structure`** - Browse contexts, files, and document structure
-5. **`get_index_summary`** - Get comprehensive statistics about the document index
+1. **`mcp_documentation_chromadb_search_documents`** - Semantic vector search with metadata filtering
+2. **`mcp_documentation_chromadb_get_document_content`** - Retrieve full content from ChromaDB
+3. **`mcp_documentation_chromadb_get_document_contexts`** - List all available contexts with statistics
+4. **`mcp_documentation_chromadb_explore_document_structure`** - Browse ChromaDB collection structure
+5. **`mcp_documentation_chromadb_get_index_summary`** - Get ChromaDB collection health and statistics
+
+**All tools operate 100% locally with:**
+
+- ✅ **Complete Privacy** - No external API calls or data transmission
+- ✅ **Fast Performance** - Local vector search with sub-100ms response times
+- ✅ **Rich Metadata** - Context-aware filtering and semantic understanding
+- ✅ **Zero Costs** - No cloud services or API usage fees
 
 ## 📝 Usage Examples
 
-### Basic Search
+### Local Semantic Search
 
 ```
-"Search for information about Azure configuration"
+"Search my local documentation for authentication setup"
+"Find information about ChromaDB configuration in my docs"
 ```
 
 ### Document Discovery
 
 ```
-"What contexts are available in the documentation?"
-"Show me all files in the 'architecture' context"
+"What document contexts are available in my local collection?"
+"Show me all files in the 'Task-5559136' context"
 ```
 
 ### Content Retrieval
 
 ```
-"Get the full content of the setup documentation"
-"Show me the document about MCP server implementation"
+"Get the full content of my BinSkim documentation"
+"Show me the document about local embedding setup"
 ```
 
 ## 🐛 Troubleshooting

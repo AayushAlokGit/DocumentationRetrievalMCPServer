@@ -2,31 +2,36 @@
 
 ## Overview
 
-A sophisticated **dual-component system** that combines intelligent document processing with AI-powered search capabilities using ChromaDB vector database and local embedding generation. The system provides privacy-first, cost-effective document retrieval with complete local control, seamlessly integrated with VS Code through the Model Context Protocol.
+A sophisticated **dual-component system** that combines intelligent document processing with AI-powered search capabilities using ChromaDB vector database and local Sentence Transformers embeddings. The system provides **100% privacy-first, zero-cost** document retrieval with complete local control, seamlessly integrated with VS Code through the Model Context Protocol.
 
 **Vision**: Transform static documentation into an intelligent, searchable assistant that runs entirely locally, providing secure document access with zero cloud dependencies while maintaining enterprise-grade performance and reliability.
+
+**Current Achievement**: **Complete migration from Azure to ChromaDB** - The system now operates entirely locally with no external dependencies, zero ongoing costs, and complete data privacy.
 
 ## System Components
 
 ### 🔄 Document Processing Pipeline
 
-- **Three-phase strategy-based architecture** with local processing capabilities
-- **ChromaDB integration** with 384-dimensional local vector embeddings
+- **Three-phase strategy-based architecture** with complete local processing capabilities
+- **ChromaDB integration** with 384-dimensional local vector embeddings (Sentence Transformers)
 - **Idempotent file tracking** using signature-based change detection
-- **Multi-format support**: Markdown, text, and Word document processing with local parsing
+- **Multi-format support**: Markdown, text, Word documents, and PowerPoint presentations with local parsing
+- **Complete Privacy**: All document processing happens locally, no data ever transmitted externally
 
 ### 🔌 MCP Server for VS Code
 
 - **5 universal search tools** for comprehensive document search and management
 - **Real-time VS Code Copilot integration** via Model Context Protocol
-- **Vector-based semantic search** with local embedding generation
-- **Sub-second response times** with local database performance
+- **Local vector-based semantic search** with Sentence Transformers embeddings
+- **Sub-100ms response times** with local ChromaDB performance
+- **Zero External Dependencies**: Completely self-contained operation
 
 ### 🛠️ Personal Documentation Assistant Scripts
 
-- **Three production-ready scripts** for document management with ChromaDB
-- **100% local processing** with comprehensive validation suites
-- **Privacy features**: All data remains local, no external API calls required
+- **Three production-ready scripts** for document management with ChromaDB backend
+- **100% local processing** with comprehensive validation and test suites
+- **Privacy features**: All data remains local, no external API calls, complete data sovereignty
+- **Zero Cost Operation**: No cloud services, API keys, or subscription fees required
 
 ---
 
@@ -36,23 +41,26 @@ A sophisticated **dual-component system** that combines intelligent document pro
 
 - **Language**: Python 3.8+ with comprehensive type hints and async support
 - **MCP Framework**: Model Context Protocol Python SDK for VS Code integration
-- **Vector Database**: ChromaDB with persistent local storage
-- **AI Embeddings**: Local Sentence Transformers (all-MiniLM-L6-v2, 384 dimensions)
+- **Vector Database**: ChromaDB with persistent local storage (PRIMARY)
+- **AI Embeddings**: Local Sentence Transformers (all-MiniLM-L6-v2, 384 dimensions) (PRIMARY)
 - **Communication**: JSON-RPC over stdio for seamless MCP integration
+- **Architecture**: 100% local processing with zero external dependencies
 
 ### Local Services Integration
 
-- **ChromaDB**: Local vector database with persistent storage and HNSW indexing
-- **Sentence Transformers**: Local embedding generation with multiple model options
-- **Privacy Features**: Complete local processing, no data leaves your machine
-- **Performance**: Local SSD storage with optimized vector search algorithms
+- **ChromaDB**: Local vector database with persistent SQLite storage and HNSW indexing
+- **Sentence Transformers**: Local embedding generation with multiple model options (all-MiniLM-L6-v2 default)
+- **Privacy Features**: Complete local processing, zero data transmission, full data sovereignty
+- **Performance**: Local SSD storage with sub-100ms vector search algorithms
+- **Cost Model**: Zero ongoing costs after initial setup - no cloud services or API fees
 
 ### Document Processing Support
 
-- **File Formats**: Markdown (`.md`), Text (`.txt`), Word Documents (`.docx`)
-- **Processing Libraries**: python-frontmatter, python-docx, frontmatter parsing
+- **File Formats**: Markdown (`.md`), Text (`.txt`), Word Documents (`.docx`), PowerPoint (`.pptx`)
+- **Processing Libraries**: python-frontmatter, python-docx, python-pptx, frontmatter parsing
 - **Encoding**: UTF-8 with robust error handling and validation
-- **Local Storage**: Persistent ChromaDB collections in `chromadb_data/` directory
+- **Local Storage**: Persistent ChromaDB collections in `chromadb_data/` directory with SQLite backend
+- **Privacy Guarantee**: All file content processed and stored locally, never transmitted externally
 
 ---
 
@@ -60,7 +68,7 @@ A sophisticated **dual-component system** that combines intelligent document pro
 
 ### Three-Phase Strategy-Based Architecture
 
-The document processing pipeline uses a **strategy pattern** optimized for local processing with privacy-first principles and cost-effective operation.
+The document processing pipeline uses a **strategy pattern** optimized for local processing with privacy-first principles and cost-effective operation. **Now fully migrated to ChromaDB backend with local embeddings**.
 
 #### Phase 1: Document Discovery
 
