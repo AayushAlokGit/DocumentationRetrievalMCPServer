@@ -149,7 +149,7 @@ async def process_path_with_chromadb_pipeline(target_path: str, dry_run: bool = 
         print_and_log(f"   📍 Target path: {target_path}")
         print_and_log(f"   🔍 Dry run: {dry_run}")
         print_and_log(f"   📊 Vector service: ChromaDB (local)")
-        print_and_log(f"   🤖 Embedding service: Local (sentence-transformers)")
+        print_and_log(f"   🤖 Embedding service: {os.getenv('EMBEDDING_PROVIDER_SERVICE', 'local')}")
         
         if dry_run:
             # Show discovery preview without processing
@@ -252,8 +252,8 @@ def print_chromadb_pipeline_statistics(discovery_result, processing_result, uplo
     print_and_log(f"\n📈 Overall Pipeline:")
     print_and_log(f"   Total execution time: {total_time:.2f}s")
     print_and_log(f"   Vector service: ChromaDB (local)")
-    print_and_log(f"   Embedding service: Local sentence-transformers")
-    
+    print_and_log(f"   Embedding service: {os.getenv('EMBEDDING_PROVIDER_SERVICE', 'local')}")
+
     # Error Summary
     all_errors = []
     if hasattr(discovery_result, 'errors'):
